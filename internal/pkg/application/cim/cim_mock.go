@@ -4,6 +4,7 @@
 package cim
 
 import (
+	"context"
 	"io"
 	"sync"
 )
@@ -18,7 +19,7 @@ var _ ContextInformationManager = &ContextInformationManagerMock{}
 //
 // 		// make and configure a mocked ContextInformationManager
 // 		mockedContextInformationManager := &ContextInformationManagerMock{
-// 			CreateEntityFunc: func(tenant string, entityType string, entityID string, body io.Reader) (CreateEntityResult, error) {
+// 			CreateEntityFunc: func(ctx context.Context, tenant string, entityType string, entityID string, body io.Reader) (*CreateEntityResult, error) {
 // 				panic("mock out the CreateEntity method")
 // 			},
 // 		}
@@ -29,12 +30,14 @@ var _ ContextInformationManager = &ContextInformationManagerMock{}
 // 	}
 type ContextInformationManagerMock struct {
 	// CreateEntityFunc mocks the CreateEntity method.
-	CreateEntityFunc func(tenant string, entityType string, entityID string, body io.Reader) (*CreateEntityResult, error)
+	CreateEntityFunc func(ctx context.Context, tenant string, entityType string, entityID string, body io.Reader) (*CreateEntityResult, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
 		// CreateEntity holds details about calls to the CreateEntity method.
 		CreateEntity []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
 			// Tenant is the tenant argument value.
 			Tenant string
 			// EntityType is the entityType argument value.
@@ -49,16 +52,18 @@ type ContextInformationManagerMock struct {
 }
 
 // CreateEntity calls CreateEntityFunc.
-func (mock *ContextInformationManagerMock) CreateEntity(tenant string, entityType string, entityID string, body io.Reader) (*CreateEntityResult, error) {
+func (mock *ContextInformationManagerMock) CreateEntity(ctx context.Context, tenant string, entityType string, entityID string, body io.Reader) (*CreateEntityResult, error) {
 	if mock.CreateEntityFunc == nil {
 		panic("ContextInformationManagerMock.CreateEntityFunc: method is nil but ContextInformationManager.CreateEntity was just called")
 	}
 	callInfo := struct {
+		Ctx        context.Context
 		Tenant     string
 		EntityType string
 		EntityID   string
 		Body       io.Reader
 	}{
+		Ctx:        ctx,
 		Tenant:     tenant,
 		EntityType: entityType,
 		EntityID:   entityID,
@@ -67,19 +72,21 @@ func (mock *ContextInformationManagerMock) CreateEntity(tenant string, entityTyp
 	mock.lockCreateEntity.Lock()
 	mock.calls.CreateEntity = append(mock.calls.CreateEntity, callInfo)
 	mock.lockCreateEntity.Unlock()
-	return mock.CreateEntityFunc(tenant, entityType, entityID, body)
+	return mock.CreateEntityFunc(ctx, tenant, entityType, entityID, body)
 }
 
 // CreateEntityCalls gets all the calls that were made to CreateEntity.
 // Check the length with:
 //     len(mockedContextInformationManager.CreateEntityCalls())
 func (mock *ContextInformationManagerMock) CreateEntityCalls() []struct {
+	Ctx        context.Context
 	Tenant     string
 	EntityType string
 	EntityID   string
 	Body       io.Reader
 } {
 	var calls []struct {
+		Ctx        context.Context
 		Tenant     string
 		EntityType string
 		EntityID   string

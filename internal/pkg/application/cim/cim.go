@@ -1,9 +1,12 @@
 package cim
 
-import "io"
+import (
+	"context"
+	"io"
+)
 
 type EntityCreator interface {
-	CreateEntity(tenant, entityType, entityID string, body io.Reader) (*CreateEntityResult, error)
+	CreateEntity(ctx context.Context, tenant, entityType, entityID string, body io.Reader) (*CreateEntityResult, error)
 }
 
 type ContextInformationManager interface {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"net/http"
 	"os"
 	"strings"
@@ -13,6 +14,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+var configFilePath string
+
 func main() {
 
 	serviceName := "context-broker"
@@ -20,6 +23,9 @@ func main() {
 
 	logger := log.With().Str("service", strings.ToLower(serviceName)).Logger()
 	logger.Info().Msg("starting up ...")
+
+	flag.StringVar(&configFilePath, "config", "/opt/diwise/config/default.yaml", "A configuration file containing federation information")
+	flag.Parse()
 
 	ctx := context.Background()
 
@@ -29,9 +35,22 @@ func main() {
 	}
 	defer cleanup()
 
-	app := contextbroker.New(logger)
-	r := router.New(serviceName)
+	configfile, err := os.Open(configFilePath)
+	if err != nil {
+		logger.Fatal().Err(err).Msgf("failed to open the configuration file %s", configFilePath)
+	}
 
+	cfg, err := contextbroker.LoadConfiguration(configfile)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("failed to load configuration")
+	}
+
+	app, err := contextbroker.New(logger, *cfg)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("failed to configure the context broker")
+	}
+
+	r := router.New(serviceName)
 	ngsild.RegisterHandlers(r, app, logger)
 
 	port := os.Getenv("SERVICE_PORT")

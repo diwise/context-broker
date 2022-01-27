@@ -58,12 +58,16 @@ func NewCreateEntityHandler(
 
 		var result *cim.CreateEntityResult
 
-		result, err = contextInformationManager.CreateEntity(tenant, entity.Type, entity.ID, r.Body)
+		result, err = contextInformationManager.CreateEntity(ctx, tenant, entity.Type, entity.ID, r.Body)
 
 		if err != nil {
 			switch e := err.(type) {
 			case cim.AlreadyExistsError:
 				errors.ReportNewAlreadyExistsError(w, e.Error())
+			case cim.NotFoundError:
+				errors.ReportNotFoundError(w, e.Error())
+			case cim.UnknownTenantError:
+				errors.ReportUnknownTenantError(w, e.Error())
 			default:
 				errors.ReportNewInternalError(w, e.Error())
 			}

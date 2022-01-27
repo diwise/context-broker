@@ -122,6 +122,29 @@ func ReportNewInternalError(w http.ResponseWriter, detail string) {
 	ie.WriteResponse(w)
 }
 
+//NotFound reports that the request failed with a not found error of some kind
+type NotFound struct {
+	ProblemDetailsImpl
+}
+
+//NewNotFound creates and returns a new instance of a NotFound with the supplied problem detail
+func NewNotFound(detail string) *NotFound {
+	return &NotFound{
+		ProblemDetailsImpl: ProblemDetailsImpl{
+			typ:    "https://uri.etsi.org/ngsi-ld/errors/ResourceNotFound",
+			title:  "Not Found",
+			detail: detail,
+			code:   http.StatusNotFound,
+		},
+	}
+}
+
+//ReportNotFoundError creates a NotFound instance and sends it to the supplied http.ResponseWriter
+func ReportNotFoundError(w http.ResponseWriter, detail string) {
+	nf := NewNotFound(detail)
+	nf.WriteResponse(w)
+}
+
 type UnauthorizedRequest struct {
 	ProblemDetailsImpl
 }
@@ -140,6 +163,29 @@ func NewUnauthorizedRequest(detail string) *UnauthorizedRequest {
 func ReportUnauthorizedRequest(w http.ResponseWriter, detail string) {
 	ur := NewUnauthorizedRequest(detail)
 	ur.WriteResponse(w)
+}
+
+//UnknownTenant reports that the request tries to interact with an unknown tenant
+type UnknownTenant struct {
+	ProblemDetailsImpl
+}
+
+//NewUnknownTenant creates and returns a new instance of an UnknownTenant with the supplied problem detail
+func NewUnknownTenant(detail string) *UnknownTenant {
+	return &UnknownTenant{
+		ProblemDetailsImpl: ProblemDetailsImpl{
+			typ:    "https://uri.etsi.org/ngsi-ld/errors/NonexistentTenant",
+			title:  "Non Existent Tenant",
+			detail: detail,
+			code:   http.StatusNotFound,
+		},
+	}
+}
+
+//ReportUnknownTenantError creates an UnknownTenant instance and sends it to the supplied http.ResponseWriter
+func ReportUnknownTenantError(w http.ResponseWriter, detail string) {
+	ut := NewUnknownTenant(detail)
+	ut.WriteResponse(w)
 }
 
 //ContentType returns the ContentType to be used when returning this problem

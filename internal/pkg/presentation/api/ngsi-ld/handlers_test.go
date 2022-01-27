@@ -2,6 +2,7 @@ package ngsild
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -50,7 +51,7 @@ func TestCreateEntityCanHandleAlreadyExistsError(t *testing.T) {
 	is, ts, app := setupTest(t)
 	defer ts.Close()
 
-	app.CreateEntityFunc = func(string, string, string, io.Reader) (*cim.CreateEntityResult, error) {
+	app.CreateEntityFunc = func(context.Context, string, string, string, io.Reader) (*cim.CreateEntityResult, error) {
 		return nil, cim.NewAlreadyExistsError()
 	}
 
@@ -63,7 +64,7 @@ func TestCreateEntityCanHandleInternalError(t *testing.T) {
 	is, ts, app := setupTest(t)
 	defer ts.Close()
 
-	app.CreateEntityFunc = func(string, string, string, io.Reader) (*cim.CreateEntityResult, error) {
+	app.CreateEntityFunc = func(context.Context, string, string, string, io.Reader) (*cim.CreateEntityResult, error) {
 		return nil, fmt.Errorf("some unknown error")
 	}
 
@@ -93,7 +94,7 @@ func setupTest(t *testing.T) (*is.I, *httptest.Server, *cim.ContextInformationMa
 
 	log := log.Logger
 	app := &cim.ContextInformationManagerMock{
-		CreateEntityFunc: func(tenant, entityType, entityID string, body io.Reader) (*cim.CreateEntityResult, error) {
+		CreateEntityFunc: func(ctx context.Context, tenant, entityType, entityID string, body io.Reader) (*cim.CreateEntityResult, error) {
 			return cim.NewCreateEntityResult("somewhere"), nil
 		},
 	}
