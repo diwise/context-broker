@@ -2,7 +2,7 @@ tenants:
   - id: default
     name: Kommunen
     contextSources:
-    - endpoint: http://lolcathost:1234
+    - endpoint: http://deviceregistry:8990
       information:
       - entities:
         - idPattern: ^urn:ngsi-ld:Device:.+

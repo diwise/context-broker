@@ -1,0 +1,42 @@
+version: '3'
+services:
+  context-broker:
+    image: 'diwise/context-broker:latest'
+    build:
+      context: ..
+      dockerfile: ./deployments/Dockerfile
+    restart: always
+    depends_on:
+      - deviceregistry
+    links:
+      - deviceregistry
+    ports:
+      - '8080:8080'
+  
+  deviceregistry:
+    image: 'ghcr.io/diwise/iot-device-registry@sha256:996fdd52bc04123f041e17a1d65a62cd92858ee988075c50150260620f8fb542'
+    restart: always
+    environment:
+      DIWISE_SQLDB_HOST: 'postgresdb'
+      DIWISE_SQLDB_USER: 'testuser'
+      DIWISE_SQLDB_NAME: 'devreg'
+      DIWISE_SQLDB_PASSWORD: 'testpass'
+      DIWISE_SQLDB_SSLMODE: 'disable'
+      RABBITMQ_DISABLED: 'true'
+      SERVICE_PORT: '8990'
+    depends_on:
+      - postgresdb
+    links:
+      - postgresdb
+    ports:
+      - '8990'
+
+  postgresdb:
+    image: 'ghcr.io/diwise/test-db-postgresql:prod-824e7cffd65dd3766c88441a48cffd5b2acd55f2'
+    restart: always
+    environment:
+      POSTGRES_DB: 'devreg'
+      POSTGRES_USER: 'testuser'
+      POSTGRES_PASSWORD: 'testpass'
+    ports:
+      - '5432'
