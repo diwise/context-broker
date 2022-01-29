@@ -54,7 +54,7 @@ func (app *contextBrokerApp) CreateEntity(ctx context.Context, tenant, entityTyp
 					continue
 				}
 
-				response, _, err := callContextSource(ctx, http.MethodPost, src.Endpoint+"/ngsi-ld/v1/entities", "application/ld+json", body)
+				response, responseBody, err := callContextSource(ctx, http.MethodPost, src.Endpoint+"/ngsi-ld/v1/entities", "application/ld+json", body)
 				if err != nil {
 					return nil, err
 				}
@@ -63,9 +63,14 @@ func (app *contextBrokerApp) CreateEntity(ctx context.Context, tenant, entityTyp
 					location := response.Header.Get("Location")
 					if location == "" {
 						app.log.Warn().Msg("downstream context source failed to provide a location header with created response")
-						location = src.Endpoint + "/ngsi-ld/v1/entities/" + entityID
+						location = "/ngsi-ld/v1/entities/" + entityID
 					}
 					return cim.NewCreateEntityResult(location), nil
+				}
+
+				contentType := response.Header.Get("Content-Type")
+				if contentType == "application/problem+json" {
+					return nil, cim.NewErrorFromProblemReport(response.StatusCode, responseBody)
 				}
 
 				return nil, fmt.Errorf("context source returned status code %d", response.StatusCode)

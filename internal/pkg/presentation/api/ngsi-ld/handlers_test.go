@@ -52,7 +52,7 @@ func TestCreateEntityCanHandleAlreadyExistsError(t *testing.T) {
 	defer ts.Close()
 
 	app.CreateEntityFunc = func(context.Context, string, string, string, io.Reader) (*cim.CreateEntityResult, error) {
-		return nil, cim.NewAlreadyExistsError()
+		return nil, cim.NewAlreadyExistsError("already exists")
 	}
 
 	resp, _ := newTestRequest(is, ts, "POST", "/ngsi-ld/v1/entities", bytes.NewBuffer([]byte(entityJSON)))

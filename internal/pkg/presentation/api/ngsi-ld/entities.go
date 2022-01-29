@@ -64,6 +64,10 @@ func NewCreateEntityHandler(
 			switch e := err.(type) {
 			case cim.AlreadyExistsError:
 				errors.ReportNewAlreadyExistsError(w, e.Error())
+			case cim.BadRequestDataError:
+				errors.ReportNewBadRequestData(w, e.Error())
+			case cim.InvalidRequestError:
+				errors.ReportNewInvalidRequest(w, e.Error())
 			case cim.NotFoundError:
 				errors.ReportNotFoundError(w, e.Error())
 			case cim.UnknownTenantError:
