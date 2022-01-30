@@ -2,6 +2,7 @@ package contextbroker
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -79,6 +80,62 @@ func (app *contextBrokerApp) CreateEntity(ctx context.Context, tenant, entityTyp
 	}
 
 	return nil, cim.NewNotFoundError(fmt.Sprintf("no context source found that could create type %s with id %s", entityType, entityID))
+}
+
+func notInSlice(find string, slice []string) bool {
+	for idx := range slice {
+		if slice[idx] == find {
+			return false
+		}
+	}
+	return true
+}
+
+func (app *contextBrokerApp) QueryEntities(ctx context.Context, tenant string, entityTypes, entityAttributes []string, query string) (*cim.QueryEntitiesResult, error) {
+	sources, ok := app.tenants[tenant]
+	if !ok {
+		return nil, cim.NewUnknownTenantError(tenant)
+	}
+
+	for _, src := range sources {
+		for _, reginfo := range src.Information {
+			for _, entityInfo := range reginfo.Entities {
+				if notInSlice(entityInfo.Type, entityTypes) {
+					continue
+				}
+
+				response, responseBody, err := callContextSource(ctx, http.MethodGet, src.Endpoint+query, "application/ld+json", nil)
+				if err != nil {
+					return nil, err
+				}
+
+				if response.StatusCode != http.StatusOK {
+					contentType := response.Header.Get("Content-Type")
+					if contentType == "application/problem+json" {
+						return nil, cim.NewErrorFromProblemReport(response.StatusCode, responseBody)
+					}
+					return nil, fmt.Errorf("context source returned status code %d", response.StatusCode)
+				}
+
+				var entities []cim.Entity
+				err = json.Unmarshal(responseBody, &entities)
+				if err != nil {
+					return nil, err
+				}
+
+				qer := cim.NewQueryEntitiesResult()
+				go func() {
+					for idx := range entities {
+						qer.Found <- entities[idx]
+					}
+					qer.Found <- nil
+				}()
+				return qer, nil
+			}
+		}
+	}
+
+	return nil, cim.NewNotFoundError(fmt.Sprintf("no context source found that could handle query %s", query))
 }
 
 func callContextSource(ctx context.Context, method, endpoint, contentType string, body io.Reader) (*http.Response, []byte, error) {

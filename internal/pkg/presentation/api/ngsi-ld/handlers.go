@@ -21,6 +21,11 @@ func RegisterHandlers(r chi.Router, app cim.ContextInformationManager, log zerol
 			r.Use(middleware.AllowContentType("application/json", "application/ld+json"))
 			r.Use(NGSIMiddleware())
 
+			r.Get(
+				"/entities",
+				NewQueryEntitiesHandler(app, log),
+			)
+
 			r.Post(
 				"/entities",
 				NewCreateEntityHandler(
@@ -46,12 +51,17 @@ func NGSIMiddleware() func(http.Handler) http.Handler {
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			tenantHeader := r.Header[tenantHeaderName]
+			tenant := "default"
 
+			tenantHeader := r.Header[tenantHeaderName]
 			if len(tenantHeader) > 0 {
-				tenant := tenantHeader[0]
-				ctx := context.WithValue(r.Context(), tenantCtxKey, tenant)
-				r = r.WithContext(ctx)
+				tenant = tenantHeader[0]
+			}
+
+			ctx := context.WithValue(r.Context(), tenantCtxKey, tenant)
+			r = r.WithContext(ctx)
+
+			if tenant != "default" {
 				w.Header().Add(tenantHeaderName, tenant)
 			}
 

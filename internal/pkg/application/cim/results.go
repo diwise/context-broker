@@ -11,3 +11,13 @@ func NewCreateEntityResult(location string) *CreateEntityResult {
 func (r CreateEntityResult) Location() string {
 	return r.location
 }
+
+type QueryEntitiesResult struct {
+	Found chan (Entity)
+}
+
+func NewQueryEntitiesResult() *QueryEntitiesResult {
+	qer := &QueryEntitiesResult{}
+	qer.Found = make(chan Entity)
+	return qer
+}

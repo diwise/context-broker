@@ -73,6 +73,67 @@ func TestCreateEntityCanHandleInternalError(t *testing.T) {
 	is.Equal(resp.StatusCode, http.StatusInternalServerError) // Check status code
 }
 
+func TestQueryEntitiesWithNoTypesOrAttrsReturnsBadRequest(t *testing.T) {
+	is, ts, _ := setupTest(t)
+	defer ts.Close()
+
+	resp, _ := newTestRequest(is, ts, "GET", "/ngsi-ld/v1/entities", nil)
+
+	is.Equal(resp.StatusCode, http.StatusBadRequest) // Check status code
+}
+
+func TestQueryEntitiesForwardsSingleType(t *testing.T) {
+	is, ts, app := setupTest(t)
+	defer ts.Close()
+
+	_, _ = newTestRequest(is, ts, "GET", "/ngsi-ld/v1/entities?type=A", nil)
+
+	is.Equal(len(app.QueryEntitiesCalls()), 1)
+	is.Equal(len(app.QueryEntitiesCalls()[0].EntityTypes), 1)
+	is.Equal(app.QueryEntitiesCalls()[0].EntityTypes[0], "A")
+}
+
+func TestQueryEntitiesForwardsMultipleTypes(t *testing.T) {
+	is, ts, app := setupTest(t)
+	defer ts.Close()
+
+	_, _ = newTestRequest(is, ts, "GET", "/ngsi-ld/v1/entities?type=A,B,C", nil)
+
+	is.Equal(len(app.QueryEntitiesCalls()), 1)
+	is.Equal(len(app.QueryEntitiesCalls()[0].EntityTypes), 3)
+	is.Equal(app.QueryEntitiesCalls()[0].EntityTypes[2], "C")
+}
+
+func TestQueryEntitiesForwardsCorrectPathAndQuery(t *testing.T) {
+	is, ts, app := setupTest(t)
+	defer ts.Close()
+
+	pathAndQuery := "/ngsi-ld/v1/entities?type=A,B,C"
+	_, _ = newTestRequest(is, ts, "GET", pathAndQuery, nil)
+
+	is.Equal(len(app.QueryEntitiesCalls()), 1)
+	is.Equal(app.QueryEntitiesCalls()[0].Query, pathAndQuery)
+}
+
+func TestQueryEntities(t *testing.T) {
+	is, ts, app := setupTest(t)
+	defer ts.Close()
+
+	app.QueryEntitiesFunc = func(ctx context.Context, tenant string, types []string, attrs []string, q string) (*cim.QueryEntitiesResult, error) {
+		qer := cim.NewQueryEntitiesResult()
+		go func() {
+			qer.Found <- struct{}{}
+			qer.Found <- struct{}{}
+			qer.Found <- nil
+		}()
+		return qer, nil
+	}
+
+	_, _ = newTestRequest(is, ts, "GET", "/ngsi-ld/v1/entities?type=A", nil)
+
+	is.Equal(len(app.QueryEntitiesCalls()), 1)
+}
+
 func newTestRequest(is *is.I, ts *httptest.Server, method, path string, body io.Reader) (*http.Response, string) {
 	req, _ := http.NewRequest(method, ts.URL+path, body)
 	req.Header.Add("Content-Type", "application/ld+json")
@@ -96,6 +157,9 @@ func setupTest(t *testing.T) (*is.I, *httptest.Server, *cim.ContextInformationMa
 	app := &cim.ContextInformationManagerMock{
 		CreateEntityFunc: func(ctx context.Context, tenant, entityType, entityID string, body io.Reader) (*cim.CreateEntityResult, error) {
 			return cim.NewCreateEntityResult("somewhere"), nil
+		},
+		QueryEntitiesFunc: func(ctx context.Context, tenant string, types []string, attrs []string, q string) (*cim.QueryEntitiesResult, error) {
+			return nil, fmt.Errorf("some unknown error")
 		},
 	}
 
