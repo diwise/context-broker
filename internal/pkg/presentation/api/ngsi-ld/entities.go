@@ -61,29 +61,13 @@ func NewCreateEntityHandler(
 		var result *cim.CreateEntityResult
 
 		result, err = contextInformationManager.CreateEntity(ctx, tenant, entity.Type, entity.ID, r.Body)
-
 		if err != nil {
-			switch e := err.(type) {
-			case cim.AlreadyExistsError:
-				ngsierrors.ReportNewAlreadyExistsError(w, e.Error())
-			case cim.BadRequestDataError:
-				ngsierrors.ReportNewBadRequestData(w, e.Error())
-			case cim.InvalidRequestError:
-				ngsierrors.ReportNewInvalidRequest(w, e.Error())
-			case cim.NotFoundError:
-				ngsierrors.ReportNotFoundError(w, e.Error())
-			case cim.UnknownTenantError:
-				ngsierrors.ReportUnknownTenantError(w, e.Error())
-			default:
-				ngsierrors.ReportNewInternalError(w, e.Error())
-			}
-
+			mapCIMToNGSILDError(w, err)
 			return
 		}
 
 		onsuccess(ctx, entity.Type, entity.ID, logger)
 
-		// FIXME: Make sure that the Location header can propagate up the federation tree properly
 		w.Header().Add("Location", result.Location())
 		w.WriteHeader(http.StatusCreated)
 	})
@@ -125,15 +109,7 @@ func NewQueryEntitiesHandler(
 
 		result, err := contextInformationManager.QueryEntities(ctx, tenant, entityTypes, attributes, r.URL.Path+"?"+r.URL.RawQuery)
 		if err != nil {
-			switch e := err.(type) {
-			case cim.BadRequestDataError:
-				ngsierrors.ReportNewBadRequestData(w, e.Error())
-			case cim.UnknownTenantError:
-				ngsierrors.ReportUnknownTenantError(w, e.Error())
-			default:
-				ngsierrors.ReportNewInternalError(w, e.Error())
-			}
-
+			mapCIMToNGSILDError(w, err)
 			return
 		}
 
@@ -163,4 +139,21 @@ func NewQueryEntitiesHandler(
 
 		w.Write([]byte("]"))
 	})
+}
+
+func mapCIMToNGSILDError(w http.ResponseWriter, err error) {
+	switch e := err.(type) {
+	case cim.AlreadyExistsError:
+		ngsierrors.ReportNewAlreadyExistsError(w, e.Error())
+	case cim.BadRequestDataError:
+		ngsierrors.ReportNewBadRequestData(w, e.Error())
+	case cim.InvalidRequestError:
+		ngsierrors.ReportNewInvalidRequest(w, e.Error())
+	case cim.NotFoundError:
+		ngsierrors.ReportNotFoundError(w, e.Error())
+	case cim.UnknownTenantError:
+		ngsierrors.ReportUnknownTenantError(w, e.Error())
+	default:
+		ngsierrors.ReportNewInternalError(w, e.Error())
+	}
 }
