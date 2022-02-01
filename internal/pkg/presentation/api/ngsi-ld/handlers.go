@@ -30,6 +30,11 @@ func RegisterHandlers(r chi.Router, app cim.ContextInformationManager, log zerol
 				NewRetrieveEntityHandler(app, log),
 			)
 
+			r.Patch(
+				"/entities/{entityId}/attrs/",
+				NewUpdateEntityAttributesHandler(app, log),
+			)
+
 			r.Post(
 				"/entities",
 				NewCreateEntityHandler(

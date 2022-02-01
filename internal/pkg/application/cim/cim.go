@@ -6,6 +6,10 @@ import (
 	"io"
 )
 
+type EntityAttributesUpdater interface {
+	UpdateEntityAttributes(ctx context.Context, tenant, entityID string, body io.Reader) error
+}
+
 type EntityCreator interface {
 	CreateEntity(ctx context.Context, tenant, entityType, entityID string, body io.Reader) (*CreateEntityResult, error)
 }
@@ -19,6 +23,7 @@ type EntityRetriever interface {
 }
 
 type ContextInformationManager interface {
+	EntityAttributesUpdater
 	EntityCreator
 	EntityQuerier
 	EntityRetriever

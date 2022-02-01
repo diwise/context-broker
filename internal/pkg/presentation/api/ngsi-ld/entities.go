@@ -224,6 +224,49 @@ func NewRetrieveEntityHandler(
 	})
 }
 
+//NewUpdateEntityAttributesHandler handles PATCH requests for NGSI entitity attributes
+func NewUpdateEntityAttributesHandler(
+	contextInformationManager cim.EntityAttributesUpdater,
+	logger zerolog.Logger) http.HandlerFunc {
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var err error
+
+		ctx := r.Context()
+		tenant := GetTenantFromContext(ctx)
+
+		ctx, span := tracer.Start(ctx, "update-entity-attributes")
+		defer func() {
+			if err != nil {
+				span.RecordError(err)
+			}
+			span.End()
+		}()
+
+		entityID := chi.URLParam(r, "entityId")
+
+		entity := &types.BaseEntity{}
+		// copy the body from the request and restore it for later use
+		body, _ := ioutil.ReadAll(r.Body)
+		r.Body = io.NopCloser(bytes.NewBuffer(body))
+
+		err = json.NewDecoder(io.NopCloser(bytes.NewBuffer(body))).Decode(entity)
+		if err != nil {
+			mapCIMToNGSILDError(w, err)
+			return
+		}
+
+		err = contextInformationManager.UpdateEntityAttributes(ctx, tenant, entityID, r.Body)
+
+		if err != nil {
+			mapCIMToNGSILDError(w, err)
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+	})
+}
+
 func mapCIMToNGSILDError(w http.ResponseWriter, err error) {
 	switch e := err.(type) {
 	case cim.AlreadyExistsError:

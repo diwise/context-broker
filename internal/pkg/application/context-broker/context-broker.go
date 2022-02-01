@@ -188,6 +188,53 @@ func (app *contextBrokerApp) RetrieveEntity(ctx context.Context, tenant, entityI
 	return nil, cim.NewNotFoundError(fmt.Sprintf("no context source found that could provide entity %s", entityID))
 }
 
+func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant, entityID string, body io.Reader) error {
+	sources, ok := app.tenants[tenant]
+	if !ok {
+		return cim.NewUnknownTenantError(tenant)
+	}
+
+	for _, src := range sources {
+		for _, reginfo := range src.Information {
+			for _, entityInfo := range reginfo.Entities {
+
+				regexpForID, err := regexp.CompilePOSIX(entityInfo.IDPattern)
+				if err != nil {
+					continue
+				}
+
+				if !regexpForID.MatchString(entityID) {
+					continue
+				}
+
+				response, responseBody, err := callContextSource(
+					ctx,
+					http.MethodPatch, src.Endpoint+"/ngsi-ld/v1/entities/"+entityID+"/attrs/",
+					"application/ld+json",
+					body,
+				)
+
+				if err != nil {
+					return err
+				}
+
+				if response.StatusCode == http.StatusNoContent {
+					return nil
+				}
+
+				contentType := response.Header.Get("Content-Type")
+				if contentType == "application/problem+json" {
+					return cim.NewErrorFromProblemReport(response.StatusCode, responseBody)
+				}
+
+				return fmt.Errorf("context source returned status code %d", response.StatusCode)
+			}
+		}
+	}
+
+	return cim.NewNotFoundError(fmt.Sprintf("no context source found that could update attributes for entity %s", entityID))
+}
+
 func callContextSource(ctx context.Context, method, endpoint, contentType string, body io.Reader) (*http.Response, []byte, error) {
 	client := http.Client{
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
