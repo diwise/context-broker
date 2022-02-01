@@ -25,6 +25,10 @@ func RegisterHandlers(r chi.Router, app cim.ContextInformationManager, log zerol
 				"/entities",
 				NewQueryEntitiesHandler(app, log),
 			)
+			r.Get(
+				"/entities/{entityId}",
+				NewRetrieveEntityHandler(app, log),
+			)
 
 			r.Post(
 				"/entities",

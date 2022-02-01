@@ -127,7 +127,7 @@ func TestQueryEntities(t *testing.T) {
 	app.QueryEntitiesFunc = func(ctx context.Context, tenant string, types []string, attrs []string, q string) (*cim.QueryEntitiesResult, error) {
 		qer := cim.NewQueryEntitiesResult()
 		go func() {
-			qer.Found <- cim.NewEntity("{}")
+			qer.Found <- cim.NewEntity(weatherObservedJson)
 			qer.Found <- nil
 		}()
 		return qer, nil
@@ -136,6 +136,7 @@ func TestQueryEntities(t *testing.T) {
 	_, _ = newGetRequest(is, ts, ld_json, "/ngsi-ld/v1/entities?type=A", nil)
 
 	is.Equal(len(app.QueryEntitiesCalls()), 1)
+	//is.Equal(responseBody, "test")
 }
 
 func TestQueryEntitiesAsGeoJSON(t *testing.T) {

@@ -14,9 +14,14 @@ type EntityQuerier interface {
 	QueryEntities(ctx context.Context, tenant string, entityTypes, entityAttributes []string, query string) (*QueryEntitiesResult, error)
 }
 
+type EntityRetriever interface {
+	RetrieveEntity(ctx context.Context, tenant string, entityID string) (Entity, error)
+}
+
 type ContextInformationManager interface {
 	EntityCreator
 	EntityQuerier
+	EntityRetriever
 }
 
 type ContextBroker interface {
@@ -30,6 +35,7 @@ type Entity interface {
 	Type() string
 
 	ForEachAttribute(func(attributeType, attributeName string, contents interface{})) error
+	MarshalJSON() ([]byte, error)
 }
 
 func NewEntity(body string) Entity {
@@ -92,7 +98,7 @@ func (e EntityImpl) ForEachAttribute(callback func(attributeType, attributeName 
 	return nil
 }
 
-func (e *EntityImpl) MarshalJSON() ([]byte, error) {
+func (e EntityImpl) MarshalJSON() ([]byte, error) {
 	return e.contents, nil
 }
 

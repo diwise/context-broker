@@ -25,6 +25,9 @@ var _ ContextInformationManager = &ContextInformationManagerMock{}
 // 			QueryEntitiesFunc: func(ctx context.Context, tenant string, entityTypes []string, entityAttributes []string, query string) (*QueryEntitiesResult, error) {
 // 				panic("mock out the QueryEntities method")
 // 			},
+// 			RetrieveEntityFunc: func(ctx context.Context, tenant string, entityID string) (Entity, error) {
+// 				panic("mock out the RetrieveEntity method")
+// 			},
 // 		}
 //
 // 		// use mockedContextInformationManager in code that requires ContextInformationManager
@@ -37,6 +40,9 @@ type ContextInformationManagerMock struct {
 
 	// QueryEntitiesFunc mocks the QueryEntities method.
 	QueryEntitiesFunc func(ctx context.Context, tenant string, entityTypes []string, entityAttributes []string, query string) (*QueryEntitiesResult, error)
+
+	// RetrieveEntityFunc mocks the RetrieveEntity method.
+	RetrieveEntityFunc func(ctx context.Context, tenant string, entityID string) (Entity, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -66,9 +72,19 @@ type ContextInformationManagerMock struct {
 			// Query is the query argument value.
 			Query string
 		}
+		// RetrieveEntity holds details about calls to the RetrieveEntity method.
+		RetrieveEntity []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Tenant is the tenant argument value.
+			Tenant string
+			// EntityID is the entityID argument value.
+			EntityID string
+		}
 	}
-	lockCreateEntity  sync.RWMutex
-	lockQueryEntities sync.RWMutex
+	lockCreateEntity   sync.RWMutex
+	lockQueryEntities  sync.RWMutex
+	lockRetrieveEntity sync.RWMutex
 }
 
 // CreateEntity calls CreateEntityFunc.
@@ -162,5 +178,44 @@ func (mock *ContextInformationManagerMock) QueryEntitiesCalls() []struct {
 	mock.lockQueryEntities.RLock()
 	calls = mock.calls.QueryEntities
 	mock.lockQueryEntities.RUnlock()
+	return calls
+}
+
+// RetrieveEntity calls RetrieveEntityFunc.
+func (mock *ContextInformationManagerMock) RetrieveEntity(ctx context.Context, tenant string, entityID string) (Entity, error) {
+	if mock.RetrieveEntityFunc == nil {
+		panic("ContextInformationManagerMock.RetrieveEntityFunc: method is nil but ContextInformationManager.RetrieveEntity was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		Tenant   string
+		EntityID string
+	}{
+		Ctx:      ctx,
+		Tenant:   tenant,
+		EntityID: entityID,
+	}
+	mock.lockRetrieveEntity.Lock()
+	mock.calls.RetrieveEntity = append(mock.calls.RetrieveEntity, callInfo)
+	mock.lockRetrieveEntity.Unlock()
+	return mock.RetrieveEntityFunc(ctx, tenant, entityID)
+}
+
+// RetrieveEntityCalls gets all the calls that were made to RetrieveEntity.
+// Check the length with:
+//     len(mockedContextInformationManager.RetrieveEntityCalls())
+func (mock *ContextInformationManagerMock) RetrieveEntityCalls() []struct {
+	Ctx      context.Context
+	Tenant   string
+	EntityID string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Tenant   string
+		EntityID string
+	}
+	mock.lockRetrieveEntity.RLock()
+	calls = mock.calls.RetrieveEntity
+	mock.lockRetrieveEntity.RUnlock()
 	return calls
 }

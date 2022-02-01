@@ -15,6 +15,7 @@ import (
 	ngsierrors "github.com/diwise/ngsi-ld-context-broker/internal/pkg/presentation/api/ngsi-ld/errors"
 	"github.com/diwise/ngsi-ld-context-broker/internal/pkg/presentation/api/ngsi-ld/geojson"
 	"github.com/diwise/ngsi-ld-context-broker/internal/pkg/presentation/api/ngsi-ld/types"
+	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 
 	"go.opentelemetry.io/otel"
@@ -154,12 +155,71 @@ func NewQueryEntitiesHandler(
 		if geoJsonCollection != nil {
 			responseBody, err = json.Marshal(geoJsonCollection)
 		} else {
-			responseBody, err = json.Marshal(&entityCollection)
+			responseBody, err = json.Marshal(entityCollection)
+		}
+
+		if err != nil {
+			mapCIMToNGSILDError(w, err)
+			return
 		}
 
 		w.Header().Add("Content-Type", contentType)
 		w.WriteHeader(http.StatusOK)
 		// TODO: Add a RFC 8288 Link header with information about previous and/or next page if they exist
+		w.Write(responseBody)
+	})
+}
+
+//NewRetrieveEntityHandler retrieves entity by ID.
+func NewRetrieveEntityHandler(
+	contextInformationManager cim.EntityRetriever,
+	logger zerolog.Logger) http.HandlerFunc {
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var err error
+
+		ctx := r.Context()
+		tenant := GetTenantFromContext(ctx)
+
+		ctx, span := tracer.Start(ctx, "retrieve-entity")
+		defer func() {
+			if err != nil {
+				span.RecordError(err)
+			}
+			span.End()
+		}()
+
+		entityID := chi.URLParam(r, "entityId")
+
+		var entity cim.Entity
+		entity, err = contextInformationManager.RetrieveEntity(ctx, tenant, entityID)
+
+		if err != nil {
+			mapCIMToNGSILDError(w, err)
+			return
+		}
+
+		responseContentType := r.Header.Get("Accept")
+		if responseContentType == "" {
+			responseContentType = "application/ld+json"
+		}
+
+		var responseBody []byte
+
+		if responseContentType == "application/geo+json" {
+			var gjf *geojson.GeoJSONFeature
+			gjf, err = geojson.ConvertEntity(entity)
+			responseBody, err = json.Marshal(gjf)
+		} else {
+			responseBody, err = json.Marshal(entity)
+		}
+
+		if err != nil {
+			mapCIMToNGSILDError(w, err)
+			return
+		}
+
+		w.Header().Add("Content-Type", responseContentType)
 		w.Write(responseBody)
 	})
 }

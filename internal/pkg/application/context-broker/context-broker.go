@@ -138,6 +138,56 @@ func (app *contextBrokerApp) QueryEntities(ctx context.Context, tenant string, e
 	return nil, cim.NewNotFoundError(fmt.Sprintf("no context source found that could handle query %s", query))
 }
 
+func (app *contextBrokerApp) RetrieveEntity(ctx context.Context, tenant, entityID string) (cim.Entity, error) {
+	sources, ok := app.tenants[tenant]
+	if !ok {
+		return nil, cim.NewUnknownTenantError(tenant)
+	}
+
+	for _, src := range sources {
+		for _, reginfo := range src.Information {
+			for _, entityInfo := range reginfo.Entities {
+
+				regexpForID, err := regexp.CompilePOSIX(entityInfo.IDPattern)
+				if err != nil {
+					continue
+				}
+
+				if !regexpForID.MatchString(entityID) {
+					continue
+				}
+
+				response, responseBody, err := callContextSource(
+					ctx, http.MethodGet, src.Endpoint+"/ngsi-ld/v1/entities/"+entityID,
+					"application/ld+json", nil,
+				)
+
+				if err != nil {
+					return nil, err
+				}
+
+				if response.StatusCode != http.StatusOK {
+					contentType := response.Header.Get("Content-Type")
+					if contentType == "application/problem+json" {
+						return nil, cim.NewErrorFromProblemReport(response.StatusCode, responseBody)
+					}
+					return nil, fmt.Errorf("context source returned status code %d", response.StatusCode)
+				}
+
+				var entity cim.EntityImpl
+				err = json.Unmarshal(responseBody, &entity)
+				if err != nil {
+					return nil, err
+				}
+
+				return entity, nil
+			}
+		}
+	}
+
+	return nil, cim.NewNotFoundError(fmt.Sprintf("no context source found that could provide entity %s", entityID))
+}
+
 func callContextSource(ctx context.Context, method, endpoint, contentType string, body io.Reader) (*http.Response, []byte, error) {
 	client := http.Client{
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
