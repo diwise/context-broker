@@ -117,7 +117,7 @@ func (app *contextBrokerApp) QueryEntities(ctx context.Context, tenant string, e
 					return nil, fmt.Errorf("context source returned status code %d", response.StatusCode)
 				}
 
-				var entities []cim.Entity
+				var entities []cim.EntityImpl
 				err = json.Unmarshal(responseBody, &entities)
 				if err != nil {
 					return nil, err

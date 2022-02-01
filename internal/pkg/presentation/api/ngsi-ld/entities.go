@@ -13,6 +13,7 @@ import (
 
 	"github.com/diwise/ngsi-ld-context-broker/internal/pkg/application/cim"
 	ngsierrors "github.com/diwise/ngsi-ld-context-broker/internal/pkg/presentation/api/ngsi-ld/errors"
+	"github.com/diwise/ngsi-ld-context-broker/internal/pkg/presentation/api/ngsi-ld/geojson"
 	"github.com/diwise/ngsi-ld-context-broker/internal/pkg/presentation/api/ngsi-ld/types"
 	"github.com/rs/zerolog"
 
@@ -113,31 +114,53 @@ func NewQueryEntitiesHandler(
 			return
 		}
 
-		w.Header().Add("Content-Type", "application/ld+json")
-		w.WriteHeader(http.StatusOK)
-		// TODO: Add a RFC 8288 Link header with information about previous and/or next page if they exist
+		contentType := r.Header.Get("Accept")
+		if contentType == "" {
+			contentType = "application/ld+json"
+		}
 
-		w.Write([]byte("["))
+		var entityConverter func(cim.Entity) cim.Entity
 
-		numFound := 0
+		var geoJsonCollection *geojson.GeoJSONFeatureCollection
+		var entityCollection []cim.Entity
+
+		if contentType == "application/geo+json" {
+			geoJsonCollection = geojson.NewFeatureCollection()
+			entityConverter = func(e cim.Entity) cim.Entity {
+				gje, err := geojson.ConvertEntity(e)
+				if err == nil {
+					geoJsonCollection.Features = append(geoJsonCollection.Features, *gje)
+				}
+				return e
+			}
+		} else {
+			entityCollection = []cim.Entity{}
+			entityConverter = func(e cim.Entity) cim.Entity {
+				entityCollection = append(entityCollection, e)
+				return e
+			}
+		}
+
 		for e := range result.Found {
 			if e == nil {
 				break
 			}
 
-			numFound++
-			if numFound > 1 {
-				w.Write([]byte(","))
-			}
-
-			bytes, err := json.Marshal(e)
-			if err != nil {
-				logger.Error().Err(err).Msg("failed to marshal entity to json")
-			}
-			w.Write(bytes)
+			entityConverter(e)
 		}
 
-		w.Write([]byte("]"))
+		var responseBody []byte
+
+		if geoJsonCollection != nil {
+			responseBody, err = json.Marshal(geoJsonCollection)
+		} else {
+			responseBody, err = json.Marshal(&entityCollection)
+		}
+
+		w.Header().Add("Content-Type", contentType)
+		w.WriteHeader(http.StatusOK)
+		// TODO: Add a RFC 8288 Link header with information about previous and/or next page if they exist
+		w.Write(responseBody)
 	})
 }
 
