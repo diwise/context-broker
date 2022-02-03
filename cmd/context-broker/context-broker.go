@@ -7,10 +7,10 @@ import (
 	"os"
 	"strings"
 
-	contextbroker "github.com/diwise/ngsi-ld-context-broker/internal/pkg/application/context-broker"
-	"github.com/diwise/ngsi-ld-context-broker/internal/pkg/infrastructure/router"
-	"github.com/diwise/ngsi-ld-context-broker/internal/pkg/infrastructure/tracing"
-	ngsild "github.com/diwise/ngsi-ld-context-broker/internal/pkg/presentation/api/ngsi-ld"
+	contextbroker "github.com/diwise/context-broker/internal/pkg/application/context-broker"
+	"github.com/diwise/context-broker/internal/pkg/infrastructure/router"
+	"github.com/diwise/context-broker/internal/pkg/infrastructure/tracing"
+	ngsild "github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld"
 	"github.com/rs/zerolog/log"
 )
 

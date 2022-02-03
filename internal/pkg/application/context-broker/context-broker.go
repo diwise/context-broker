@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/diwise/ngsi-ld-context-broker/internal/pkg/application/cim"
+	"github.com/diwise/context-broker/internal/pkg/application/cim"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )

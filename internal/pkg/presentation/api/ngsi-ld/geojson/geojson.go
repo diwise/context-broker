@@ -1,7 +1,7 @@
 package geojson
 
 import (
-	"github.com/diwise/ngsi-ld-context-broker/internal/pkg/application/cim"
+	"github.com/diwise/context-broker/internal/pkg/application/cim"
 )
 
 type GeoJSONFeatureCollection struct {

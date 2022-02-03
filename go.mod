@@ -1,4 +1,4 @@
-module github.com/diwise/ngsi-ld-context-broker
+module github.com/diwise/context-broker
 
 go 1.17
 

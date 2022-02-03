@@ -11,10 +11,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/diwise/ngsi-ld-context-broker/internal/pkg/application/cim"
-	ngsierrors "github.com/diwise/ngsi-ld-context-broker/internal/pkg/presentation/api/ngsi-ld/errors"
-	"github.com/diwise/ngsi-ld-context-broker/internal/pkg/presentation/api/ngsi-ld/geojson"
-	"github.com/diwise/ngsi-ld-context-broker/internal/pkg/presentation/api/ngsi-ld/types"
+	"github.com/diwise/context-broker/internal/pkg/application/cim"
+	ngsierrors "github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/errors"
+	"github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/geojson"
+	"github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/types"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 

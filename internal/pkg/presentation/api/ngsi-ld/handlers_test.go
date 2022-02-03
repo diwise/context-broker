@@ -10,7 +10,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/diwise/ngsi-ld-context-broker/internal/pkg/application/cim"
+	"github.com/diwise/context-broker/internal/pkg/application/cim"
 	"github.com/go-chi/chi/v5"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
