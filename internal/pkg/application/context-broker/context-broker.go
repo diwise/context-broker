@@ -218,16 +218,16 @@ func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant,
 					return err
 				}
 
-				if response.StatusCode == http.StatusNoContent {
-					return nil
+				if response.StatusCode != http.StatusNoContent {
+					contentType := response.Header.Get("Content-Type")
+					if contentType == "application/problem+json" {
+						return cim.NewErrorFromProblemReport(response.StatusCode, responseBody)
+					}
+
+					return fmt.Errorf("context source returned status code %d", response.StatusCode)
 				}
 
-				contentType := response.Header.Get("Content-Type")
-				if contentType == "application/problem+json" {
-					return cim.NewErrorFromProblemReport(response.StatusCode, responseBody)
-				}
-
-				return fmt.Errorf("context source returned status code %d", response.StatusCode)
+				return nil
 			}
 		}
 	}
