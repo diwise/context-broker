@@ -12,6 +12,8 @@ import (
 	"strings"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
+	"github.com/diwise/context-broker/internal/pkg/infrastructure/logging"
+	"github.com/diwise/context-broker/internal/pkg/infrastructure/tracing"
 	ngsierrors "github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/errors"
 	"github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/geojson"
 	"github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/types"
@@ -19,9 +21,16 @@ import (
 	"github.com/rs/zerolog"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var tracer = otel.Tracer("context-broker/ngsi-ld/entities")
+
+const (
+	TraceAttributeEntityID     string = "entity-id"
+	TraceAttributeNGSILDTenant string = "ngsild-tenant"
+)
 
 type CreateEntityCompletionCallback func(ctx context.Context, entityType, entityID string, logger zerolog.Logger)
 
@@ -37,13 +46,12 @@ func NewCreateEntityHandler(
 		ctx := r.Context()
 		tenant := GetTenantFromContext(ctx)
 
-		ctx, span := tracer.Start(ctx, "create-entity")
-		defer func() {
-			if err != nil {
-				span.RecordError(err)
-			}
-			span.End()
-		}()
+		ctx, span := tracer.Start(ctx, "create-entity",
+			trace.WithAttributes(attribute.String(TraceAttributeNGSILDTenant, tenant)),
+		)
+		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+		traceID, ctx, log := addTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 		entity := &types.BaseEntity{}
 		// copy the body from the request and restore it for later use
@@ -56,6 +64,7 @@ func NewCreateEntityHandler(
 			ngsierrors.ReportNewInvalidRequest(
 				w,
 				fmt.Sprintf("unable to decode request payload: %s", err.Error()),
+				traceID,
 			)
 			return
 		}
@@ -64,11 +73,14 @@ func NewCreateEntityHandler(
 
 		result, err = contextInformationManager.CreateEntity(ctx, tenant, entity.Type, entity.ID, r.Body)
 		if err != nil {
-			mapCIMToNGSILDError(w, err)
+			log.Error().Err(err).Msg("create entity failed")
+			mapCIMToNGSILDError(w, err, traceID)
 			return
 		}
 
-		onsuccess(ctx, entity.Type, entity.ID, logger)
+		log.Info().Str("entityID", entity.ID).Str("tenant", tenant).Msg("created entity")
+
+		onsuccess(ctx, entity.Type, entity.ID, log)
 
 		w.Header().Add("Location", result.Location())
 		w.WriteHeader(http.StatusCreated)
@@ -86,13 +98,12 @@ func NewQueryEntitiesHandler(
 		ctx := r.Context()
 		tenant := GetTenantFromContext(ctx)
 
-		ctx, span := tracer.Start(ctx, "query-entities")
-		defer func() {
-			if err != nil {
-				span.RecordError(err)
-			}
-			span.End()
-		}()
+		ctx, span := tracer.Start(ctx, "query-entities",
+			trace.WithAttributes(attribute.String(TraceAttributeNGSILDTenant, tenant)),
+		)
+		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+		traceID, ctx, log := addTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 		attributeNames := r.URL.Query().Get("attrs")
 		entityTypeNames := r.URL.Query().Get("type")
@@ -102,7 +113,7 @@ func NewQueryEntitiesHandler(
 
 		if entityTypeNames == "" && attributeNames == "" && q == "" && georel == "" {
 			err = errors.New("at least one among type, attrs, q, or georel must be present in a request for entities")
-			ngsierrors.ReportNewBadRequestData(w, err.Error())
+			ngsierrors.ReportNewBadRequestData(w, err.Error(), traceID)
 			return
 		}
 
@@ -111,7 +122,8 @@ func NewQueryEntitiesHandler(
 
 		result, err := contextInformationManager.QueryEntities(ctx, tenant, entityTypes, attributes, r.URL.Path+"?"+r.URL.RawQuery)
 		if err != nil {
-			mapCIMToNGSILDError(w, err)
+			log.Error().Err(err).Msg("query entities failed")
+			mapCIMToNGSILDError(w, err, traceID)
 			return
 		}
 
@@ -159,7 +171,8 @@ func NewQueryEntitiesHandler(
 		}
 
 		if err != nil {
-			mapCIMToNGSILDError(w, err)
+			log.Error().Err(err).Msg("query entities: failed to marshal entity collection to json")
+			mapCIMToNGSILDError(w, err, traceID)
 			return
 		}
 
@@ -180,22 +193,24 @@ func NewRetrieveEntityHandler(
 
 		ctx := r.Context()
 		tenant := GetTenantFromContext(ctx)
-
-		ctx, span := tracer.Start(ctx, "retrieve-entity")
-		defer func() {
-			if err != nil {
-				span.RecordError(err)
-			}
-			span.End()
-		}()
-
 		entityID := chi.URLParam(r, "entityId")
+
+		ctx, span := tracer.Start(ctx, "retrieve-entity",
+			trace.WithAttributes(
+				attribute.String(TraceAttributeNGSILDTenant, tenant),
+				attribute.String(TraceAttributeEntityID, entityID),
+			),
+		)
+		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+		traceID, ctx, log := addTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 		var entity cim.Entity
 		entity, err = contextInformationManager.RetrieveEntity(ctx, tenant, entityID)
 
 		if err != nil {
-			mapCIMToNGSILDError(w, err)
+			log.Error().Err(err).Msg("retrieve entity failed")
+			mapCIMToNGSILDError(w, err, traceID)
 			return
 		}
 
@@ -209,13 +224,16 @@ func NewRetrieveEntityHandler(
 		if responseContentType == "application/geo+json" {
 			var gjf *geojson.GeoJSONFeature
 			gjf, err = geojson.ConvertEntity(entity)
-			responseBody, err = json.Marshal(gjf)
+			if err == nil {
+				responseBody, err = json.Marshal(gjf)
+			}
 		} else {
 			responseBody, err = json.Marshal(entity)
 		}
 
 		if err != nil {
-			mapCIMToNGSILDError(w, err)
+			log.Error().Err(err).Msg("failed to convert or marshal response entity")
+			mapCIMToNGSILDError(w, err, traceID)
 			return
 		}
 
@@ -234,16 +252,17 @@ func NewUpdateEntityAttributesHandler(
 
 		ctx := r.Context()
 		tenant := GetTenantFromContext(ctx)
-
-		ctx, span := tracer.Start(ctx, "update-entity-attributes")
-		defer func() {
-			if err != nil {
-				span.RecordError(err)
-			}
-			span.End()
-		}()
-
 		entityID := chi.URLParam(r, "entityId")
+
+		ctx, span := tracer.Start(ctx, "update-entity-attributes",
+			trace.WithAttributes(
+				attribute.String(TraceAttributeNGSILDTenant, tenant),
+				attribute.String(TraceAttributeEntityID, entityID),
+			),
+		)
+		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+		traceID, ctx, log := addTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 		entity := &types.BaseEntity{}
 		// copy the body from the request and restore it for later use
@@ -252,34 +271,52 @@ func NewUpdateEntityAttributesHandler(
 
 		err = json.NewDecoder(io.NopCloser(bytes.NewBuffer(body))).Decode(entity)
 		if err != nil {
-			mapCIMToNGSILDError(w, err)
+			mapCIMToNGSILDError(w, err, traceID)
 			return
 		}
 
 		err = contextInformationManager.UpdateEntityAttributes(ctx, tenant, entityID, r.Body)
 
 		if err != nil {
-			mapCIMToNGSILDError(w, err)
+			log.Error().Err(err).Str("entityID", entityID).Str("tenant", tenant).Msg("failed to update entity attributes")
+			mapCIMToNGSILDError(w, err, traceID)
 			return
 		}
+
+		log.Info().Str("entityID", entityID).Str("tenant", tenant).Msg("updated entity attributes")
 
 		w.WriteHeader(http.StatusNoContent)
 	})
 }
 
-func mapCIMToNGSILDError(w http.ResponseWriter, err error) {
+func addTraceIDToLoggerAndStoreInContext(span trace.Span, logger zerolog.Logger, ctx context.Context) (string, context.Context, zerolog.Logger) {
+
+	log := logger
+	traceID := span.SpanContext().TraceID()
+	traceIDStr := ""
+
+	if traceID.IsValid() {
+		traceIDStr = traceID.String()
+		log = log.With().Str("traceID", traceIDStr).Logger()
+	}
+
+	ctx = logging.NewContextWithLogger(ctx, log)
+	return traceIDStr, ctx, log
+}
+
+func mapCIMToNGSILDError(w http.ResponseWriter, err error, traceID string) {
 	switch e := err.(type) {
 	case cim.AlreadyExistsError:
-		ngsierrors.ReportNewAlreadyExistsError(w, e.Error())
+		ngsierrors.ReportNewAlreadyExistsError(w, e.Error(), traceID)
 	case cim.BadRequestDataError:
-		ngsierrors.ReportNewBadRequestData(w, e.Error())
+		ngsierrors.ReportNewBadRequestData(w, e.Error(), traceID)
 	case cim.InvalidRequestError:
-		ngsierrors.ReportNewInvalidRequest(w, e.Error())
+		ngsierrors.ReportNewInvalidRequest(w, e.Error(), traceID)
 	case cim.NotFoundError:
-		ngsierrors.ReportNotFoundError(w, e.Error())
+		ngsierrors.ReportNotFoundError(w, e.Error(), traceID)
 	case cim.UnknownTenantError:
-		ngsierrors.ReportUnknownTenantError(w, e.Error())
+		ngsierrors.ReportUnknownTenantError(w, e.Error(), traceID)
 	default:
-		ngsierrors.ReportNewInternalError(w, e.Error())
+		ngsierrors.ReportNewInternalError(w, e.Error(), traceID)
 	}
 }

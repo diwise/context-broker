@@ -1,12 +1,11 @@
 module github.com/diwise/context-broker
 
-go 1.17
+go 1.18
 
 require (
 	github.com/go-chi/chi/v5 v5.0.7
-	github.com/go-chi/httplog v0.2.1
 	github.com/matryer/is v1.4.0
-	github.com/riandyrn/otelchi v0.3.0
+	github.com/riandyrn/otelchi v0.4.0
 	github.com/rs/cors v1.8.2
 	github.com/rs/zerolog v1.26.1
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.28.0
@@ -14,6 +13,7 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.3.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.3.0
 	go.opentelemetry.io/otel/sdk v1.3.0
+	go.opentelemetry.io/otel/trace v1.3.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -28,7 +28,6 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.3.0 // indirect
 	go.opentelemetry.io/otel/internal/metric v0.26.0 // indirect
 	go.opentelemetry.io/otel/metric v0.26.0 // indirect
-	go.opentelemetry.io/otel/trace v1.3.0 // indirect
 	go.opentelemetry.io/proto/otlp v0.11.0 // indirect
 	golang.org/x/net v0.0.0-20210805182204-aaa1db679c0d // indirect
 	golang.org/x/sys v0.0.0-20210809222454-d867a43fc93e // indirect

@@ -5,29 +5,28 @@ import (
 	"flag"
 	"net/http"
 	"os"
-	"strings"
+	"runtime/debug"
 
 	contextbroker "github.com/diwise/context-broker/internal/pkg/application/context-broker"
+	"github.com/diwise/context-broker/internal/pkg/infrastructure/logging"
 	"github.com/diwise/context-broker/internal/pkg/infrastructure/router"
 	"github.com/diwise/context-broker/internal/pkg/infrastructure/tracing"
 	ngsild "github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld"
-	"github.com/rs/zerolog/log"
 )
+
+const serviceName string = "context-broker"
 
 var configFilePath string
 
 func main() {
 
-	serviceName := "context-broker"
-	serviceVersion := "0.0.1"
+	serviceVersion := version()
 
-	logger := log.With().Str("service", strings.ToLower(serviceName)).Logger()
+	ctx, logger := logging.NewLogger(context.Background(), serviceName, serviceVersion)
 	logger.Info().Msg("starting up ...")
 
 	flag.StringVar(&configFilePath, "config", "/opt/diwise/config/default.yaml", "A configuration file containing federation information")
 	flag.Parse()
-
-	ctx := context.Background()
 
 	cleanup, err := tracing.Init(ctx, logger, serviceName, serviceVersion)
 	if err != nil {
@@ -64,4 +63,24 @@ func main() {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to listen for connections")
 	}
+}
+
+func version() string {
+	buildInfo, ok := debug.ReadBuildInfo()
+	if !ok {
+		return "unknown"
+	}
+
+	buildSettings := buildInfo.Settings
+	infoMap := map[string]string{}
+	for _, s := range buildSettings {
+		infoMap[s.Key] = s.Value
+	}
+
+	sha := infoMap["vcs.revision"]
+	if infoMap["vcs.modified"] == "true" {
+		sha += "+"
+	}
+
+	return sha
 }

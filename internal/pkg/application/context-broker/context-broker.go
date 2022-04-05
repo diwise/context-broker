@@ -10,19 +10,17 @@ import (
 	"regexp"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
+	"github.com/diwise/context-broker/internal/pkg/infrastructure/logging"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 type contextBrokerApp struct {
-	log zerolog.Logger
-
 	tenants map[string][]ContextSourceConfig
 }
 
 func New(log zerolog.Logger, cfg Config) (cim.ContextInformationManager, error) {
 	app := &contextBrokerApp{
-		log:     log,
 		tenants: make(map[string][]ContextSourceConfig),
 	}
 
@@ -38,6 +36,8 @@ func (app *contextBrokerApp) CreateEntity(ctx context.Context, tenant, entityTyp
 	if !ok {
 		return nil, cim.NewUnknownTenantError(tenant)
 	}
+
+	log := logging.GetFromContext(ctx)
 
 	for _, src := range sources {
 		for _, reginfo := range src.Information {
@@ -63,7 +63,7 @@ func (app *contextBrokerApp) CreateEntity(ctx context.Context, tenant, entityTyp
 				if response.StatusCode == http.StatusCreated {
 					location := response.Header.Get("Location")
 					if location == "" {
-						app.log.Warn().Msg("downstream context source failed to provide a location header with created response")
+						log.Warn().Msg("downstream context source failed to provide a location header with created response")
 						location = "/ngsi-ld/v1/entities/" + entityID
 					}
 					return cim.NewCreateEntityResult(location), nil

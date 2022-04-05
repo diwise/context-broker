@@ -18,10 +18,11 @@ type ProblemDetails interface {
 
 //ProblemDetailsImpl is an implementation of the ProblemDetails interface
 type ProblemDetailsImpl struct {
-	typ    string
-	title  string
-	detail string
-	code   int
+	typ     string
+	title   string
+	detail  string
+	code    int
+	traceID string
 }
 
 const (
@@ -35,20 +36,21 @@ type AlreadyExists struct {
 }
 
 //NewAlreadyExists creates and returns a new instance of an AlreadyExists with the supplied problem detail
-func NewAlreadyExists(detail string) *AlreadyExists {
+func NewAlreadyExists(detail, traceID string) *AlreadyExists {
 	return &AlreadyExists{
 		ProblemDetailsImpl: ProblemDetailsImpl{
-			typ:    "https://uri.etsi.org/ngsi-ld/errors/AlreadyExists",
-			title:  "Already Exists",
-			detail: detail,
-			code:   http.StatusConflict,
+			typ:     "https://uri.etsi.org/ngsi-ld/errors/AlreadyExists",
+			title:   "Already Exists",
+			detail:  detail,
+			code:    http.StatusConflict,
+			traceID: traceID,
 		},
 	}
 }
 
 //ReportNewAlreadyExistsError creates an AlreadyExists instance and sends it to the supplied http.ResponseWriter
-func ReportNewAlreadyExistsError(w http.ResponseWriter, detail string) {
-	ae := NewAlreadyExists(detail)
+func ReportNewAlreadyExistsError(w http.ResponseWriter, detail, traceID string) {
+	ae := NewAlreadyExists(detail, traceID)
 	ae.WriteResponse(w)
 }
 
@@ -58,20 +60,21 @@ type BadRequestData struct {
 }
 
 //NewBadRequestData creates and returns a new instance of a BadRequestData with the supplied problem detail
-func NewBadRequestData(detail string) *BadRequestData {
+func NewBadRequestData(detail, traceID string) *BadRequestData {
 	return &BadRequestData{
 		ProblemDetailsImpl: ProblemDetailsImpl{
-			typ:    "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-			title:  "Bad Request Data",
-			detail: detail,
-			code:   http.StatusBadRequest,
+			typ:     "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
+			title:   "Bad Request Data",
+			detail:  detail,
+			code:    http.StatusBadRequest,
+			traceID: traceID,
 		},
 	}
 }
 
 //ReportNewBadRequestData creates a BadRequestData instance and sends it to the supplied http.ResponseWriter
-func ReportNewBadRequestData(w http.ResponseWriter, detail string) {
-	brd := NewBadRequestData(detail)
+func ReportNewBadRequestData(w http.ResponseWriter, detail, traceID string) {
+	brd := NewBadRequestData(detail, traceID)
 	brd.WriteResponse(w)
 }
 
@@ -82,20 +85,21 @@ type InvalidRequest struct {
 }
 
 //NewInvalidRequest creates and returns a new instance of an InvalidRequest with the supplied problem detail
-func NewInvalidRequest(detail string) *InvalidRequest {
+func NewInvalidRequest(detail, traceID string) *InvalidRequest {
 	return &InvalidRequest{
 		ProblemDetailsImpl: ProblemDetailsImpl{
-			typ:    "https://uri.etsi.org/ngsi-ld/errors/InvalidRequest",
-			title:  "Invalid Request",
-			detail: detail,
-			code:   http.StatusBadRequest,
+			typ:     "https://uri.etsi.org/ngsi-ld/errors/InvalidRequest",
+			title:   "Invalid Request",
+			detail:  detail,
+			code:    http.StatusBadRequest,
+			traceID: traceID,
 		},
 	}
 }
 
 //ReportNewInvalidRequest creates an InvalidRequest instance and sends it to the supplied http.ResponseWriter
-func ReportNewInvalidRequest(w http.ResponseWriter, detail string) {
-	ir := NewInvalidRequest(detail)
+func ReportNewInvalidRequest(w http.ResponseWriter, detail, traceID string) {
+	ir := NewInvalidRequest(detail, traceID)
 	ir.WriteResponse(w)
 }
 
@@ -105,20 +109,21 @@ type InternalError struct {
 }
 
 //NewInternalError creates and returns a new instance of an InternalError with the supplied problem detail
-func NewInternalError(detail string) *InternalError {
+func NewInternalError(detail, traceID string) *InternalError {
 	return &InternalError{
 		ProblemDetailsImpl: ProblemDetailsImpl{
-			typ:    "https://uri.etsi.org/ngsi-ld/errors/InternalError",
-			title:  "Internal Error",
-			detail: detail,
-			code:   http.StatusInternalServerError,
+			typ:     "https://uri.etsi.org/ngsi-ld/errors/InternalError",
+			title:   "Internal Error",
+			detail:  detail,
+			code:    http.StatusInternalServerError,
+			traceID: traceID,
 		},
 	}
 }
 
 //ReportNewInternalError creates an InternalError instance and sends it to the supplied http.ResponseWriter
-func ReportNewInternalError(w http.ResponseWriter, detail string) {
-	ie := NewInternalError(detail)
+func ReportNewInternalError(w http.ResponseWriter, detail, traceID string) {
+	ie := NewInternalError(detail, traceID)
 	ie.WriteResponse(w)
 }
 
@@ -128,20 +133,21 @@ type NotFound struct {
 }
 
 //NewNotFound creates and returns a new instance of a NotFound with the supplied problem detail
-func NewNotFound(detail string) *NotFound {
+func NewNotFound(detail, traceID string) *NotFound {
 	return &NotFound{
 		ProblemDetailsImpl: ProblemDetailsImpl{
-			typ:    "https://uri.etsi.org/ngsi-ld/errors/ResourceNotFound",
-			title:  "Not Found",
-			detail: detail,
-			code:   http.StatusNotFound,
+			typ:     "https://uri.etsi.org/ngsi-ld/errors/ResourceNotFound",
+			title:   "Not Found",
+			detail:  detail,
+			code:    http.StatusNotFound,
+			traceID: traceID,
 		},
 	}
 }
 
 //ReportNotFoundError creates a NotFound instance and sends it to the supplied http.ResponseWriter
-func ReportNotFoundError(w http.ResponseWriter, detail string) {
-	nf := NewNotFound(detail)
+func ReportNotFoundError(w http.ResponseWriter, detail, traceID string) {
+	nf := NewNotFound(detail, traceID)
 	nf.WriteResponse(w)
 }
 
@@ -149,19 +155,20 @@ type UnauthorizedRequest struct {
 	ProblemDetailsImpl
 }
 
-func NewUnauthorizedRequest(detail string) *UnauthorizedRequest {
+func NewUnauthorizedRequest(detail, traceID string) *UnauthorizedRequest {
 	return &UnauthorizedRequest{
 		ProblemDetailsImpl: ProblemDetailsImpl{
-			typ:    "https://uri.etsi.org/ngsi-ld/errors/UnauthorizedRequest",
-			title:  "Unauthorized Request",
-			detail: detail,
-			code:   http.StatusUnauthorized,
+			typ:     "https://uri.etsi.org/ngsi-ld/errors/UnauthorizedRequest",
+			title:   "Unauthorized Request",
+			detail:  detail,
+			code:    http.StatusUnauthorized,
+			traceID: traceID,
 		},
 	}
 }
 
-func ReportUnauthorizedRequest(w http.ResponseWriter, detail string) {
-	ur := NewUnauthorizedRequest(detail)
+func ReportUnauthorizedRequest(w http.ResponseWriter, detail, traceID string) {
+	ur := NewUnauthorizedRequest(detail, traceID)
 	ur.WriteResponse(w)
 }
 
@@ -171,20 +178,21 @@ type UnknownTenant struct {
 }
 
 //NewUnknownTenant creates and returns a new instance of an UnknownTenant with the supplied problem detail
-func NewUnknownTenant(detail string) *UnknownTenant {
+func NewUnknownTenant(detail, traceID string) *UnknownTenant {
 	return &UnknownTenant{
 		ProblemDetailsImpl: ProblemDetailsImpl{
-			typ:    "https://uri.etsi.org/ngsi-ld/errors/NonexistentTenant",
-			title:  "Non Existent Tenant",
-			detail: detail,
-			code:   http.StatusNotFound,
+			typ:     "https://uri.etsi.org/ngsi-ld/errors/NonexistentTenant",
+			title:   "Non Existent Tenant",
+			detail:  detail,
+			code:    http.StatusNotFound,
+			traceID: traceID,
 		},
 	}
 }
 
 //ReportUnknownTenantError creates an UnknownTenant instance and sends it to the supplied http.ResponseWriter
-func ReportUnknownTenantError(w http.ResponseWriter, detail string) {
-	ut := NewUnknownTenant(detail)
+func ReportUnknownTenantError(w http.ResponseWriter, detail, traceID string) {
+	ut := NewUnknownTenant(detail, traceID)
 	ut.WriteResponse(w)
 }
 
@@ -195,18 +203,27 @@ func (p *ProblemDetailsImpl) ContentType() string {
 
 //MarshalJSON is called when a ProblemDetailsImpl instance should be serialized to JSON
 func (p *ProblemDetailsImpl) MarshalJSON() ([]byte, error) {
+	var traceID *string
+
+	if p.traceID != "" {
+		traceID = &p.traceID
+	}
+
 	j, err := json.Marshal(struct {
-		Type   string `json:"type"`
-		Title  string `json:"title"`
-		Detail string `json:"detail"`
+		Type    string  `json:"type"`
+		Title   string  `json:"title"`
+		Detail  string  `json:"detail"`
+		TraceID *string `json:"traceID,omitempty"`
 	}{
-		Type:   p.typ,
-		Title:  p.title,
-		Detail: p.detail,
+		Type:    p.typ,
+		Title:   p.title,
+		Detail:  p.detail,
+		TraceID: traceID,
 	})
 	if err != nil {
 		return nil, err
 	}
+
 	return j, nil
 }
 
