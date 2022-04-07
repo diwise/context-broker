@@ -31,7 +31,7 @@ func TestThatCreateEntityWithUnknownTenantFails(t *testing.T) {
 	broker, err := New(log.Logger, withDefaultTestConfig(""))
 	is.NoErr(err)
 
-	_, err = broker.CreateEntity(context.Background(), "unknown", "Device", "testid", nil)
+	_, err = broker.CreateEntity(context.Background(), "unknown", "Device", "testid", nil, nil)
 	is.True(err != nil) // should have returned an error
 }
 
@@ -41,7 +41,7 @@ func TestThatCreateEntityWithUnknownEntityTypeFails(t *testing.T) {
 	broker, err := New(log.Logger, withDefaultTestConfig(""))
 	is.NoErr(err)
 
-	_, err = broker.CreateEntity(context.Background(), "testtenant", "Unknown", "testid", nil)
+	_, err = broker.CreateEntity(context.Background(), "testtenant", "Unknown", "testid", nil, nil)
 	is.True(err != nil) // should have returned an error
 }
 
@@ -51,7 +51,7 @@ func TestThatCreateEntityWithMismatchingIDFails(t *testing.T) {
 	broker, err := New(log.Logger, withDefaultTestConfig(""))
 	is.NoErr(err)
 
-	_, err = broker.CreateEntity(context.Background(), "testtenant", "Device", "testid", nil)
+	_, err = broker.CreateEntity(context.Background(), "testtenant", "Device", "testid", nil, nil)
 	is.True(err != nil) // should have returned an error
 }
 
@@ -65,7 +65,7 @@ func TestThatCreateEntityWithMatchingTypeAndIDWorks(t *testing.T) {
 	broker, err := New(log.Logger, withDefaultTestConfig(ts.URL))
 	is.NoErr(err)
 
-	_, err = broker.CreateEntity(context.Background(), "testtenant", "Device", "urn:ngsi-ld:Device:testid", nil)
+	_, err = broker.CreateEntity(context.Background(), "testtenant", "Device", "urn:ngsi-ld:Device:testid", nil, nil)
 	is.NoErr(err) // should not return an error
 }
 

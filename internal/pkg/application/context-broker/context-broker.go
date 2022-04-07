@@ -31,7 +31,7 @@ func New(log zerolog.Logger, cfg Config) (cim.ContextInformationManager, error) 
 	return app, nil
 }
 
-func (app *contextBrokerApp) CreateEntity(ctx context.Context, tenant, entityType, entityID string, body io.Reader) (*cim.CreateEntityResult, error) {
+func (app *contextBrokerApp) CreateEntity(ctx context.Context, tenant, entityType, entityID string, body io.Reader, headers map[string][]string) (*cim.CreateEntityResult, error) {
 	sources, ok := app.tenants[tenant]
 	if !ok {
 		return nil, cim.NewUnknownTenantError(tenant)
@@ -55,7 +55,7 @@ func (app *contextBrokerApp) CreateEntity(ctx context.Context, tenant, entityTyp
 					continue
 				}
 
-				response, responseBody, err := callContextSource(ctx, http.MethodPost, src.Endpoint+"/ngsi-ld/v1/entities", "application/ld+json", body, nil)
+				response, responseBody, err := callContextSource(ctx, http.MethodPost, src.Endpoint+"/ngsi-ld/v1/entities", body, headers)
 				if err != nil {
 					return nil, err
 				}
@@ -104,7 +104,7 @@ func (app *contextBrokerApp) QueryEntities(ctx context.Context, tenant string, e
 					continue
 				}
 
-				response, responseBody, err := callContextSource(ctx, http.MethodGet, src.Endpoint+query, "", nil, headers)
+				response, responseBody, err := callContextSource(ctx, http.MethodGet, src.Endpoint+query, nil, headers)
 				if err != nil {
 					return nil, err
 				}
@@ -138,7 +138,7 @@ func (app *contextBrokerApp) QueryEntities(ctx context.Context, tenant string, e
 	return nil, cim.NewNotFoundError(fmt.Sprintf("no context source found that could handle query %s", query))
 }
 
-func (app *contextBrokerApp) RetrieveEntity(ctx context.Context, tenant, entityID string) (cim.Entity, error) {
+func (app *contextBrokerApp) RetrieveEntity(ctx context.Context, tenant, entityID string, headers map[string][]string) (cim.Entity, error) {
 	sources, ok := app.tenants[tenant]
 	if !ok {
 		return nil, cim.NewUnknownTenantError(tenant)
@@ -158,8 +158,7 @@ func (app *contextBrokerApp) RetrieveEntity(ctx context.Context, tenant, entityI
 				}
 
 				response, responseBody, err := callContextSource(
-					ctx, http.MethodGet, src.Endpoint+"/ngsi-ld/v1/entities/"+entityID,
-					"application/ld+json", nil, nil,
+					ctx, http.MethodGet, src.Endpoint+"/ngsi-ld/v1/entities/"+entityID, nil, headers,
 				)
 
 				if err != nil {
@@ -188,7 +187,7 @@ func (app *contextBrokerApp) RetrieveEntity(ctx context.Context, tenant, entityI
 	return nil, cim.NewNotFoundError(fmt.Sprintf("no context source found that could provide entity %s", entityID))
 }
 
-func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant, entityID string, body io.Reader) error {
+func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant, entityID string, body io.Reader, headers map[string][]string) error {
 	sources, ok := app.tenants[tenant]
 	if !ok {
 		return cim.NewUnknownTenantError(tenant)
@@ -208,11 +207,7 @@ func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant,
 				}
 
 				response, responseBody, err := callContextSource(
-					ctx,
-					http.MethodPatch, src.Endpoint+"/ngsi-ld/v1/entities/"+entityID+"/attrs/",
-					"application/ld+json",
-					body,
-					nil,
+					ctx, http.MethodPatch, src.Endpoint+"/ngsi-ld/v1/entities/"+entityID+"/attrs/", body, headers,
 				)
 
 				if err != nil {
@@ -236,7 +231,7 @@ func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant,
 	return cim.NewNotFoundError(fmt.Sprintf("no context source found that could update attributes for entity %s", entityID))
 }
 
-func callContextSource(ctx context.Context, method, endpoint, contentType string, body io.Reader, headers map[string][]string) (*http.Response, []byte, error) {
+func callContextSource(ctx context.Context, method, endpoint string, body io.Reader, headers map[string][]string) (*http.Response, []byte, error) {
 	client := http.Client{
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
 	}
@@ -252,10 +247,6 @@ func callContextSource(ctx context.Context, method, endpoint, contentType string
 				req.Header.Add(header, val)
 			}
 		}
-	}
-
-	if contentType != "" {
-		req.Header.Add("Content-Type", contentType)
 	}
 
 	resp, err := client.Do(req)

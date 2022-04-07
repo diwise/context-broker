@@ -19,16 +19,16 @@ var _ ContextInformationManager = &ContextInformationManagerMock{}
 //
 // 		// make and configure a mocked ContextInformationManager
 // 		mockedContextInformationManager := &ContextInformationManagerMock{
-// 			CreateEntityFunc: func(ctx context.Context, tenant string, entityType string, entityID string, body io.Reader) (*CreateEntityResult, error) {
+// 			CreateEntityFunc: func(ctx context.Context, tenant string, entityType string, entityID string, body io.Reader, headers map[string][]string) (*CreateEntityResult, error) {
 // 				panic("mock out the CreateEntity method")
 // 			},
 // 			QueryEntitiesFunc: func(ctx context.Context, tenant string, entityTypes []string, entityAttributes []string, query string, headers map[string][]string) (*QueryEntitiesResult, error) {
 // 				panic("mock out the QueryEntities method")
 // 			},
-// 			RetrieveEntityFunc: func(ctx context.Context, tenant string, entityID string) (Entity, error) {
+// 			RetrieveEntityFunc: func(ctx context.Context, tenant string, entityID string, headers map[string][]string) (Entity, error) {
 // 				panic("mock out the RetrieveEntity method")
 // 			},
-// 			UpdateEntityAttributesFunc: func(ctx context.Context, tenant string, entityID string, body io.Reader) error {
+// 			UpdateEntityAttributesFunc: func(ctx context.Context, tenant string, entityID string, body io.Reader, headers map[string][]string) error {
 // 				panic("mock out the UpdateEntityAttributes method")
 // 			},
 // 		}
@@ -39,16 +39,16 @@ var _ ContextInformationManager = &ContextInformationManagerMock{}
 // 	}
 type ContextInformationManagerMock struct {
 	// CreateEntityFunc mocks the CreateEntity method.
-	CreateEntityFunc func(ctx context.Context, tenant string, entityType string, entityID string, body io.Reader) (*CreateEntityResult, error)
+	CreateEntityFunc func(ctx context.Context, tenant string, entityType string, entityID string, body io.Reader, headers map[string][]string) (*CreateEntityResult, error)
 
 	// QueryEntitiesFunc mocks the QueryEntities method.
 	QueryEntitiesFunc func(ctx context.Context, tenant string, entityTypes []string, entityAttributes []string, query string, headers map[string][]string) (*QueryEntitiesResult, error)
 
 	// RetrieveEntityFunc mocks the RetrieveEntity method.
-	RetrieveEntityFunc func(ctx context.Context, tenant string, entityID string) (Entity, error)
+	RetrieveEntityFunc func(ctx context.Context, tenant string, entityID string, headers map[string][]string) (Entity, error)
 
 	// UpdateEntityAttributesFunc mocks the UpdateEntityAttributes method.
-	UpdateEntityAttributesFunc func(ctx context.Context, tenant string, entityID string, body io.Reader) error
+	UpdateEntityAttributesFunc func(ctx context.Context, tenant string, entityID string, body io.Reader, headers map[string][]string) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -64,6 +64,8 @@ type ContextInformationManagerMock struct {
 			EntityID string
 			// Body is the body argument value.
 			Body io.Reader
+			// Headers is the headers argument value.
+			Headers map[string][]string
 		}
 		// QueryEntities holds details about calls to the QueryEntities method.
 		QueryEntities []struct {
@@ -88,6 +90,8 @@ type ContextInformationManagerMock struct {
 			Tenant string
 			// EntityID is the entityID argument value.
 			EntityID string
+			// Headers is the headers argument value.
+			Headers map[string][]string
 		}
 		// UpdateEntityAttributes holds details about calls to the UpdateEntityAttributes method.
 		UpdateEntityAttributes []struct {
@@ -99,6 +103,8 @@ type ContextInformationManagerMock struct {
 			EntityID string
 			// Body is the body argument value.
 			Body io.Reader
+			// Headers is the headers argument value.
+			Headers map[string][]string
 		}
 	}
 	lockCreateEntity           sync.RWMutex
@@ -108,7 +114,7 @@ type ContextInformationManagerMock struct {
 }
 
 // CreateEntity calls CreateEntityFunc.
-func (mock *ContextInformationManagerMock) CreateEntity(ctx context.Context, tenant string, entityType string, entityID string, body io.Reader) (*CreateEntityResult, error) {
+func (mock *ContextInformationManagerMock) CreateEntity(ctx context.Context, tenant string, entityType string, entityID string, body io.Reader, headers map[string][]string) (*CreateEntityResult, error) {
 	if mock.CreateEntityFunc == nil {
 		panic("ContextInformationManagerMock.CreateEntityFunc: method is nil but ContextInformationManager.CreateEntity was just called")
 	}
@@ -118,17 +124,19 @@ func (mock *ContextInformationManagerMock) CreateEntity(ctx context.Context, ten
 		EntityType string
 		EntityID   string
 		Body       io.Reader
+		Headers    map[string][]string
 	}{
 		Ctx:        ctx,
 		Tenant:     tenant,
 		EntityType: entityType,
 		EntityID:   entityID,
 		Body:       body,
+		Headers:    headers,
 	}
 	mock.lockCreateEntity.Lock()
 	mock.calls.CreateEntity = append(mock.calls.CreateEntity, callInfo)
 	mock.lockCreateEntity.Unlock()
-	return mock.CreateEntityFunc(ctx, tenant, entityType, entityID, body)
+	return mock.CreateEntityFunc(ctx, tenant, entityType, entityID, body, headers)
 }
 
 // CreateEntityCalls gets all the calls that were made to CreateEntity.
@@ -140,6 +148,7 @@ func (mock *ContextInformationManagerMock) CreateEntityCalls() []struct {
 	EntityType string
 	EntityID   string
 	Body       io.Reader
+	Headers    map[string][]string
 } {
 	var calls []struct {
 		Ctx        context.Context
@@ -147,6 +156,7 @@ func (mock *ContextInformationManagerMock) CreateEntityCalls() []struct {
 		EntityType string
 		EntityID   string
 		Body       io.Reader
+		Headers    map[string][]string
 	}
 	mock.lockCreateEntity.RLock()
 	calls = mock.calls.CreateEntity
@@ -206,7 +216,7 @@ func (mock *ContextInformationManagerMock) QueryEntitiesCalls() []struct {
 }
 
 // RetrieveEntity calls RetrieveEntityFunc.
-func (mock *ContextInformationManagerMock) RetrieveEntity(ctx context.Context, tenant string, entityID string) (Entity, error) {
+func (mock *ContextInformationManagerMock) RetrieveEntity(ctx context.Context, tenant string, entityID string, headers map[string][]string) (Entity, error) {
 	if mock.RetrieveEntityFunc == nil {
 		panic("ContextInformationManagerMock.RetrieveEntityFunc: method is nil but ContextInformationManager.RetrieveEntity was just called")
 	}
@@ -214,15 +224,17 @@ func (mock *ContextInformationManagerMock) RetrieveEntity(ctx context.Context, t
 		Ctx      context.Context
 		Tenant   string
 		EntityID string
+		Headers  map[string][]string
 	}{
 		Ctx:      ctx,
 		Tenant:   tenant,
 		EntityID: entityID,
+		Headers:  headers,
 	}
 	mock.lockRetrieveEntity.Lock()
 	mock.calls.RetrieveEntity = append(mock.calls.RetrieveEntity, callInfo)
 	mock.lockRetrieveEntity.Unlock()
-	return mock.RetrieveEntityFunc(ctx, tenant, entityID)
+	return mock.RetrieveEntityFunc(ctx, tenant, entityID, headers)
 }
 
 // RetrieveEntityCalls gets all the calls that were made to RetrieveEntity.
@@ -232,11 +244,13 @@ func (mock *ContextInformationManagerMock) RetrieveEntityCalls() []struct {
 	Ctx      context.Context
 	Tenant   string
 	EntityID string
+	Headers  map[string][]string
 } {
 	var calls []struct {
 		Ctx      context.Context
 		Tenant   string
 		EntityID string
+		Headers  map[string][]string
 	}
 	mock.lockRetrieveEntity.RLock()
 	calls = mock.calls.RetrieveEntity
@@ -245,7 +259,7 @@ func (mock *ContextInformationManagerMock) RetrieveEntityCalls() []struct {
 }
 
 // UpdateEntityAttributes calls UpdateEntityAttributesFunc.
-func (mock *ContextInformationManagerMock) UpdateEntityAttributes(ctx context.Context, tenant string, entityID string, body io.Reader) error {
+func (mock *ContextInformationManagerMock) UpdateEntityAttributes(ctx context.Context, tenant string, entityID string, body io.Reader, headers map[string][]string) error {
 	if mock.UpdateEntityAttributesFunc == nil {
 		panic("ContextInformationManagerMock.UpdateEntityAttributesFunc: method is nil but ContextInformationManager.UpdateEntityAttributes was just called")
 	}
@@ -254,16 +268,18 @@ func (mock *ContextInformationManagerMock) UpdateEntityAttributes(ctx context.Co
 		Tenant   string
 		EntityID string
 		Body     io.Reader
+		Headers  map[string][]string
 	}{
 		Ctx:      ctx,
 		Tenant:   tenant,
 		EntityID: entityID,
 		Body:     body,
+		Headers:  headers,
 	}
 	mock.lockUpdateEntityAttributes.Lock()
 	mock.calls.UpdateEntityAttributes = append(mock.calls.UpdateEntityAttributes, callInfo)
 	mock.lockUpdateEntityAttributes.Unlock()
-	return mock.UpdateEntityAttributesFunc(ctx, tenant, entityID, body)
+	return mock.UpdateEntityAttributesFunc(ctx, tenant, entityID, body, headers)
 }
 
 // UpdateEntityAttributesCalls gets all the calls that were made to UpdateEntityAttributes.
@@ -274,12 +290,14 @@ func (mock *ContextInformationManagerMock) UpdateEntityAttributesCalls() []struc
 	Tenant   string
 	EntityID string
 	Body     io.Reader
+	Headers  map[string][]string
 } {
 	var calls []struct {
 		Ctx      context.Context
 		Tenant   string
 		EntityID string
 		Body     io.Reader
+		Headers  map[string][]string
 	}
 	mock.lockUpdateEntityAttributes.RLock()
 	calls = mock.calls.UpdateEntityAttributes

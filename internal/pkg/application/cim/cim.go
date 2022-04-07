@@ -7,11 +7,11 @@ import (
 )
 
 type EntityAttributesUpdater interface {
-	UpdateEntityAttributes(ctx context.Context, tenant, entityID string, body io.Reader) error
+	UpdateEntityAttributes(ctx context.Context, tenant, entityID string, body io.Reader, headers map[string][]string) error
 }
 
 type EntityCreator interface {
-	CreateEntity(ctx context.Context, tenant, entityType, entityID string, body io.Reader) (*CreateEntityResult, error)
+	CreateEntity(ctx context.Context, tenant, entityType, entityID string, body io.Reader, headers map[string][]string) (*CreateEntityResult, error)
 }
 
 type EntityQuerier interface {
@@ -19,7 +19,7 @@ type EntityQuerier interface {
 }
 
 type EntityRetriever interface {
-	RetrieveEntity(ctx context.Context, tenant string, entityID string) (Entity, error)
+	RetrieveEntity(ctx context.Context, tenant, entityID string, headers map[string][]string) (Entity, error)
 }
 
 type ContextInformationManager interface {

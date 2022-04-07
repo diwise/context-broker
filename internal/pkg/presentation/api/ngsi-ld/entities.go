@@ -46,6 +46,8 @@ func NewCreateEntityHandler(
 		ctx := r.Context()
 		tenant := GetTenantFromContext(ctx)
 
+		propagatedHeaders := extractHeaders(r, "Content-Type", "Link")
+
 		ctx, span := tracer.Start(ctx, "create-entity",
 			trace.WithAttributes(attribute.String(TraceAttributeNGSILDTenant, tenant)),
 		)
@@ -71,7 +73,7 @@ func NewCreateEntityHandler(
 
 		var result *cim.CreateEntityResult
 
-		result, err = contextInformationManager.CreateEntity(ctx, tenant, entity.Type, entity.ID, r.Body)
+		result, err = contextInformationManager.CreateEntity(ctx, tenant, entity.Type, entity.ID, r.Body, propagatedHeaders)
 		if err != nil {
 			log.Error().Err(err).Msg("create entity failed")
 			mapCIMToNGSILDError(w, err, traceID)
@@ -98,13 +100,7 @@ func NewQueryEntitiesHandler(
 		ctx := r.Context()
 		tenant := GetTenantFromContext(ctx)
 
-		propagatedHeaders := map[string][]string{}
-		for _, header := range []string{"Accept", "Link"} {
-			headerValue, ok := r.Header[header]
-			if ok {
-				propagatedHeaders[header] = headerValue
-			}
-		}
+		propagatedHeaders := extractHeaders(r, "Accept", "Link")
 
 		ctx, span := tracer.Start(ctx, "query-entities",
 			trace.WithAttributes(attribute.String(TraceAttributeNGSILDTenant, tenant)),
@@ -203,6 +199,8 @@ func NewRetrieveEntityHandler(
 		tenant := GetTenantFromContext(ctx)
 		entityID := chi.URLParam(r, "entityId")
 
+		propagatedHeaders := extractHeaders(r, "Accept", "Link")
+
 		ctx, span := tracer.Start(ctx, "retrieve-entity",
 			trace.WithAttributes(
 				attribute.String(TraceAttributeNGSILDTenant, tenant),
@@ -214,7 +212,7 @@ func NewRetrieveEntityHandler(
 		traceID, ctx, log := addTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 		var entity cim.Entity
-		entity, err = contextInformationManager.RetrieveEntity(ctx, tenant, entityID)
+		entity, err = contextInformationManager.RetrieveEntity(ctx, tenant, entityID, propagatedHeaders)
 
 		if err != nil {
 			log.Error().Err(err).Msg("retrieve entity failed")
@@ -262,6 +260,8 @@ func NewUpdateEntityAttributesHandler(
 		tenant := GetTenantFromContext(ctx)
 		entityID := chi.URLParam(r, "entityId")
 
+		propagatedHeaders := extractHeaders(r, "Content-Type", "Link")
+
 		ctx, span := tracer.Start(ctx, "update-entity-attributes",
 			trace.WithAttributes(
 				attribute.String(TraceAttributeNGSILDTenant, tenant),
@@ -283,7 +283,7 @@ func NewUpdateEntityAttributesHandler(
 			return
 		}
 
-		err = contextInformationManager.UpdateEntityAttributes(ctx, tenant, entityID, r.Body)
+		err = contextInformationManager.UpdateEntityAttributes(ctx, tenant, entityID, r.Body, propagatedHeaders)
 
 		if err != nil {
 			log.Error().Err(err).Str("entityID", entityID).Str("tenant", tenant).Msg("failed to update entity attributes")
@@ -310,6 +310,19 @@ func addTraceIDToLoggerAndStoreInContext(span trace.Span, logger zerolog.Logger,
 
 	ctx = logging.NewContextWithLogger(ctx, log)
 	return traceIDStr, ctx, log
+}
+
+func extractHeaders(r *http.Request, headers ...string) map[string][]string {
+	extractedHeaders := map[string][]string{}
+
+	for _, header := range headers {
+		headerValue, ok := r.Header[header]
+		if ok {
+			extractedHeaders[header] = headerValue
+		}
+	}
+
+	return extractedHeaders
 }
 
 func mapCIMToNGSILDError(w http.ResponseWriter, err error, traceID string) {
