@@ -8,16 +8,18 @@ services:
     restart: always
     depends_on:
       - deviceregistry
+      - orion-ld
     ports:
       - '8080:8080'
-  
+
+
   deviceregistry:
-    image: 'ghcr.io/diwise/iot-device-registry@sha256:996fdd52bc04123f041e17a1d65a62cd92858ee988075c50150260620f8fb542'
+    image: 'ghcr.io/diwise/iot-device-registry@sha256:21d58ba600ff1d37e16f311ce8f08a584cc1778a72c198d50a9eee57e498afac'
     restart: always
     environment:
       DIWISE_SQLDB_HOST: 'postgresdb'
       DIWISE_SQLDB_USER: 'testuser'
-      DIWISE_SQLDB_NAME: 'devreg'
+      DIWISE_SQLDB_NAME: 'brokertest'
       DIWISE_SQLDB_PASSWORD: 'testpass'
       DIWISE_SQLDB_SSLMODE: 'disable'
       RABBITMQ_DISABLED: 'true'
@@ -26,13 +28,85 @@ services:
       - postgresdb
     ports:
       - '8990'
+  
+
+  orion-ld:
+    image: 'quay.io/fiware/orion-ld@sha256:ea838e5b405170b6d42af9035a30454a21870f7f3738db73da27585bf6a478b3'
+    restart: always
+    environment:
+      ORIONLD_MONGO_HOST: 'mongodb'
+      ORIONLD_MONGO_USER: 'admin'
+      ORIONLD_MONGO_PASSWORD: 'password'
+      ORIONLD_LOG_FOR_HUMANS: 'TRUE'
+      ORIONLD_TROE:	'FALSE'
+      ORIONLD_TROE_HOST: 'postgresdb'
+      ORIONLD_TROE_USER: 'testuser'
+      ORIONLD_TROE_PWD: 'testpass'
+      ORIONLD_DISABLE_FILE_LOG: 'TRUE'
+    depends_on:
+      - mongodb
+      - postgresdb
+    ports:
+      - '8081:1026'
+
 
   postgresdb:
     image: 'ghcr.io/diwise/test-db-postgresql:prod-824e7cffd65dd3766c88441a48cffd5b2acd55f2'
     restart: always
     environment:
-      POSTGRES_DB: 'devreg'
+      POSTGRES_DB: 'brokertest'
       POSTGRES_USER: 'testuser'
       POSTGRES_PASSWORD: 'testpass'
     ports:
       - '5432'
+
+
+  mongodb:
+    image: mongo:5
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: 'admin'
+      MONGO_INITDB_ROOT_PASSWORD: 'password'
+    ports:
+      - '27017'
+    command: --nojournal --verbose
+    volumes:
+      - mongo-db:/data
+  
+
+  mongo-express:
+    image: mongo-express
+    restart: always
+    environment:
+      ME_CONFIG_MONGODB_SERVER: 'mongodb'
+      ME_CONFIG_MONGODB_PORT: 27017
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: 'true'
+      ME_CONFIG_MONGODB_AUTH_DATABASE: 'admin'
+      ME_CONFIG_MONGODB_ADMINUSERNAME: 'admin'
+      ME_CONFIG_MONGODB_ADMINPASSWORD: 'password'
+      ME_CONFIG_BASICAUTH_USERNAME: ''
+    depends_on:
+        - mongodb
+    ports:
+      - '8082:8081'
+
+
+  ingress:
+    image: 'ghcr.io/diwise/ingress-mqtt@sha256:b304da14581cfe86be3bfaf4bd639a3cfdb04fc8eef859d47967c054cb96d21c'
+    restart: always
+    depends_on:
+      - context-broker
+    environment:
+      MQTT_HOST: $MQTT_HOST
+      MQTT_PORT: $MQTT_PORT
+      MQTT_USER: $MQTT_USER
+      MQTT_PASSWORD: $MQTT_PASSWORD
+      MQTT_TOPIC_0: 'application/2/device/#'
+      MQTT_TOPIC_1: 'application/21/device/#'
+      MQTT_TOPIC_2: 'application/22/device/#'
+      MQTT_TOPIC_3: 'iothub/out'
+      DIWISE_CONTEXT_BROKER_URL: 'http://context-broker:8080'
+      RABBITMQ_DISABLED: 'true'
+
+
+volumes:
+  mongo-db: ~
