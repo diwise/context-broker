@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"regexp"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
@@ -74,7 +75,7 @@ func (app *contextBrokerApp) CreateEntity(ctx context.Context, tenant, entityTyp
 					return nil, cim.NewErrorFromProblemReport(response.StatusCode, responseBody)
 				}
 
-				return nil, fmt.Errorf("context source returned status code %d", response.StatusCode)
+				return nil, fmt.Errorf("context source returned status code %d (body: %s)", response.StatusCode, string(responseBody))
 			}
 		}
 	}
@@ -170,7 +171,7 @@ func (app *contextBrokerApp) RetrieveEntity(ctx context.Context, tenant, entityI
 					if contentType == "application/problem+json" {
 						return nil, cim.NewErrorFromProblemReport(response.StatusCode, responseBody)
 					}
-					return nil, fmt.Errorf("context source returned status code %d", response.StatusCode)
+					return nil, fmt.Errorf("context source returned status code %d (body: %s)", response.StatusCode, string(responseBody))
 				}
 
 				var entity cim.EntityImpl
@@ -220,7 +221,7 @@ func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant,
 						return cim.NewErrorFromProblemReport(response.StatusCode, responseBody)
 					}
 
-					return fmt.Errorf("context source returned status code %d", response.StatusCode)
+					return fmt.Errorf("context source returned status code %d (body: %s)", response.StatusCode, string(responseBody))
 				}
 
 				return nil
@@ -258,6 +259,12 @@ func callContextSource(ctx context.Context, method, endpoint string, body io.Rea
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	if resp.StatusCode >= http.StatusBadRequest {
+		reqbytes, _ := httputil.DumpRequest(req, false)
+		log := logging.GetFromContext(ctx)
+		log.Error().Msgf("request failed: %s", string(reqbytes))
 	}
 
 	return resp, respBody, nil
