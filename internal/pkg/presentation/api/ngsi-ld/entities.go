@@ -318,6 +318,9 @@ func extractHeaders(r *http.Request, headers ...string) map[string][]string {
 	for _, header := range headers {
 		headerValue, ok := r.Header[header]
 		if ok {
+			if header == "Content-Type" {
+				headerValue[0] = strings.Split(headerValue[0], ";")[0]
+			}
 			extractedHeaders[header] = headerValue
 		}
 	}
