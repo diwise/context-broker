@@ -78,7 +78,7 @@ func NewCreateEntityHandler(
 			return
 		}
 
-		log.Info().Str("entityID", entity.ID).Str("tenant", tenant).Msg("created entity")
+		log.Info().Str("entityID", entity.ID).Str("tenant", tenant).Msg("entity created")
 
 		onsuccess(ctx, entity.Type, entity.ID, log)
 
@@ -97,6 +97,14 @@ func NewQueryEntitiesHandler(
 
 		ctx := r.Context()
 		tenant := GetTenantFromContext(ctx)
+
+		propagatedHeaders := map[string][]string{}
+		for _, header := range []string{"Accept", "Link"} {
+			headerValue, ok := r.Header[header]
+			if ok {
+				propagatedHeaders[header] = headerValue
+			}
+		}
 
 		ctx, span := tracer.Start(ctx, "query-entities",
 			trace.WithAttributes(attribute.String(TraceAttributeNGSILDTenant, tenant)),
@@ -120,7 +128,7 @@ func NewQueryEntitiesHandler(
 		entityTypes := strings.Split(entityTypeNames, ",")
 		attributes := strings.Split(attributeNames, ",")
 
-		result, err := contextInformationManager.QueryEntities(ctx, tenant, entityTypes, attributes, r.URL.Path+"?"+r.URL.RawQuery)
+		result, err := contextInformationManager.QueryEntities(ctx, tenant, entityTypes, attributes, r.URL.Path+"?"+r.URL.RawQuery, propagatedHeaders)
 		if err != nil {
 			log.Error().Err(err).Msg("query entities failed")
 			mapCIMToNGSILDError(w, err, traceID)
@@ -283,7 +291,7 @@ func NewUpdateEntityAttributesHandler(
 			return
 		}
 
-		log.Info().Str("entityID", entityID).Str("tenant", tenant).Msg("updated entity attributes")
+		log.Info().Str("entityID", entityID).Str("tenant", tenant).Msg("entity attributes updated")
 
 		w.WriteHeader(http.StatusNoContent)
 	})

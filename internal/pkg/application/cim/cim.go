@@ -15,7 +15,7 @@ type EntityCreator interface {
 }
 
 type EntityQuerier interface {
-	QueryEntities(ctx context.Context, tenant string, entityTypes, entityAttributes []string, query string) (*QueryEntitiesResult, error)
+	QueryEntities(ctx context.Context, tenant string, entityTypes, entityAttributes []string, query string, headers map[string][]string) (*QueryEntitiesResult, error)
 }
 
 type EntityRetriever interface {

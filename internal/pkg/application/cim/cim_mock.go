@@ -22,7 +22,7 @@ var _ ContextInformationManager = &ContextInformationManagerMock{}
 // 			CreateEntityFunc: func(ctx context.Context, tenant string, entityType string, entityID string, body io.Reader) (*CreateEntityResult, error) {
 // 				panic("mock out the CreateEntity method")
 // 			},
-// 			QueryEntitiesFunc: func(ctx context.Context, tenant string, entityTypes []string, entityAttributes []string, query string) (*QueryEntitiesResult, error) {
+// 			QueryEntitiesFunc: func(ctx context.Context, tenant string, entityTypes []string, entityAttributes []string, query string, headers map[string][]string) (*QueryEntitiesResult, error) {
 // 				panic("mock out the QueryEntities method")
 // 			},
 // 			RetrieveEntityFunc: func(ctx context.Context, tenant string, entityID string) (Entity, error) {
@@ -42,7 +42,7 @@ type ContextInformationManagerMock struct {
 	CreateEntityFunc func(ctx context.Context, tenant string, entityType string, entityID string, body io.Reader) (*CreateEntityResult, error)
 
 	// QueryEntitiesFunc mocks the QueryEntities method.
-	QueryEntitiesFunc func(ctx context.Context, tenant string, entityTypes []string, entityAttributes []string, query string) (*QueryEntitiesResult, error)
+	QueryEntitiesFunc func(ctx context.Context, tenant string, entityTypes []string, entityAttributes []string, query string, headers map[string][]string) (*QueryEntitiesResult, error)
 
 	// RetrieveEntityFunc mocks the RetrieveEntity method.
 	RetrieveEntityFunc func(ctx context.Context, tenant string, entityID string) (Entity, error)
@@ -77,6 +77,8 @@ type ContextInformationManagerMock struct {
 			EntityAttributes []string
 			// Query is the query argument value.
 			Query string
+			// Headers is the headers argument value.
+			Headers map[string][]string
 		}
 		// RetrieveEntity holds details about calls to the RetrieveEntity method.
 		RetrieveEntity []struct {
@@ -153,7 +155,7 @@ func (mock *ContextInformationManagerMock) CreateEntityCalls() []struct {
 }
 
 // QueryEntities calls QueryEntitiesFunc.
-func (mock *ContextInformationManagerMock) QueryEntities(ctx context.Context, tenant string, entityTypes []string, entityAttributes []string, query string) (*QueryEntitiesResult, error) {
+func (mock *ContextInformationManagerMock) QueryEntities(ctx context.Context, tenant string, entityTypes []string, entityAttributes []string, query string, headers map[string][]string) (*QueryEntitiesResult, error) {
 	if mock.QueryEntitiesFunc == nil {
 		panic("ContextInformationManagerMock.QueryEntitiesFunc: method is nil but ContextInformationManager.QueryEntities was just called")
 	}
@@ -163,17 +165,19 @@ func (mock *ContextInformationManagerMock) QueryEntities(ctx context.Context, te
 		EntityTypes      []string
 		EntityAttributes []string
 		Query            string
+		Headers          map[string][]string
 	}{
 		Ctx:              ctx,
 		Tenant:           tenant,
 		EntityTypes:      entityTypes,
 		EntityAttributes: entityAttributes,
 		Query:            query,
+		Headers:          headers,
 	}
 	mock.lockQueryEntities.Lock()
 	mock.calls.QueryEntities = append(mock.calls.QueryEntities, callInfo)
 	mock.lockQueryEntities.Unlock()
-	return mock.QueryEntitiesFunc(ctx, tenant, entityTypes, entityAttributes, query)
+	return mock.QueryEntitiesFunc(ctx, tenant, entityTypes, entityAttributes, query, headers)
 }
 
 // QueryEntitiesCalls gets all the calls that were made to QueryEntities.
@@ -185,6 +189,7 @@ func (mock *ContextInformationManagerMock) QueryEntitiesCalls() []struct {
 	EntityTypes      []string
 	EntityAttributes []string
 	Query            string
+	Headers          map[string][]string
 } {
 	var calls []struct {
 		Ctx              context.Context
@@ -192,6 +197,7 @@ func (mock *ContextInformationManagerMock) QueryEntitiesCalls() []struct {
 		EntityTypes      []string
 		EntityAttributes []string
 		Query            string
+		Headers          map[string][]string
 	}
 	mock.lockQueryEntities.RLock()
 	calls = mock.calls.QueryEntities

@@ -55,7 +55,7 @@ func (app *contextBrokerApp) CreateEntity(ctx context.Context, tenant, entityTyp
 					continue
 				}
 
-				response, responseBody, err := callContextSource(ctx, http.MethodPost, src.Endpoint+"/ngsi-ld/v1/entities", "application/ld+json", body)
+				response, responseBody, err := callContextSource(ctx, http.MethodPost, src.Endpoint+"/ngsi-ld/v1/entities", "application/ld+json", body, nil)
 				if err != nil {
 					return nil, err
 				}
@@ -91,7 +91,7 @@ func notInSlice(find string, slice []string) bool {
 	return true
 }
 
-func (app *contextBrokerApp) QueryEntities(ctx context.Context, tenant string, entityTypes, entityAttributes []string, query string) (*cim.QueryEntitiesResult, error) {
+func (app *contextBrokerApp) QueryEntities(ctx context.Context, tenant string, entityTypes, entityAttributes []string, query string, headers map[string][]string) (*cim.QueryEntitiesResult, error) {
 	sources, ok := app.tenants[tenant]
 	if !ok {
 		return nil, cim.NewUnknownTenantError(tenant)
@@ -104,7 +104,7 @@ func (app *contextBrokerApp) QueryEntities(ctx context.Context, tenant string, e
 					continue
 				}
 
-				response, responseBody, err := callContextSource(ctx, http.MethodGet, src.Endpoint+query, "application/ld+json", nil)
+				response, responseBody, err := callContextSource(ctx, http.MethodGet, src.Endpoint+query, "", nil, headers)
 				if err != nil {
 					return nil, err
 				}
@@ -114,7 +114,7 @@ func (app *contextBrokerApp) QueryEntities(ctx context.Context, tenant string, e
 					if contentType == "application/problem+json" {
 						return nil, cim.NewErrorFromProblemReport(response.StatusCode, responseBody)
 					}
-					return nil, fmt.Errorf("context source returned status code %d", response.StatusCode)
+					return nil, fmt.Errorf("context source returned status code %d (body: %s)", response.StatusCode, string(responseBody))
 				}
 
 				var entities []cim.EntityImpl
@@ -159,7 +159,7 @@ func (app *contextBrokerApp) RetrieveEntity(ctx context.Context, tenant, entityI
 
 				response, responseBody, err := callContextSource(
 					ctx, http.MethodGet, src.Endpoint+"/ngsi-ld/v1/entities/"+entityID,
-					"application/ld+json", nil,
+					"application/ld+json", nil, nil,
 				)
 
 				if err != nil {
@@ -212,6 +212,7 @@ func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant,
 					http.MethodPatch, src.Endpoint+"/ngsi-ld/v1/entities/"+entityID+"/attrs/",
 					"application/ld+json",
 					body,
+					nil,
 				)
 
 				if err != nil {
@@ -235,7 +236,7 @@ func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant,
 	return cim.NewNotFoundError(fmt.Sprintf("no context source found that could update attributes for entity %s", entityID))
 }
 
-func callContextSource(ctx context.Context, method, endpoint, contentType string, body io.Reader) (*http.Response, []byte, error) {
+func callContextSource(ctx context.Context, method, endpoint, contentType string, body io.Reader, headers map[string][]string) (*http.Response, []byte, error) {
 	client := http.Client{
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
 	}
@@ -245,7 +246,17 @@ func callContextSource(ctx context.Context, method, endpoint, contentType string
 		return nil, nil, err
 	}
 
-	req.Header.Add("Content-Type", contentType)
+	if headers != nil {
+		for header, headerValue := range headers {
+			for _, val := range headerValue {
+				req.Header.Add(header, val)
+			}
+		}
+	}
+
+	if contentType != "" {
+		req.Header.Add("Content-Type", contentType)
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {

@@ -124,7 +124,7 @@ func TestQueryEntities(t *testing.T) {
 	is, ts, app := setupTest(t)
 	defer ts.Close()
 
-	app.QueryEntitiesFunc = func(ctx context.Context, tenant string, types []string, attrs []string, q string) (*cim.QueryEntitiesResult, error) {
+	app.QueryEntitiesFunc = func(ctx context.Context, tenant string, types []string, attrs []string, q string, h map[string][]string) (*cim.QueryEntitiesResult, error) {
 		qer := cim.NewQueryEntitiesResult()
 		go func() {
 			qer.Found <- cim.NewEntity(weatherObservedJson)
@@ -143,7 +143,7 @@ func TestQueryEntitiesAsGeoJSON(t *testing.T) {
 	is, ts, app := setupTest(t)
 	defer ts.Close()
 
-	app.QueryEntitiesFunc = func(ctx context.Context, tenant string, types []string, attrs []string, q string) (*cim.QueryEntitiesResult, error) {
+	app.QueryEntitiesFunc = func(ctx context.Context, tenant string, types []string, attrs []string, q string, h map[string][]string) (*cim.QueryEntitiesResult, error) {
 		qer := cim.NewQueryEntitiesResult()
 		go func() {
 			qer.Found <- cim.NewEntity(weatherObservedJson)
@@ -195,7 +195,7 @@ func setupTest(t *testing.T) (*is.I, *httptest.Server, *cim.ContextInformationMa
 		CreateEntityFunc: func(ctx context.Context, tenant, entityType, entityID string, body io.Reader) (*cim.CreateEntityResult, error) {
 			return cim.NewCreateEntityResult("somewhere"), nil
 		},
-		QueryEntitiesFunc: func(ctx context.Context, tenant string, types []string, attrs []string, q string) (*cim.QueryEntitiesResult, error) {
+		QueryEntitiesFunc: func(ctx context.Context, tenant string, types []string, attrs []string, q string, h map[string][]string) (*cim.QueryEntitiesResult, error) {
 			return nil, fmt.Errorf("some unknown error")
 		},
 	}
