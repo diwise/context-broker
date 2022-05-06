@@ -26,7 +26,6 @@ COPY --from=builder --chown=1001 /app/cmd/context-broker/context-broker /opt/diw
 COPY --chown=1001 assets/config/default-config.yaml /opt/diwise/config/default.yaml
 
 RUN chown -R 1001 /opt/diwise
-RUN chmod -R 744 /opt/diwise
 
 EXPOSE 8080
 USER 1001
