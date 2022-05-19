@@ -75,7 +75,7 @@ func (app *contextBrokerApp) CreateEntity(ctx context.Context, tenant, entityTyp
 					return nil, cim.NewErrorFromProblemReport(response.StatusCode, responseBody)
 				}
 
-				return nil, fmt.Errorf("context source returned status code %d (body: %s)", response.StatusCode, string(responseBody))
+				return nil, fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", response.StatusCode, contentType, string(responseBody))
 			}
 		}
 	}
@@ -115,7 +115,7 @@ func (app *contextBrokerApp) QueryEntities(ctx context.Context, tenant string, e
 					if contentType == "application/problem+json" {
 						return nil, cim.NewErrorFromProblemReport(response.StatusCode, responseBody)
 					}
-					return nil, fmt.Errorf("context source returned status code %d (body: %s)", response.StatusCode, string(responseBody))
+					return nil, fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", response.StatusCode, contentType, string(responseBody))
 				}
 
 				var entities []cim.EntityImpl
@@ -171,7 +171,7 @@ func (app *contextBrokerApp) RetrieveEntity(ctx context.Context, tenant, entityI
 					if contentType == "application/problem+json" {
 						return nil, cim.NewErrorFromProblemReport(response.StatusCode, responseBody)
 					}
-					return nil, fmt.Errorf("context source returned status code %d (body: %s)", response.StatusCode, string(responseBody))
+					return nil, fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", response.StatusCode, contentType, string(responseBody))
 				}
 
 				var entity cim.EntityImpl
@@ -221,7 +221,7 @@ func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant,
 						return cim.NewErrorFromProblemReport(response.StatusCode, responseBody)
 					}
 
-					return fmt.Errorf("context source returned status code %d (body: %s)", response.StatusCode, string(responseBody))
+					return fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", response.StatusCode, contentType, string(responseBody))
 				}
 
 				return nil
@@ -242,11 +242,9 @@ func callContextSource(ctx context.Context, method, endpoint string, body io.Rea
 		return nil, nil, err
 	}
 
-	if headers != nil {
-		for header, headerValue := range headers {
-			for _, val := range headerValue {
-				req.Header.Add(header, val)
-			}
+	for header, headerValue := range headers {
+		for _, val := range headerValue {
+			req.Header.Add(header, val)
 		}
 	}
 
@@ -263,8 +261,12 @@ func callContextSource(ctx context.Context, method, endpoint string, body io.Rea
 
 	if resp.StatusCode >= http.StatusBadRequest {
 		reqbytes, _ := httputil.DumpRequest(req, false)
+		respbytes, _ := httputil.DumpResponse(resp, false)
+
 		log := logging.GetFromContext(ctx)
-		log.Error().Msgf("request failed: %s", string(reqbytes))
+
+		log.Error().Str("request", string(reqbytes)).Str("response", string(respbytes)).Msg("request failed")
+
 	}
 
 	return resp, respBody, nil
