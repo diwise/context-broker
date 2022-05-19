@@ -68,7 +68,7 @@ func (ute UnknownTenantError) Error() string {
 
 // TODO: Move problem report handling to a single place (presentation layer)
 
-func NewErrorFromProblemReport(code int, body []byte) error {
+func NewErrorFromProblemReport(code int, contentType string, body []byte) error {
 	report := &struct {
 		Type   string `json:"type"`
 		Title  string `json:"title"`

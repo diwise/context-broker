@@ -71,8 +71,8 @@ func (app *contextBrokerApp) CreateEntity(ctx context.Context, tenant, entityTyp
 				}
 
 				contentType := response.Header.Get("Content-Type")
-				if contentType == "application/problem+json" {
-					return nil, cim.NewErrorFromProblemReport(response.StatusCode, responseBody)
+				if response.StatusCode >= http.StatusBadRequest && response.StatusCode <= http.StatusInternalServerError {
+					return nil, cim.NewErrorFromProblemReport(response.StatusCode, contentType, responseBody)
 				}
 
 				return nil, fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", response.StatusCode, contentType, string(responseBody))
@@ -112,8 +112,8 @@ func (app *contextBrokerApp) QueryEntities(ctx context.Context, tenant string, e
 
 				if response.StatusCode != http.StatusOK {
 					contentType := response.Header.Get("Content-Type")
-					if contentType == "application/problem+json" {
-						return nil, cim.NewErrorFromProblemReport(response.StatusCode, responseBody)
+					if response.StatusCode >= http.StatusBadRequest && response.StatusCode <= http.StatusInternalServerError {
+						return nil, cim.NewErrorFromProblemReport(response.StatusCode, contentType, responseBody)
 					}
 					return nil, fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", response.StatusCode, contentType, string(responseBody))
 				}
@@ -168,8 +168,8 @@ func (app *contextBrokerApp) RetrieveEntity(ctx context.Context, tenant, entityI
 
 				if response.StatusCode != http.StatusOK {
 					contentType := response.Header.Get("Content-Type")
-					if contentType == "application/problem+json" {
-						return nil, cim.NewErrorFromProblemReport(response.StatusCode, responseBody)
+					if response.StatusCode >= http.StatusBadRequest && response.StatusCode <= http.StatusInternalServerError {
+						return nil, cim.NewErrorFromProblemReport(response.StatusCode, contentType, responseBody)
 					}
 					return nil, fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", response.StatusCode, contentType, string(responseBody))
 				}
@@ -217,8 +217,8 @@ func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant,
 
 				if response.StatusCode != http.StatusNoContent {
 					contentType := response.Header.Get("Content-Type")
-					if contentType == "application/problem+json" {
-						return cim.NewErrorFromProblemReport(response.StatusCode, responseBody)
+					if response.StatusCode >= http.StatusBadRequest && response.StatusCode <= http.StatusInternalServerError {
+						return cim.NewErrorFromProblemReport(response.StatusCode, contentType, responseBody)
 					}
 
 					return fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", response.StatusCode, contentType, string(responseBody))
