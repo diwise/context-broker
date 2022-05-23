@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
+	"net/url"
 	"regexp"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
@@ -65,7 +66,7 @@ func (app *contextBrokerApp) CreateEntity(ctx context.Context, tenant, entityTyp
 					location := response.Header.Get("Location")
 					if location == "" {
 						log.Warn().Msg("downstream context source failed to provide a location header with created response")
-						location = "/ngsi-ld/v1/entities/" + entityID
+						location = "/ngsi-ld/v1/entities/" + url.QueryEscape(entityID)
 					}
 					return cim.NewCreateEntityResult(location), nil
 				}
@@ -159,7 +160,7 @@ func (app *contextBrokerApp) RetrieveEntity(ctx context.Context, tenant, entityI
 				}
 
 				response, responseBody, err := callContextSource(
-					ctx, http.MethodGet, src.Endpoint+"/ngsi-ld/v1/entities/"+entityID, nil, headers,
+					ctx, http.MethodGet, src.Endpoint+"/ngsi-ld/v1/entities/"+url.QueryEscape(entityID), nil, headers,
 				)
 
 				if err != nil {
@@ -208,7 +209,7 @@ func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant,
 				}
 
 				response, responseBody, err := callContextSource(
-					ctx, http.MethodPatch, src.Endpoint+"/ngsi-ld/v1/entities/"+entityID+"/attrs/", body, headers,
+					ctx, http.MethodPatch, src.Endpoint+"/ngsi-ld/v1/entities/"+url.QueryEscape(entityID)+"/attrs/", body, headers,
 				)
 
 				if err != nil {

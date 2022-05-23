@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
@@ -197,7 +198,7 @@ func NewRetrieveEntityHandler(
 
 		ctx := r.Context()
 		tenant := GetTenantFromContext(ctx)
-		entityID := chi.URLParam(r, "entityId")
+		entityID, _ := url.QueryUnescape(chi.URLParam(r, "entityId"))
 
 		propagatedHeaders := extractHeaders(r, "Accept", "Link")
 
@@ -258,7 +259,7 @@ func NewUpdateEntityAttributesHandler(
 
 		ctx := r.Context()
 		tenant := GetTenantFromContext(ctx)
-		entityID := chi.URLParam(r, "entityId")
+		entityID, _ := url.QueryUnescape(chi.URLParam(r, "entityId"))
 
 		propagatedHeaders := extractHeaders(r, "Content-Type", "Link")
 
