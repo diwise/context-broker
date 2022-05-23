@@ -7,7 +7,7 @@ import (
 )
 
 type EntityAttributesUpdater interface {
-	UpdateEntityAttributes(ctx context.Context, tenant, entityID string, body io.Reader, headers map[string][]string) error
+	UpdateEntityAttributes(ctx context.Context, tenant, entityID string, body io.Reader, headers map[string][]string) (*UpdateEntityAttributesResult, error)
 }
 
 type EntityCreator interface {

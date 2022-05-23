@@ -189,10 +189,10 @@ func (app *contextBrokerApp) RetrieveEntity(ctx context.Context, tenant, entityI
 	return nil, cim.NewNotFoundError(fmt.Sprintf("no context source found that could provide entity %s", entityID))
 }
 
-func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant, entityID string, body io.Reader, headers map[string][]string) error {
+func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant, entityID string, body io.Reader, headers map[string][]string) (*cim.UpdateEntityAttributesResult, error) {
 	sources, ok := app.tenants[tenant]
 	if !ok {
-		return cim.NewUnknownTenantError(tenant)
+		return nil, cim.NewUnknownTenantError(tenant)
 	}
 
 	for _, src := range sources {
@@ -213,24 +213,30 @@ func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant,
 				)
 
 				if err != nil {
-					return err
+					return nil, err
 				}
 
-				if response.StatusCode != http.StatusNoContent {
+				if response.StatusCode != http.StatusNoContent && response.StatusCode != http.StatusMultiStatus {
 					contentType := response.Header.Get("Content-Type")
 					if response.StatusCode >= http.StatusBadRequest && response.StatusCode <= http.StatusInternalServerError {
-						return cim.NewErrorFromProblemReport(response.StatusCode, contentType, responseBody)
+						return nil, cim.NewErrorFromProblemReport(response.StatusCode, contentType, responseBody)
 					}
 
-					return fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", response.StatusCode, contentType, string(responseBody))
+					return nil, fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", response.StatusCode, contentType, string(responseBody))
 				}
 
-				return nil
+				result, err := cim.NewUpdateEntityAttributesResult(responseBody)
+
+				if err != nil {
+					return nil, fmt.Errorf("failed to unmarshal update result: %w", err)
+				}
+
+				return result, nil
 			}
 		}
 	}
 
-	return cim.NewNotFoundError(fmt.Sprintf("no context source found that could update attributes for entity %s", entityID))
+	return nil, cim.NewNotFoundError(fmt.Sprintf("no context source found that could update attributes for entity %s", entityID))
 }
 
 func callContextSource(ctx context.Context, method, endpoint string, body io.Reader, headers map[string][]string) (*http.Response, []byte, error) {

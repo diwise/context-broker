@@ -284,7 +284,7 @@ func NewUpdateEntityAttributesHandler(
 			return
 		}
 
-		err = contextInformationManager.UpdateEntityAttributes(ctx, tenant, entityID, r.Body, propagatedHeaders)
+		updateResult, err := contextInformationManager.UpdateEntityAttributes(ctx, tenant, entityID, r.Body, propagatedHeaders)
 
 		if err != nil {
 			log.Error().Err(err).Str("entityID", entityID).Str("tenant", tenant).Msg("failed to update entity attributes")
@@ -294,7 +294,12 @@ func NewUpdateEntityAttributesHandler(
 
 		log.Info().Str("entityID", entityID).Str("tenant", tenant).Msg("entity attributes updated")
 
-		w.WriteHeader(http.StatusNoContent)
+		if !updateResult.IsMultiStatus() {
+			w.WriteHeader(http.StatusNoContent)
+		} else {
+			w.WriteHeader(http.StatusMultiStatus)
+			w.Write(updateResult.Bytes())
+		}
 	})
 }
 

@@ -28,7 +28,7 @@ var _ ContextInformationManager = &ContextInformationManagerMock{}
 // 			RetrieveEntityFunc: func(ctx context.Context, tenant string, entityID string, headers map[string][]string) (Entity, error) {
 // 				panic("mock out the RetrieveEntity method")
 // 			},
-// 			UpdateEntityAttributesFunc: func(ctx context.Context, tenant string, entityID string, body io.Reader, headers map[string][]string) error {
+// 			UpdateEntityAttributesFunc: func(ctx context.Context, tenant string, entityID string, body io.Reader, headers map[string][]string) (*UpdateEntityAttributesResult, error) {
 // 				panic("mock out the UpdateEntityAttributes method")
 // 			},
 // 		}
@@ -48,7 +48,7 @@ type ContextInformationManagerMock struct {
 	RetrieveEntityFunc func(ctx context.Context, tenant string, entityID string, headers map[string][]string) (Entity, error)
 
 	// UpdateEntityAttributesFunc mocks the UpdateEntityAttributes method.
-	UpdateEntityAttributesFunc func(ctx context.Context, tenant string, entityID string, body io.Reader, headers map[string][]string) error
+	UpdateEntityAttributesFunc func(ctx context.Context, tenant string, entityID string, body io.Reader, headers map[string][]string) (*UpdateEntityAttributesResult, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -259,7 +259,7 @@ func (mock *ContextInformationManagerMock) RetrieveEntityCalls() []struct {
 }
 
 // UpdateEntityAttributes calls UpdateEntityAttributesFunc.
-func (mock *ContextInformationManagerMock) UpdateEntityAttributes(ctx context.Context, tenant string, entityID string, body io.Reader, headers map[string][]string) error {
+func (mock *ContextInformationManagerMock) UpdateEntityAttributes(ctx context.Context, tenant string, entityID string, body io.Reader, headers map[string][]string) (*UpdateEntityAttributesResult, error) {
 	if mock.UpdateEntityAttributesFunc == nil {
 		panic("ContextInformationManagerMock.UpdateEntityAttributesFunc: method is nil but ContextInformationManager.UpdateEntityAttributes was just called")
 	}
