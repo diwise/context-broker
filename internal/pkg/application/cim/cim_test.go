@@ -3,6 +3,7 @@ package cim
 import (
 	"testing"
 
+	"github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/matryer/is"
 )
 
@@ -24,7 +25,7 @@ func TestMe(t *testing.T) {
 		}
 	}`
 
-	e := &EntityImpl{contents: []byte(jsonData)}
+	e := types.NewEntity(jsonData)
 	attributes := []string{}
 	e.ForEachAttribute(func(at, an string, data interface{}) {
 		attributes = append(attributes, an)

@@ -17,7 +17,9 @@ import (
 	"github.com/diwise/context-broker/internal/pkg/infrastructure/tracing"
 	"github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/geojson"
 	"github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/types"
-	ngsierrors "github.com/diwise/context-broker/pkg/errors"
+	"github.com/diwise/context-broker/pkg/ngsild"
+	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
+	ngsitypes "github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 
@@ -72,7 +74,7 @@ func NewCreateEntityHandler(
 			return
 		}
 
-		var result *cim.CreateEntityResult
+		var result *ngsild.CreateEntityResult
 
 		result, err = contextInformationManager.CreateEntity(ctx, tenant, entity.Type, entity.ID, r.Body, propagatedHeaders)
 		if err != nil {
@@ -137,14 +139,14 @@ func NewQueryEntitiesHandler(
 			contentType = "application/ld+json"
 		}
 
-		var entityConverter func(cim.Entity) cim.Entity
+		var entityConverter func(ngsitypes.Entity) ngsitypes.Entity
 
 		var geoJsonCollection *geojson.GeoJSONFeatureCollection
-		var entityCollection []cim.Entity
+		var entityCollection []ngsitypes.Entity
 
 		if contentType == "application/geo+json" {
 			geoJsonCollection = geojson.NewFeatureCollection()
-			entityConverter = func(e cim.Entity) cim.Entity {
+			entityConverter = func(e ngsitypes.Entity) ngsitypes.Entity {
 				gje, err := geojson.ConvertEntity(e)
 				if err == nil {
 					geoJsonCollection.Features = append(geoJsonCollection.Features, *gje)
@@ -152,8 +154,8 @@ func NewQueryEntitiesHandler(
 				return e
 			}
 		} else {
-			entityCollection = []cim.Entity{}
-			entityConverter = func(e cim.Entity) cim.Entity {
+			entityCollection = []ngsitypes.Entity{}
+			entityConverter = func(e ngsitypes.Entity) ngsitypes.Entity {
 				entityCollection = append(entityCollection, e)
 				return e
 			}
@@ -212,7 +214,7 @@ func NewRetrieveEntityHandler(
 
 		traceID, ctx, log := addTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
-		var entity cim.Entity
+		var entity ngsitypes.Entity
 		entity, err = contextInformationManager.RetrieveEntity(ctx, tenant, entityID, propagatedHeaders)
 
 		if err != nil {

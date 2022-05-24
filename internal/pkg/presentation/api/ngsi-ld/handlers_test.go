@@ -11,7 +11,9 @@ import (
 	"testing"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
-	"github.com/diwise/context-broker/pkg/errors"
+	"github.com/diwise/context-broker/pkg/ngsild"
+	"github.com/diwise/context-broker/pkg/ngsild/errors"
+	ngsitypes "github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/go-chi/chi/v5"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
@@ -57,7 +59,7 @@ func TestCreateEntityCanHandleAlreadyExistsError(t *testing.T) {
 	is, ts, app := setupTest(t)
 	defer ts.Close()
 
-	app.CreateEntityFunc = func(context.Context, string, string, string, io.Reader, map[string][]string) (*cim.CreateEntityResult, error) {
+	app.CreateEntityFunc = func(context.Context, string, string, string, io.Reader, map[string][]string) (*ngsild.CreateEntityResult, error) {
 		return nil, errors.NewAlreadyExistsError("already exists")
 	}
 
@@ -70,7 +72,7 @@ func TestCreateEntityCanHandleInternalError(t *testing.T) {
 	is, ts, app := setupTest(t)
 	defer ts.Close()
 
-	app.CreateEntityFunc = func(context.Context, string, string, string, io.Reader, map[string][]string) (*cim.CreateEntityResult, error) {
+	app.CreateEntityFunc = func(context.Context, string, string, string, io.Reader, map[string][]string) (*ngsild.CreateEntityResult, error) {
 		return nil, fmt.Errorf("some unknown error")
 	}
 
@@ -125,10 +127,10 @@ func TestQueryEntities(t *testing.T) {
 	is, ts, app := setupTest(t)
 	defer ts.Close()
 
-	app.QueryEntitiesFunc = func(ctx context.Context, tenant string, types []string, attrs []string, q string, h map[string][]string) (*cim.QueryEntitiesResult, error) {
-		qer := cim.NewQueryEntitiesResult()
+	app.QueryEntitiesFunc = func(ctx context.Context, tenant string, types []string, attrs []string, q string, h map[string][]string) (*ngsild.QueryEntitiesResult, error) {
+		qer := ngsild.NewQueryEntitiesResult()
 		go func() {
-			qer.Found <- cim.NewEntity(weatherObservedJson)
+			qer.Found <- ngsitypes.NewEntity(weatherObservedJson)
 			qer.Found <- nil
 		}()
 		return qer, nil
@@ -144,10 +146,10 @@ func TestQueryEntitiesAsGeoJSON(t *testing.T) {
 	is, ts, app := setupTest(t)
 	defer ts.Close()
 
-	app.QueryEntitiesFunc = func(ctx context.Context, tenant string, types []string, attrs []string, q string, h map[string][]string) (*cim.QueryEntitiesResult, error) {
-		qer := cim.NewQueryEntitiesResult()
+	app.QueryEntitiesFunc = func(ctx context.Context, tenant string, types []string, attrs []string, q string, h map[string][]string) (*ngsild.QueryEntitiesResult, error) {
+		qer := ngsild.NewQueryEntitiesResult()
 		go func() {
-			qer.Found <- cim.NewEntity(weatherObservedJson)
+			qer.Found <- ngsitypes.NewEntity(weatherObservedJson)
 			qer.Found <- nil
 		}()
 		return qer, nil
@@ -193,10 +195,10 @@ func setupTest(t *testing.T) (*is.I, *httptest.Server, *cim.ContextInformationMa
 
 	log := log.Logger
 	app := &cim.ContextInformationManagerMock{
-		CreateEntityFunc: func(ctx context.Context, tenant, entityType, entityID string, body io.Reader, h map[string][]string) (*cim.CreateEntityResult, error) {
-			return cim.NewCreateEntityResult("somewhere"), nil
+		CreateEntityFunc: func(ctx context.Context, tenant, entityType, entityID string, body io.Reader, h map[string][]string) (*ngsild.CreateEntityResult, error) {
+			return ngsild.NewCreateEntityResult("somewhere"), nil
 		},
-		QueryEntitiesFunc: func(ctx context.Context, tenant string, types []string, attrs []string, q string, h map[string][]string) (*cim.QueryEntitiesResult, error) {
+		QueryEntitiesFunc: func(ctx context.Context, tenant string, types []string, attrs []string, q string, h map[string][]string) (*ngsild.QueryEntitiesResult, error) {
 			return nil, fmt.Errorf("some unknown error")
 		},
 	}

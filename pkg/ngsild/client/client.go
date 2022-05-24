@@ -10,10 +10,11 @@ import (
 	"net/http/httputil"
 	"net/url"
 
-	"github.com/diwise/context-broker/internal/pkg/application/cim"
 	"github.com/diwise/context-broker/internal/pkg/infrastructure/logging"
 	"github.com/diwise/context-broker/internal/pkg/infrastructure/tracing"
-	"github.com/diwise/context-broker/pkg/errors"
+	"github.com/diwise/context-broker/pkg/ngsild"
+	"github.com/diwise/context-broker/pkg/ngsild/errors"
+	"github.com/diwise/context-broker/pkg/ngsild/types"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -21,10 +22,10 @@ import (
 )
 
 type ContextBrokerClient interface {
-	CreateEntity(ctx context.Context, entityID string, body io.Reader, headers map[string][]string) (*cim.CreateEntityResult, error)
-	QueryEntities(ctx context.Context, entityTypes, entityAttributes []string, query string, headers map[string][]string) (*cim.QueryEntitiesResult, error)
-	RetrieveEntity(ctx context.Context, entityID string, headers map[string][]string) (cim.Entity, error)
-	UpdateEntityAttributes(ctx context.Context, entityID string, body io.Reader, headers map[string][]string) (*cim.UpdateEntityAttributesResult, error)
+	CreateEntity(ctx context.Context, entityID string, body io.Reader, headers map[string][]string) (*ngsild.CreateEntityResult, error)
+	QueryEntities(ctx context.Context, entityTypes, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error)
+	RetrieveEntity(ctx context.Context, entityID string, headers map[string][]string) (types.Entity, error)
+	UpdateEntityAttributes(ctx context.Context, entityID string, body io.Reader, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error)
 }
 
 func Debug(enabled string) func(*cbClient) {
@@ -66,7 +67,7 @@ type cbClient struct {
 	debug   bool
 }
 
-func (c cbClient) CreateEntity(ctx context.Context, entityID string, body io.Reader, headers map[string][]string) (*cim.CreateEntityResult, error) {
+func (c cbClient) CreateEntity(ctx context.Context, entityID string, body io.Reader, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
 	var err error
 
 	ctx, span := tracer.Start(ctx, "create-entity",
@@ -96,10 +97,10 @@ func (c cbClient) CreateEntity(ctx context.Context, entityID string, body io.Rea
 		location = "/ngsi-ld/v1/entities/" + url.QueryEscape(entityID)
 	}
 
-	return cim.NewCreateEntityResult(location), nil
+	return ngsild.NewCreateEntityResult(location), nil
 }
 
-func (c cbClient) RetrieveEntity(ctx context.Context, entityID string, headers map[string][]string) (cim.Entity, error) {
+func (c cbClient) RetrieveEntity(ctx context.Context, entityID string, headers map[string][]string) (types.Entity, error) {
 	var err error
 
 	ctx, span := tracer.Start(ctx, "retrieve-entity",
@@ -124,7 +125,7 @@ func (c cbClient) RetrieveEntity(ctx context.Context, entityID string, headers m
 		return nil, fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", response.StatusCode, contentType, string(responseBody))
 	}
 
-	var entity cim.EntityImpl
+	var entity types.EntityImpl
 	err = json.Unmarshal(responseBody, &entity)
 	if err != nil {
 		return nil, err
@@ -133,7 +134,7 @@ func (c cbClient) RetrieveEntity(ctx context.Context, entityID string, headers m
 	return entity, nil
 }
 
-func (c cbClient) UpdateEntityAttributes(ctx context.Context, entityID string, body io.Reader, headers map[string][]string) (*cim.UpdateEntityAttributesResult, error) {
+func (c cbClient) UpdateEntityAttributes(ctx context.Context, entityID string, body io.Reader, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
 	var err error
 
 	ctx, span := tracer.Start(ctx, "update-entity-attributes",
@@ -159,10 +160,10 @@ func (c cbClient) UpdateEntityAttributes(ctx context.Context, entityID string, b
 		return nil, fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", response.StatusCode, contentType, string(responseBody))
 	}
 
-	return cim.NewUpdateEntityAttributesResult(responseBody)
+	return ngsild.NewUpdateEntityAttributesResult(responseBody)
 }
 
-func (c cbClient) QueryEntities(ctx context.Context, entityTypes, entityAttributes []string, query string, headers map[string][]string) (*cim.QueryEntitiesResult, error) {
+func (c cbClient) QueryEntities(ctx context.Context, entityTypes, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error) {
 	var err error
 
 	ctx, span := tracer.Start(ctx, "query-entities",
@@ -183,13 +184,13 @@ func (c cbClient) QueryEntities(ctx context.Context, entityTypes, entityAttribut
 		return nil, fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", response.StatusCode, contentType, string(responseBody))
 	}
 
-	var entities []cim.EntityImpl
+	var entities []types.EntityImpl
 	err = json.Unmarshal(responseBody, &entities)
 	if err != nil {
 		return nil, err
 	}
 
-	qer := cim.NewQueryEntitiesResult()
+	qer := ngsild.NewQueryEntitiesResult()
 	go func() {
 		for idx := range entities {
 			qer.Found <- entities[idx]

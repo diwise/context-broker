@@ -1,8 +1,6 @@
 package geojson
 
-import (
-	"github.com/diwise/context-broker/internal/pkg/application/cim"
-)
+import "github.com/diwise/context-broker/pkg/ngsild/types"
 
 type GeoJSONFeatureCollection struct {
 	Type     string           `json:"type"`
@@ -27,7 +25,7 @@ type GeoJSONFeature struct {
 	Properties map[string]interface{} `json:"properties"`
 }
 
-func ConvertEntity(e cim.Entity) (*GeoJSONFeature, error) {
+func ConvertEntity(e types.Entity) (*GeoJSONFeature, error) {
 	feature := &GeoJSONFeature{
 		ID:   e.ID(),
 		Type: "Feature",

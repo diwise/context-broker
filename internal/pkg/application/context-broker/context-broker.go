@@ -7,8 +7,10 @@ import (
 	"regexp"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
-	"github.com/diwise/context-broker/pkg/client"
-	"github.com/diwise/context-broker/pkg/errors"
+	"github.com/diwise/context-broker/pkg/ngsild"
+	"github.com/diwise/context-broker/pkg/ngsild/client"
+	"github.com/diwise/context-broker/pkg/ngsild/errors"
+	"github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/rs/zerolog"
 )
 
@@ -28,7 +30,7 @@ func New(log zerolog.Logger, cfg Config) (cim.ContextInformationManager, error) 
 	return app, nil
 }
 
-func (app *contextBrokerApp) CreateEntity(ctx context.Context, tenant, entityType, entityID string, body io.Reader, headers map[string][]string) (*cim.CreateEntityResult, error) {
+func (app *contextBrokerApp) CreateEntity(ctx context.Context, tenant, entityType, entityID string, body io.Reader, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
 	sources, ok := app.tenants[tenant]
 	if !ok {
 		return nil, errors.NewUnknownTenantError(tenant)
@@ -73,7 +75,7 @@ func notInSlice(find string, slice []string) bool {
 	return true
 }
 
-func (app *contextBrokerApp) QueryEntities(ctx context.Context, tenant string, entityTypes, entityAttributes []string, query string, headers map[string][]string) (*cim.QueryEntitiesResult, error) {
+func (app *contextBrokerApp) QueryEntities(ctx context.Context, tenant string, entityTypes, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error) {
 	sources, ok := app.tenants[tenant]
 	if !ok {
 		return nil, errors.NewUnknownTenantError(tenant)
@@ -95,7 +97,7 @@ func (app *contextBrokerApp) QueryEntities(ctx context.Context, tenant string, e
 	return nil, errors.NewNotFoundError(fmt.Sprintf("no context source found that could handle query %s", query))
 }
 
-func (app *contextBrokerApp) RetrieveEntity(ctx context.Context, tenant, entityID string, headers map[string][]string) (cim.Entity, error) {
+func (app *contextBrokerApp) RetrieveEntity(ctx context.Context, tenant, entityID string, headers map[string][]string) (types.Entity, error) {
 	sources, ok := app.tenants[tenant]
 	if !ok {
 		return nil, errors.NewUnknownTenantError(tenant)
@@ -123,7 +125,7 @@ func (app *contextBrokerApp) RetrieveEntity(ctx context.Context, tenant, entityI
 	return nil, errors.NewNotFoundError(fmt.Sprintf("no context source found that could provide entity %s", entityID))
 }
 
-func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant, entityID string, body io.Reader, headers map[string][]string) (*cim.UpdateEntityAttributesResult, error) {
+func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant, entityID string, body io.Reader, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
 	sources, ok := app.tenants[tenant]
 	if !ok {
 		return nil, errors.NewUnknownTenantError(tenant)
