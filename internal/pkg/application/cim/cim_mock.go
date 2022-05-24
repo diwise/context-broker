@@ -21,7 +21,7 @@ var _ ContextInformationManager = &ContextInformationManagerMock{}
 //
 // 		// make and configure a mocked ContextInformationManager
 // 		mockedContextInformationManager := &ContextInformationManagerMock{
-// 			CreateEntityFunc: func(ctx context.Context, tenant string, entityType string, entityID string, body io.Reader, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
+// 			CreateEntityFunc: func(ctx context.Context, tenant string, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
 // 				panic("mock out the CreateEntity method")
 // 			},
 // 			QueryEntitiesFunc: func(ctx context.Context, tenant string, entityTypes []string, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error) {
@@ -41,7 +41,7 @@ var _ ContextInformationManager = &ContextInformationManagerMock{}
 // 	}
 type ContextInformationManagerMock struct {
 	// CreateEntityFunc mocks the CreateEntity method.
-	CreateEntityFunc func(ctx context.Context, tenant string, entityType string, entityID string, body io.Reader, headers map[string][]string) (*ngsild.CreateEntityResult, error)
+	CreateEntityFunc func(ctx context.Context, tenant string, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error)
 
 	// QueryEntitiesFunc mocks the QueryEntities method.
 	QueryEntitiesFunc func(ctx context.Context, tenant string, entityTypes []string, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error)
@@ -60,12 +60,8 @@ type ContextInformationManagerMock struct {
 			Ctx context.Context
 			// Tenant is the tenant argument value.
 			Tenant string
-			// EntityType is the entityType argument value.
-			EntityType string
-			// EntityID is the entityID argument value.
-			EntityID string
-			// Body is the body argument value.
-			Body io.Reader
+			// Entity is the entity argument value.
+			Entity types.Entity
 			// Headers is the headers argument value.
 			Headers map[string][]string
 		}
@@ -116,49 +112,41 @@ type ContextInformationManagerMock struct {
 }
 
 // CreateEntity calls CreateEntityFunc.
-func (mock *ContextInformationManagerMock) CreateEntity(ctx context.Context, tenant string, entityType string, entityID string, body io.Reader, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
+func (mock *ContextInformationManagerMock) CreateEntity(ctx context.Context, tenant string, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
 	if mock.CreateEntityFunc == nil {
 		panic("ContextInformationManagerMock.CreateEntityFunc: method is nil but ContextInformationManager.CreateEntity was just called")
 	}
 	callInfo := struct {
-		Ctx        context.Context
-		Tenant     string
-		EntityType string
-		EntityID   string
-		Body       io.Reader
-		Headers    map[string][]string
+		Ctx     context.Context
+		Tenant  string
+		Entity  types.Entity
+		Headers map[string][]string
 	}{
-		Ctx:        ctx,
-		Tenant:     tenant,
-		EntityType: entityType,
-		EntityID:   entityID,
-		Body:       body,
-		Headers:    headers,
+		Ctx:     ctx,
+		Tenant:  tenant,
+		Entity:  entity,
+		Headers: headers,
 	}
 	mock.lockCreateEntity.Lock()
 	mock.calls.CreateEntity = append(mock.calls.CreateEntity, callInfo)
 	mock.lockCreateEntity.Unlock()
-	return mock.CreateEntityFunc(ctx, tenant, entityType, entityID, body, headers)
+	return mock.CreateEntityFunc(ctx, tenant, entity, headers)
 }
 
 // CreateEntityCalls gets all the calls that were made to CreateEntity.
 // Check the length with:
 //     len(mockedContextInformationManager.CreateEntityCalls())
 func (mock *ContextInformationManagerMock) CreateEntityCalls() []struct {
-	Ctx        context.Context
-	Tenant     string
-	EntityType string
-	EntityID   string
-	Body       io.Reader
-	Headers    map[string][]string
+	Ctx     context.Context
+	Tenant  string
+	Entity  types.Entity
+	Headers map[string][]string
 } {
 	var calls []struct {
-		Ctx        context.Context
-		Tenant     string
-		EntityType string
-		EntityID   string
-		Body       io.Reader
-		Headers    map[string][]string
+		Ctx     context.Context
+		Tenant  string
+		Entity  types.Entity
+		Headers map[string][]string
 	}
 	mock.lockCreateEntity.RLock()
 	calls = mock.calls.CreateEntity

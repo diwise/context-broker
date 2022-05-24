@@ -13,7 +13,7 @@ type EntityAttributesUpdater interface {
 }
 
 type EntityCreator interface {
-	CreateEntity(ctx context.Context, tenant, entityType, entityID string, body io.Reader, headers map[string][]string) (*ngsild.CreateEntityResult, error)
+	CreateEntity(ctx context.Context, tenant string, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error)
 }
 
 type EntityQuerier interface {

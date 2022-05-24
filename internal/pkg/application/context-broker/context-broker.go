@@ -30,11 +30,14 @@ func New(log zerolog.Logger, cfg Config) (cim.ContextInformationManager, error) 
 	return app, nil
 }
 
-func (app *contextBrokerApp) CreateEntity(ctx context.Context, tenant, entityType, entityID string, body io.Reader, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
+func (app *contextBrokerApp) CreateEntity(ctx context.Context, tenant string, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
 	sources, ok := app.tenants[tenant]
 	if !ok {
 		return nil, errors.NewUnknownTenantError(tenant)
 	}
+
+	entityID := entity.ID()
+	entityType := entity.Type()
 
 	for _, src := range sources {
 		for _, reginfo := range src.Information {
@@ -53,7 +56,7 @@ func (app *contextBrokerApp) CreateEntity(ctx context.Context, tenant, entityTyp
 				}
 
 				cbClient := client.NewContextBrokerClient(src.Endpoint)
-				result, err := cbClient.CreateEntity(ctx, entityID, body, headers)
+				result, err := cbClient.CreateEntity(ctx, entity, headers)
 				if err != nil {
 					return nil, err
 				}

@@ -25,7 +25,9 @@ func TestMe(t *testing.T) {
 		}
 	}`
 
-	e := types.NewEntity(jsonData)
+	e, err := types.NewEntity([]byte(jsonData))
+	is.NoErr(err)
+
 	attributes := []string{}
 	e.ForEachAttribute(func(at, an string, data interface{}) {
 		attributes = append(attributes, an)

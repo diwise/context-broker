@@ -2,10 +2,12 @@ package contextbroker
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 )
@@ -31,7 +33,8 @@ func TestThatCreateEntityWithUnknownTenantFails(t *testing.T) {
 	broker, err := New(log.Logger, withDefaultTestConfig(""))
 	is.NoErr(err)
 
-	_, err = broker.CreateEntity(context.Background(), "unknown", "Device", "testid", nil, nil)
+	_, err = broker.CreateEntity(context.Background(), "unknown", testEntity("", ""), nil)
+
 	is.True(err != nil) // should have returned an error
 }
 
@@ -41,7 +44,7 @@ func TestThatCreateEntityWithUnknownEntityTypeFails(t *testing.T) {
 	broker, err := New(log.Logger, withDefaultTestConfig(""))
 	is.NoErr(err)
 
-	_, err = broker.CreateEntity(context.Background(), "testtenant", "Unknown", "testid", nil, nil)
+	_, err = broker.CreateEntity(context.Background(), "testtenant", testEntity("Unknown", "id"), nil)
 	is.True(err != nil) // should have returned an error
 }
 
@@ -51,7 +54,7 @@ func TestThatCreateEntityWithMismatchingIDFails(t *testing.T) {
 	broker, err := New(log.Logger, withDefaultTestConfig(""))
 	is.NoErr(err)
 
-	_, err = broker.CreateEntity(context.Background(), "testtenant", "Device", "testid", nil, nil)
+	_, err = broker.CreateEntity(context.Background(), "testtenant", testEntity("Device", "badid"), nil)
 	is.True(err != nil) // should have returned an error
 }
 
@@ -65,7 +68,7 @@ func TestThatCreateEntityWithMatchingTypeAndIDWorks(t *testing.T) {
 	broker, err := New(log.Logger, withDefaultTestConfig(ts.URL))
 	is.NoErr(err)
 
-	_, err = broker.CreateEntity(context.Background(), "testtenant", "Device", "urn:ngsi-ld:Device:testid", nil, nil)
+	_, err = broker.CreateEntity(context.Background(), "testtenant", testEntity("Device", "urn:ngsi-ld:Device:testid"), nil)
 	is.NoErr(err) // should not return an error
 }
 
@@ -117,4 +120,19 @@ func withDefaultTestConfig(endpoint string) Config {
 
 func withEmptyConfig() Config {
 	return Config{}
+}
+
+func testEntity(entityType, entityID string) types.Entity {
+	var entityJSON string = `{
+		"id": "%s",
+		"type": "%s",
+		"@context": [
+			"https://schema.lab.fiware.org/ld/context",
+			"https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"
+		]
+	}`
+
+	json := fmt.Sprintf(entityJSON, entityID, entityType)
+	e, _ := types.NewEntity([]byte(json))
+	return e
 }

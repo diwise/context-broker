@@ -58,12 +58,11 @@ func NewCreateEntityHandler(
 
 		traceID, ctx, log := addTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
-		entity := &types.BaseEntity{}
 		// copy the body from the request and restore it for later use
 		body, _ := ioutil.ReadAll(r.Body)
 		r.Body = io.NopCloser(bytes.NewBuffer(body))
 
-		err = json.NewDecoder(io.NopCloser(bytes.NewBuffer(body))).Decode(entity)
+		entity, err := ngsitypes.NewEntity(body)
 
 		if err != nil {
 			ngsierrors.ReportNewInvalidRequest(
@@ -74,18 +73,20 @@ func NewCreateEntityHandler(
 			return
 		}
 
+		entityID := entity.ID()
+
 		var result *ngsild.CreateEntityResult
 
-		result, err = contextInformationManager.CreateEntity(ctx, tenant, entity.Type, entity.ID, r.Body, propagatedHeaders)
+		result, err = contextInformationManager.CreateEntity(ctx, tenant, entity, propagatedHeaders)
 		if err != nil {
 			log.Error().Err(err).Msg("create entity failed")
 			mapCIMToNGSILDError(w, err, traceID)
 			return
 		}
 
-		log.Info().Str("entityID", entity.ID).Str("tenant", tenant).Msg("entity created")
+		log.Info().Str("entityID", entityID).Str("tenant", tenant).Msg("entity created")
 
-		onsuccess(ctx, entity.Type, entity.ID, log)
+		onsuccess(ctx, entity.Type(), entityID, log)
 
 		w.Header().Add("Location", result.Location())
 		w.WriteHeader(http.StatusCreated)

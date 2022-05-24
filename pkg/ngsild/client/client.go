@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -22,7 +23,7 @@ import (
 )
 
 type ContextBrokerClient interface {
-	CreateEntity(ctx context.Context, entityID string, body io.Reader, headers map[string][]string) (*ngsild.CreateEntityResult, error)
+	CreateEntity(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error)
 	QueryEntities(ctx context.Context, entityTypes, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error)
 	RetrieveEntity(ctx context.Context, entityID string, headers map[string][]string) (types.Entity, error)
 	UpdateEntityAttributes(ctx context.Context, entityID string, body io.Reader, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error)
@@ -67,14 +68,19 @@ type cbClient struct {
 	debug   bool
 }
 
-func (c cbClient) CreateEntity(ctx context.Context, entityID string, body io.Reader, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
+func (c cbClient) CreateEntity(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
 	var err error
+
+	entityID := entity.ID()
 
 	ctx, span := tracer.Start(ctx, "create-entity",
 		trace.WithAttributes(attribute.String(TraceAttributeNGSILDTenant, c.tenant)),
 		trace.WithAttributes(attribute.String(TraceAttributeEntityID, entityID)),
 	)
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+	json, err := entity.MarshalJSON()
+	body := bytes.NewBuffer(json)
 
 	resp, respBody, err := c.callContextSource(
 		ctx, http.MethodPost, c.baseURL+"/ngsi-ld/v1/entities", body, headers,

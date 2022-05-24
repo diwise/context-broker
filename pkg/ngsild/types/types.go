@@ -1,6 +1,9 @@
 package types
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 type Entity interface {
 	ID() string
@@ -10,17 +13,32 @@ type Entity interface {
 	MarshalJSON() ([]byte, error)
 }
 
-func NewEntity(body string) Entity {
-	return &EntityImpl{
-		contents: []byte(body),
+func NewEntity(body []byte) (Entity, error) {
+	e := &EntityImpl{
+		contents: body,
 	}
+
+	e.entityID = e.ID()
+	e.entityType = e.Type()
+
+	if e.entityID == "" || e.entityType == "" {
+		return nil, fmt.Errorf("failed to parse entity")
+	}
+
+	return e, nil
 }
 
 type EntityImpl struct {
-	contents []byte
+	entityID   string
+	entityType string
+	contents   []byte
 }
 
 func (e EntityImpl) ID() string {
+	if e.entityID != "" {
+		return e.entityID
+	}
+
 	value := struct {
 		ID string `json:"id"`
 	}{}
@@ -33,6 +51,10 @@ func (e EntityImpl) ID() string {
 }
 
 func (e EntityImpl) Type() string {
+	if e.entityType != "" {
+		return e.entityType
+	}
+
 	value := struct {
 		Type string `json:"type"`
 	}{}

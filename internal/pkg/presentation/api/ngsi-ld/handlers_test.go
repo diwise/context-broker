@@ -59,7 +59,7 @@ func TestCreateEntityCanHandleAlreadyExistsError(t *testing.T) {
 	is, ts, app := setupTest(t)
 	defer ts.Close()
 
-	app.CreateEntityFunc = func(context.Context, string, string, string, io.Reader, map[string][]string) (*ngsild.CreateEntityResult, error) {
+	app.CreateEntityFunc = func(context.Context, string, ngsitypes.Entity, map[string][]string) (*ngsild.CreateEntityResult, error) {
 		return nil, errors.NewAlreadyExistsError("already exists")
 	}
 
@@ -72,7 +72,7 @@ func TestCreateEntityCanHandleInternalError(t *testing.T) {
 	is, ts, app := setupTest(t)
 	defer ts.Close()
 
-	app.CreateEntityFunc = func(context.Context, string, string, string, io.Reader, map[string][]string) (*ngsild.CreateEntityResult, error) {
+	app.CreateEntityFunc = func(context.Context, string, ngsitypes.Entity, map[string][]string) (*ngsild.CreateEntityResult, error) {
 		return nil, fmt.Errorf("some unknown error")
 	}
 
@@ -130,7 +130,8 @@ func TestQueryEntities(t *testing.T) {
 	app.QueryEntitiesFunc = func(ctx context.Context, tenant string, types []string, attrs []string, q string, h map[string][]string) (*ngsild.QueryEntitiesResult, error) {
 		qer := ngsild.NewQueryEntitiesResult()
 		go func() {
-			qer.Found <- ngsitypes.NewEntity(weatherObservedJson)
+			e, _ := ngsitypes.NewEntity([]byte(weatherObservedJson))
+			qer.Found <- e
 			qer.Found <- nil
 		}()
 		return qer, nil
@@ -149,7 +150,8 @@ func TestQueryEntitiesAsGeoJSON(t *testing.T) {
 	app.QueryEntitiesFunc = func(ctx context.Context, tenant string, types []string, attrs []string, q string, h map[string][]string) (*ngsild.QueryEntitiesResult, error) {
 		qer := ngsild.NewQueryEntitiesResult()
 		go func() {
-			qer.Found <- ngsitypes.NewEntity(weatherObservedJson)
+			e, _ := ngsitypes.NewEntity([]byte(weatherObservedJson))
+			qer.Found <- e
 			qer.Found <- nil
 		}()
 		return qer, nil
@@ -195,7 +197,7 @@ func setupTest(t *testing.T) (*is.I, *httptest.Server, *cim.ContextInformationMa
 
 	log := log.Logger
 	app := &cim.ContextInformationManagerMock{
-		CreateEntityFunc: func(ctx context.Context, tenant, entityType, entityID string, body io.Reader, h map[string][]string) (*ngsild.CreateEntityResult, error) {
+		CreateEntityFunc: func(ctx context.Context, tenant string, entity ngsitypes.Entity, h map[string][]string) (*ngsild.CreateEntityResult, error) {
 			return ngsild.NewCreateEntityResult("somewhere"), nil
 		},
 		QueryEntitiesFunc: func(ctx context.Context, tenant string, types []string, attrs []string, q string, h map[string][]string) (*ngsild.QueryEntitiesResult, error) {
