@@ -15,9 +15,9 @@ import (
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
 	"github.com/diwise/context-broker/internal/pkg/infrastructure/logging"
 	"github.com/diwise/context-broker/internal/pkg/infrastructure/tracing"
-	ngsierrors "github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/errors"
 	"github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/geojson"
 	"github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/types"
+	ngsierrors "github.com/diwise/context-broker/pkg/errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 
@@ -335,18 +335,19 @@ func extractHeaders(r *http.Request, headers ...string) map[string][]string {
 }
 
 func mapCIMToNGSILDError(w http.ResponseWriter, err error, traceID string) {
-	switch e := err.(type) {
-	case cim.AlreadyExistsError:
-		ngsierrors.ReportNewAlreadyExistsError(w, e.Error(), traceID)
-	case cim.BadRequestDataError:
-		ngsierrors.ReportNewBadRequestData(w, e.Error(), traceID)
-	case cim.InvalidRequestError:
-		ngsierrors.ReportNewInvalidRequest(w, e.Error(), traceID)
-	case cim.NotFoundError:
-		ngsierrors.ReportNotFoundError(w, e.Error(), traceID)
-	case cim.UnknownTenantError:
-		ngsierrors.ReportUnknownTenantError(w, e.Error(), traceID)
+
+	switch {
+	case errors.Is(err, ngsierrors.ErrAlreadyExists):
+		ngsierrors.ReportNewAlreadyExistsError(w, err.Error(), traceID)
+	case errors.Is(err, ngsierrors.ErrBadRequest):
+		ngsierrors.ReportNewBadRequestData(w, err.Error(), traceID)
+	case errors.Is(err, ngsierrors.ErrInvalidRequest):
+		ngsierrors.ReportNewInvalidRequest(w, err.Error(), traceID)
+	case errors.Is(err, ngsierrors.ErrNotFound):
+		ngsierrors.ReportNotFoundError(w, err.Error(), traceID)
+	case errors.Is(err, ngsierrors.ErrUnknownTenant):
+		ngsierrors.ReportUnknownTenantError(w, err.Error(), traceID)
 	default:
-		ngsierrors.ReportNewInternalError(w, e.Error(), traceID)
+		ngsierrors.ReportNewInternalError(w, err.Error(), traceID)
 	}
 }

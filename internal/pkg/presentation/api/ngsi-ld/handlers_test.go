@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
+	"github.com/diwise/context-broker/pkg/errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
@@ -57,7 +58,7 @@ func TestCreateEntityCanHandleAlreadyExistsError(t *testing.T) {
 	defer ts.Close()
 
 	app.CreateEntityFunc = func(context.Context, string, string, string, io.Reader, map[string][]string) (*cim.CreateEntityResult, error) {
-		return nil, cim.NewAlreadyExistsError("already exists")
+		return nil, errors.NewAlreadyExistsError("already exists")
 	}
 
 	resp, _ := newPostRequest(is, ts, ld_json, "/ngsi-ld/v1/entities", bytes.NewBuffer([]byte(entityJSON)))
