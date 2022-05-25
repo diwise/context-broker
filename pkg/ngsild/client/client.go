@@ -90,11 +90,13 @@ func (c cbClient) CreateEntity(ctx context.Context, entity types.Entity, headers
 	log := logging.GetFromContext(ctx)
 
 	if resp.StatusCode >= http.StatusBadRequest {
-		return nil, errors.NewErrorFromProblemReport(resp.StatusCode, contentType, respBody)
+		err = errors.NewErrorFromProblemReport(resp.StatusCode, contentType, respBody)
+		return nil, err
 	}
 
 	if resp.StatusCode != http.StatusCreated {
-		return nil, fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", resp.StatusCode, contentType, string(respBody))
+		err = fmt.Errorf("unexpected response code %d (%w)", resp.StatusCode, errors.ErrInternal)
+		return nil, err
 	}
 
 	location := resp.Header.Get("Location")
@@ -126,9 +128,12 @@ func (c cbClient) RetrieveEntity(ctx context.Context, entityID string, headers m
 	if response.StatusCode != http.StatusOK {
 		contentType := response.Header.Get("Content-Type")
 		if response.StatusCode >= http.StatusBadRequest && response.StatusCode <= http.StatusInternalServerError {
-			return nil, errors.NewErrorFromProblemReport(response.StatusCode, contentType, responseBody)
+			err = errors.NewErrorFromProblemReport(response.StatusCode, contentType, responseBody)
+			return nil, err
 		}
-		return nil, fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", response.StatusCode, contentType, string(responseBody))
+
+		err = fmt.Errorf("unexpected response code %d (%w)", response.StatusCode, errors.ErrInternal)
+		return nil, err
 	}
 
 	var entity types.EntityImpl
