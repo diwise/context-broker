@@ -29,6 +29,10 @@ type ContextBrokerClient interface {
 	UpdateEntityAttributes(ctx context.Context, entityID string, body io.Reader, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error)
 }
 
+const (
+	DefaultNGSITenant string = ""
+)
+
 func Debug(enabled string) func(*cbClient) {
 	return func(c *cbClient) {
 		c.debug = (enabled == "true")
@@ -44,7 +48,7 @@ func Tenant(tenant string) func(*cbClient) {
 func NewContextBrokerClient(broker string, options ...func(*cbClient)) ContextBrokerClient {
 	c := &cbClient{
 		baseURL: broker,
-		tenant:  "default",
+		tenant:  DefaultNGSITenant,
 		debug:   false,
 	}
 
@@ -218,8 +222,11 @@ func (c cbClient) callContextSource(ctx context.Context, method, endpoint string
 
 	req, err := http.NewRequestWithContext(ctx, method, endpoint, body)
 	if err != nil {
-		err = fmt.Errorf("failed to create request: %s (%w)", err.Error(), errors.ErrInternal)
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to create request: %s (%w)", err.Error(), errors.ErrInternal)
+	}
+
+	if c.tenant != DefaultNGSITenant {
+		req.Header.Add("NGSILD-Tenant", c.tenant)
 	}
 
 	for header, headerValue := range headers {
@@ -230,15 +237,13 @@ func (c cbClient) callContextSource(ctx context.Context, method, endpoint string
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		err = fmt.Errorf("failed to send request: %s (%w)", err.Error(), errors.ErrRequest)
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to send request: %s (%w)", err.Error(), errors.ErrRequest)
 	}
 
 	defer resp.Body.Close()
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		err = fmt.Errorf("failed to read response body: %s (%w)", err.Error(), errors.ErrBadResponse)
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("failed to read response body: %s (%w)", err.Error(), errors.ErrBadResponse)
 	}
 
 	if c.debug && resp.StatusCode >= http.StatusBadRequest {
