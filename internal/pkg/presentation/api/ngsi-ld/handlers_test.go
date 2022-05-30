@@ -15,7 +15,7 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild"
 	"github.com/diwise/context-broker/pkg/ngsild/errors"
 	ngsitypes "github.com/diwise/context-broker/pkg/ngsild/types"
-	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
+	. "github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 	"github.com/go-chi/chi/v5"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
@@ -136,7 +136,7 @@ func TestQueryEntities(t *testing.T) {
 				"Spain-WeatherObserved-Valladolid-2016-11-30T07:00:00.00Z",
 				41.640833333, -4.754444444,
 				"2016-11-30T07:00:00.00Z",
-				entities.Temperature(3.3),
+				Temperature(3.3),
 			)
 			qer.Found <- e
 			qer.Found <- nil
@@ -161,7 +161,7 @@ func TestQueryEntitiesAsGeoJSON(t *testing.T) {
 				"Spain-WeatherObserved-Valladolid-2016-11-30T07:00:00.00Z",
 				41.640833333, -4.754444444,
 				"2016-11-30T07:00:00.00Z",
-				entities.Temperature(3.3),
+				Temperature(3.3),
 			)
 			qer.Found <- e
 			qer.Found <- nil

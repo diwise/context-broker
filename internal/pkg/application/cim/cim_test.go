@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
+	. "github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 	"github.com/diwise/context-broker/pkg/ngsild/types/properties"
 	"github.com/matryer/is"
 )
@@ -13,8 +14,8 @@ func TestMe(t *testing.T) {
 
 	e, err := entities.New(
 		"urn:ngsi-ld:Consumer:Consumer01", "WaterConsumptionObserved",
-		entities.RefDevice("urn:ngsi-ld:Device:01"),
-		entities.Number("waterConsumption", 191051, properties.UnitCode("LTR"), properties.ObservedAt("2021-05-23T23:14:16.000Z")),
+		RefDevice("urn:ngsi-ld:Device:01"),
+		Number("waterConsumption", 191051, properties.UnitCode("LTR"), properties.ObservedAt("2021-05-23T23:14:16.000Z")),
 	)
 
 	is.NoErr(err)

@@ -6,6 +6,7 @@ import (
 
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
+	. "github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 )
 
 //NewWeatherObserved creates a new instance of WeatherObserved
@@ -19,7 +20,7 @@ func NewWeatherObserved(observationID string, latitude float64, longitude float6
 		observationID = WeatherObservedIDPrefix + observationID
 	}
 
-	decorators = append(decorators, entities.DefaultContext(), entities.DateObserved(observedAt), entities.Location(latitude, longitude))
+	decorators = append(decorators, entities.DefaultContext(), DateObserved(observedAt), Location(latitude, longitude))
 
 	e, err := entities.New(
 		observationID, WeatherObservedTypeName,
