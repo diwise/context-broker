@@ -15,11 +15,12 @@ import (
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
 	"github.com/diwise/context-broker/internal/pkg/infrastructure/logging"
 	"github.com/diwise/context-broker/internal/pkg/infrastructure/tracing"
-	"github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/geojson"
 	"github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/types"
 	"github.com/diwise/context-broker/pkg/ngsild"
 	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
+	"github.com/diwise/context-broker/pkg/ngsild/geojson"
 	ngsitypes "github.com/diwise/context-broker/pkg/ngsild/types"
+	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 
@@ -62,7 +63,7 @@ func NewCreateEntityHandler(
 		body, _ := ioutil.ReadAll(r.Body)
 		r.Body = io.NopCloser(bytes.NewBuffer(body))
 
-		entity, err := ngsitypes.NewEntity(body)
+		entity, err := entities.NewFromBody(body)
 
 		if err != nil {
 			ngsierrors.ReportNewInvalidRequest(

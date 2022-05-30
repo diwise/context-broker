@@ -11,9 +11,11 @@ import (
 	"testing"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
+	"github.com/diwise/context-broker/pkg/datamodels/fiware"
 	"github.com/diwise/context-broker/pkg/ngsild"
 	"github.com/diwise/context-broker/pkg/ngsild/errors"
 	ngsitypes "github.com/diwise/context-broker/pkg/ngsild/types"
+	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"github.com/go-chi/chi/v5"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
@@ -130,7 +132,12 @@ func TestQueryEntities(t *testing.T) {
 	app.QueryEntitiesFunc = func(ctx context.Context, tenant string, types []string, attrs []string, q string, h map[string][]string) (*ngsild.QueryEntitiesResult, error) {
 		qer := ngsild.NewQueryEntitiesResult()
 		go func() {
-			e, _ := ngsitypes.NewEntity([]byte(weatherObservedJson))
+			e, _ := fiware.NewWeatherObserved(
+				"Spain-WeatherObserved-Valladolid-2016-11-30T07:00:00.00Z",
+				41.640833333, -4.754444444,
+				"2016-11-30T07:00:00.00Z",
+				entities.Temperature(3.3),
+			)
 			qer.Found <- e
 			qer.Found <- nil
 		}()
@@ -150,7 +157,12 @@ func TestQueryEntitiesAsGeoJSON(t *testing.T) {
 	app.QueryEntitiesFunc = func(ctx context.Context, tenant string, types []string, attrs []string, q string, h map[string][]string) (*ngsild.QueryEntitiesResult, error) {
 		qer := ngsild.NewQueryEntitiesResult()
 		go func() {
-			e, _ := ngsitypes.NewEntity([]byte(weatherObservedJson))
+			e, _ := fiware.NewWeatherObserved(
+				"Spain-WeatherObserved-Valladolid-2016-11-30T07:00:00.00Z",
+				41.640833333, -4.754444444,
+				"2016-11-30T07:00:00.00Z",
+				entities.Temperature(3.3),
+			)
 			qer.Found <- e
 			qer.Found <- nil
 		}()
@@ -201,7 +213,9 @@ func setupTest(t *testing.T) (*is.I, *httptest.Server, *cim.ContextInformationMa
 			return ngsild.NewCreateEntityResult("somewhere"), nil
 		},
 		QueryEntitiesFunc: func(ctx context.Context, tenant string, types []string, attrs []string, q string, h map[string][]string) (*ngsild.QueryEntitiesResult, error) {
-			return nil, fmt.Errorf("some unknown error")
+			qer := ngsild.NewQueryEntitiesResult()
+			go func() { qer.Found <- nil }()
+			return qer, nil
 		},
 	}
 
@@ -219,27 +233,4 @@ var entityJSON string = `{
     ]
 }`
 
-var weatherObservedJson string = `{
-	"id": "urn:ngsi-ld:WeatherObserved:Spain-WeatherObserved-Valladolid-2016-11-30T07:00:00.00Z",
-    "type": "WeatherObserved",
-    "dateObserved": {
-        "type": "Property",
-        "value": {
-            "@type": "DateTime",
-            "@value": "2016-11-30T07:00:00.00Z"
-        }
-    },
-    "temperature": {
-        "type": "Property",
-        "value": 3.3
-    },
-    "location": {
-        "type": "GeoProperty",
-        "value": {
-            "type": "Point",
-            "coordinates": [-4.754444444, 41.640833333]
-        }
-    }
-}`
-
-var weatherObservedGeoJson string = `{"type":"FeatureCollection","features":[{"id":"urn:ngsi-ld:WeatherObserved:Spain-WeatherObserved-Valladolid-2016-11-30T07:00:00.00Z","type":"Feature","geometry":{"coordinates":[-4.754444444,41.640833333],"type":"Point"},"properties":{"dateObserved":{"type":"Property","value":{"@type":"DateTime","@value":"2016-11-30T07:00:00.00Z"}},"location":{"type":"GeoProperty","value":{"coordinates":[-4.754444444,41.640833333],"type":"Point"}},"temperature":{"type":"Property","value":3.3},"type":"WeatherObserved"}}],"@context":["https://schema.lab.fiware.org/ld/context","https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"]}`
+var weatherObservedGeoJson string = `{"type":"FeatureCollection","features":[{"id":"urn:ngsi-ld:WeatherObserved:Spain-WeatherObserved-Valladolid-2016-11-30T07:00:00.00Z","type":"Feature","geometry":{"type":"Point","coordinates":[-4.754444444,41.640833333]},"properties":{"dateObserved":{"type":"Property","value":{"@type":"DateTime","@value":"2016-11-30T07:00:00.00Z"}},"location":{"type":"GeoProperty","value":{"type":"Point","coordinates":[-4.754444444,41.640833333]}},"temperature":{"type":"Property","value":3.3},"type":"WeatherObserved"}}],"@context":["https://schema.lab.fiware.org/ld/context","https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"]}`

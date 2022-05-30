@@ -16,6 +16,7 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild"
 	"github.com/diwise/context-broker/pkg/ngsild/errors"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
+	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -140,13 +141,7 @@ func (c cbClient) RetrieveEntity(ctx context.Context, entityID string, headers m
 		return nil, err
 	}
 
-	var entity types.EntityImpl
-	err = json.Unmarshal(responseBody, &entity)
-	if err != nil {
-		return nil, err
-	}
-
-	return entity, nil
+	return entities.NewFromBody(responseBody)
 }
 
 func (c cbClient) UpdateEntityAttributes(ctx context.Context, entityID string, body io.Reader, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
@@ -199,7 +194,7 @@ func (c cbClient) QueryEntities(ctx context.Context, entityTypes, entityAttribut
 		return nil, fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", response.StatusCode, contentType, string(responseBody))
 	}
 
-	var entities []types.EntityImpl
+	var entities []entities.EntityImpl
 	err = json.Unmarshal(responseBody, &entities)
 	if err != nil {
 		return nil, err

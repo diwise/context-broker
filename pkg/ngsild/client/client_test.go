@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
+	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"github.com/matryer/is"
 )
 
@@ -80,17 +80,7 @@ func setupMockServiceThatReturns(responseCode int, body string, headers ...func(
 }
 
 func testEntity(entityType, entityID string) types.Entity {
-	var entityJSON string = `{
-		"id": "%s",
-		"type": "%s",
-		"@context": [
-			"https://schema.lab.fiware.org/ld/context",
-			"https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"
-		]
-	}`
-
-	json := fmt.Sprintf(entityJSON, entityID, entityType)
-	e, _ := types.NewEntity([]byte(json))
+	e, _ := entities.New(entityID, entityType, entities.DefaultContext())
 	return e
 }
 

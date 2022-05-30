@@ -3,29 +3,20 @@ package cim
 import (
 	"testing"
 
-	"github.com/diwise/context-broker/pkg/ngsild/types"
+	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
+	"github.com/diwise/context-broker/pkg/ngsild/types/properties"
 	"github.com/matryer/is"
 )
 
 func TestMe(t *testing.T) {
 	is := is.New(t)
 
-	var jsonData string = `{
-		"id": "urn:ngsi-ld:Consumer:Consumer01",
-		"type": "WaterConsumptionObserved",
-		"waterConsumption": {
-			"type": "Property",
-			"value": 191051,
-			"observedAt": "2021-05-23T23:14:16.000Z",
-			"unitCode": "LTR"
-		},
-		"refDevice": {
-			"type": "Relationship",
-			"object": "urn:ngsi-ld:Device:01"
-		}
-	}`
+	e, err := entities.New(
+		"urn:ngsi-ld:Consumer:Consumer01", "WaterConsumptionObserved",
+		entities.RefDevice("urn:ngsi-ld:Device:01"),
+		entities.Number("waterConsumption", 191051, properties.UnitCode("LTR"), properties.ObservedAt("2021-05-23T23:14:16.000Z")),
+	)
 
-	e, err := types.NewEntity([]byte(jsonData))
 	is.NoErr(err)
 
 	attributes := []string{}

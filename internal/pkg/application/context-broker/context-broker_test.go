@@ -2,12 +2,12 @@ package contextbroker
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/diwise/context-broker/pkg/ngsild/types"
+	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 )
@@ -123,16 +123,6 @@ func withEmptyConfig() Config {
 }
 
 func testEntity(entityType, entityID string) types.Entity {
-	var entityJSON string = `{
-		"id": "%s",
-		"type": "%s",
-		"@context": [
-			"https://schema.lab.fiware.org/ld/context",
-			"https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"
-		]
-	}`
-
-	json := fmt.Sprintf(entityJSON, entityID, entityType)
-	e, _ := types.NewEntity([]byte(json))
+	e, _ := entities.New(entityID, entityType, entities.DefaultContext())
 	return e
 }
