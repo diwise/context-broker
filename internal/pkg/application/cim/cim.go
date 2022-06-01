@@ -29,6 +29,9 @@ type ContextInformationManager interface {
 	EntityCreator
 	EntityQuerier
 	EntityRetriever
+
+	Start() error
+	Stop() error
 }
 
 type ContextBroker interface {

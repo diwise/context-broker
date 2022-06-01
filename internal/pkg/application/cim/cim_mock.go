@@ -30,6 +30,12 @@ var _ ContextInformationManager = &ContextInformationManagerMock{}
 // 			RetrieveEntityFunc: func(ctx context.Context, tenant string, entityID string, headers map[string][]string) (types.Entity, error) {
 // 				panic("mock out the RetrieveEntity method")
 // 			},
+// 			StartFunc: func() error {
+// 				panic("mock out the Start method")
+// 			},
+// 			StopFunc: func() error {
+// 				panic("mock out the Stop method")
+// 			},
 // 			UpdateEntityAttributesFunc: func(ctx context.Context, tenant string, entityID string, body io.Reader, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
 // 				panic("mock out the UpdateEntityAttributes method")
 // 			},
@@ -48,6 +54,12 @@ type ContextInformationManagerMock struct {
 
 	// RetrieveEntityFunc mocks the RetrieveEntity method.
 	RetrieveEntityFunc func(ctx context.Context, tenant string, entityID string, headers map[string][]string) (types.Entity, error)
+
+	// StartFunc mocks the Start method.
+	StartFunc func() error
+
+	// StopFunc mocks the Stop method.
+	StopFunc func() error
 
 	// UpdateEntityAttributesFunc mocks the UpdateEntityAttributes method.
 	UpdateEntityAttributesFunc func(ctx context.Context, tenant string, entityID string, body io.Reader, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error)
@@ -91,6 +103,12 @@ type ContextInformationManagerMock struct {
 			// Headers is the headers argument value.
 			Headers map[string][]string
 		}
+		// Start holds details about calls to the Start method.
+		Start []struct {
+		}
+		// Stop holds details about calls to the Stop method.
+		Stop []struct {
+		}
 		// UpdateEntityAttributes holds details about calls to the UpdateEntityAttributes method.
 		UpdateEntityAttributes []struct {
 			// Ctx is the ctx argument value.
@@ -108,6 +126,8 @@ type ContextInformationManagerMock struct {
 	lockCreateEntity           sync.RWMutex
 	lockQueryEntities          sync.RWMutex
 	lockRetrieveEntity         sync.RWMutex
+	lockStart                  sync.RWMutex
+	lockStop                   sync.RWMutex
 	lockUpdateEntityAttributes sync.RWMutex
 }
 
@@ -245,6 +265,58 @@ func (mock *ContextInformationManagerMock) RetrieveEntityCalls() []struct {
 	mock.lockRetrieveEntity.RLock()
 	calls = mock.calls.RetrieveEntity
 	mock.lockRetrieveEntity.RUnlock()
+	return calls
+}
+
+// Start calls StartFunc.
+func (mock *ContextInformationManagerMock) Start() error {
+	if mock.StartFunc == nil {
+		panic("ContextInformationManagerMock.StartFunc: method is nil but ContextInformationManager.Start was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockStart.Lock()
+	mock.calls.Start = append(mock.calls.Start, callInfo)
+	mock.lockStart.Unlock()
+	return mock.StartFunc()
+}
+
+// StartCalls gets all the calls that were made to Start.
+// Check the length with:
+//     len(mockedContextInformationManager.StartCalls())
+func (mock *ContextInformationManagerMock) StartCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockStart.RLock()
+	calls = mock.calls.Start
+	mock.lockStart.RUnlock()
+	return calls
+}
+
+// Stop calls StopFunc.
+func (mock *ContextInformationManagerMock) Stop() error {
+	if mock.StopFunc == nil {
+		panic("ContextInformationManagerMock.StopFunc: method is nil but ContextInformationManager.Stop was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockStop.Lock()
+	mock.calls.Stop = append(mock.calls.Stop, callInfo)
+	mock.lockStop.Unlock()
+	return mock.StopFunc()
+}
+
+// StopCalls gets all the calls that were made to Stop.
+// Check the length with:
+//     len(mockedContextInformationManager.StopCalls())
+func (mock *ContextInformationManagerMock) StopCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockStop.RLock()
+	calls = mock.calls.Stop
+	mock.lockStop.RUnlock()
 	return calls
 }
 
