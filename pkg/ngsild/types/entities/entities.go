@@ -56,6 +56,22 @@ func NewFromBody(body []byte) (types.Entity, error) {
 	return e, nil
 }
 
+func NewFromSlice(body []byte) ([]types.Entity, error) {
+	impls := []EntityImpl{}
+	err := json.Unmarshal(body, &impls)
+	if err != nil {
+		return nil, err
+	}
+
+	arr := make([]types.Entity, 0, len(impls))
+
+	for _, e := range impls {
+		arr = append(arr, e)
+	}
+
+	return arr, nil
+}
+
 type EntityImpl struct {
 	entityID   string
 	entityType string

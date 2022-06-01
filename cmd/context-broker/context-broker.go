@@ -44,7 +44,7 @@ func main() {
 		logger.Fatal().Err(err).Msg("failed to load configuration")
 	}
 
-	app, err := contextbroker.New(logger, *cfg)
+	app, err := contextbroker.New(ctx, *cfg)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to configure the context broker")
 	}

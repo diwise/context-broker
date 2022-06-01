@@ -4,23 +4,38 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"regexp"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
+	"github.com/diwise/context-broker/internal/pkg/application/subscriptions"
 	"github.com/diwise/context-broker/pkg/ngsild"
 	"github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/context-broker/pkg/ngsild/errors"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
-	"github.com/rs/zerolog"
 )
 
 type contextBrokerApp struct {
-	tenants map[string][]ContextSourceConfig
+	tenants  map[string][]ContextSourceConfig
+	notifier subscriptions.Notifier
 }
 
-func New(log zerolog.Logger, cfg Config) (cim.ContextInformationManager, error) {
+func New(ctx context.Context, cfg Config) (cim.ContextInformationManager, error) {
+	var err error
+	var notifier subscriptions.Notifier
+
+	// TODO: Support multiple notifiers and separation between tenants
+	notifierEndpoint := os.Getenv("NOTIFIER_ENDPOINT")
+	if notifierEndpoint != "" {
+		notifier, err = subscriptions.NewNotifier(ctx, notifierEndpoint)
+		if err == nil {
+			notifier.Start()
+		}
+	}
+
 	app := &contextBrokerApp{
-		tenants: make(map[string][]ContextSourceConfig),
+		tenants:  make(map[string][]ContextSourceConfig),
+		notifier: notifier,
 	}
 
 	for _, tenant := range cfg.Tenants {
@@ -59,6 +74,10 @@ func (app *contextBrokerApp) CreateEntity(ctx context.Context, tenant string, en
 				result, err := cbClient.CreateEntity(ctx, entity, headers)
 				if err != nil {
 					return nil, err
+				}
+
+				if app.notifier != nil {
+					app.notifier.EntityCreated(ctx, entity)
 				}
 
 				return result, nil
@@ -148,7 +167,12 @@ func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant,
 				}
 
 				cbClient := client.NewContextBrokerClient(src.Endpoint)
-				return cbClient.UpdateEntityAttributes(ctx, entityID, body, headers)
+				result, err := cbClient.UpdateEntityAttributes(ctx, entityID, body, headers)
+				if err != nil {
+					return result, err
+				}
+
+				return result, err
 			}
 		}
 	}
