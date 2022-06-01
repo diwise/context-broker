@@ -78,7 +78,9 @@ func TestThatNotificationsAreSent_ThisTestShouldBeBrokenUp(t *testing.T) {
 	}, "")
 	defer ts.Close()
 
+	numberOfNotifications := 0
 	ns := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		numberOfNotifications++
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ns.Close()
@@ -88,9 +90,14 @@ func TestThatNotificationsAreSent_ThisTestShouldBeBrokenUp(t *testing.T) {
 	broker, err := New(context.Background(), withDefaultTestConfig(ts.URL))
 	is.NoErr(err)
 
+	broker.Start()
+
 	_, err = broker.CreateEntity(context.Background(), "testtenant", testEntity("Device", "urn:ngsi-ld:Device:testid"), nil)
 	is.NoErr(err) // should not return an error
 
+	broker.Stop()
+
+	is.Equal(numberOfNotifications, 1)
 }
 
 func setupMockContextSourceResponse(responseCode int, headers [][2]string, responseBody string) *httptest.Server {

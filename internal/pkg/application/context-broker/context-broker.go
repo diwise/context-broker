@@ -21,16 +21,12 @@ type contextBrokerApp struct {
 }
 
 func New(ctx context.Context, cfg Config) (cim.ContextInformationManager, error) {
-	var err error
 	var notifier subscriptions.Notifier
 
 	// TODO: Support multiple notifiers and separation between tenants
 	notifierEndpoint := os.Getenv("NOTIFIER_ENDPOINT")
 	if notifierEndpoint != "" {
-		notifier, err = subscriptions.NewNotifier(ctx, notifierEndpoint)
-		if err == nil {
-			notifier.Start()
-		}
+		notifier, _ = subscriptions.NewNotifier(ctx, notifierEndpoint)
 	}
 
 	app := &contextBrokerApp{
@@ -172,10 +168,39 @@ func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant,
 					return result, err
 				}
 
+				if app.notifier != nil {
+					// Spawn a go routine to fetch the updated entity in its entirety
+					go func() {
+						delete(headers, "Content-Type")
+						headers["Accept"] = []string{"application/ld+json"}
+
+						entity, err := cbClient.RetrieveEntity(ctx, entityID, headers)
+						if err == nil {
+							app.notifier.EntityUpdated(ctx, entity)
+						}
+					}()
+				}
+
 				return result, err
 			}
 		}
 	}
 
 	return nil, errors.NewNotFoundError(fmt.Sprintf("no context source found that could update attributes for entity %s", entityID))
+}
+
+func (app *contextBrokerApp) Start() error {
+	if app.notifier != nil {
+		return app.notifier.Start()
+	}
+
+	return nil
+}
+
+func (app *contextBrokerApp) Stop() error {
+	if app.notifier != nil {
+		return app.notifier.Stop()
+	}
+
+	return nil
 }

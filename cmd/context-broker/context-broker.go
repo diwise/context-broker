@@ -48,6 +48,8 @@ func main() {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to configure the context broker")
 	}
+	app.Start()
+	defer app.Stop()
 
 	r := router.New(serviceName)
 	ngsild.RegisterHandlers(r, app, logger)

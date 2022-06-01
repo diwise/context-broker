@@ -17,7 +17,7 @@ type Notifier interface {
 	Stop() error
 
 	EntityCreated(ctx context.Context, e types.Entity)
-	EntityUpdated(ctx context.Context, entityID, entityType string, e types.EntityFragment)
+	EntityUpdated(ctx context.Context, e types.Entity)
 }
 
 type action func()
@@ -53,7 +53,6 @@ func (n *notifier) Stop() error {
 		resultChan := make(chan bool)
 
 		n.queue <- func() {
-			n.started = false
 			close(n.queue)
 			resultChan <- true
 		}
@@ -67,39 +66,43 @@ func (n *notifier) Stop() error {
 func (n *notifier) EntityCreated(ctx context.Context, e types.Entity) {
 	if n.started {
 		n.queue <- func() {
-			notification := subscriptions.NewNotification(e)
-			body, err := json.MarshalIndent(notification, "", " ")
-			if err != nil {
-				return
-			}
-
-			httpClient := http.Client{
-				Transport: otelhttp.NewTransport(http.DefaultTransport),
-			}
-
-			req, err := http.NewRequestWithContext(ctx, http.MethodPost, n.endpoint, bytes.NewBuffer(body))
-			if err != nil {
-				return
-			}
-
-			req.Header.Add("Content-Type", "application/json")
-
-			resp, err := httpClient.Do(req)
-			if err != nil {
-				return
-			}
-
-			defer resp.Body.Close()
+			postNotification(ctx, e, n.endpoint)
 		}
 	}
 }
 
-func (n *notifier) EntityUpdated(ctx context.Context, entityID, entityType string, e types.EntityFragment) {
+func (n *notifier) EntityUpdated(ctx context.Context, e types.Entity) {
 	if n.started {
 		n.queue <- func() {
-
+			postNotification(ctx, e, n.endpoint)
 		}
 	}
+}
+
+func postNotification(ctx context.Context, e types.Entity, endpoint string) {
+	notification := subscriptions.NewNotification(e)
+	body, err := json.MarshalIndent(notification, "", " ")
+	if err != nil {
+		return
+	}
+
+	httpClient := http.Client{
+		Transport: otelhttp.NewTransport(http.DefaultTransport),
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewBuffer(body))
+	if err != nil {
+		return
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return
+	}
+
+	defer resp.Body.Close()
 }
 
 func (n *notifier) run() {
