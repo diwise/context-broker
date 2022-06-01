@@ -17,7 +17,7 @@ func Location(latitude, longitude float64) entities.EntityDecoratorFunc {
 }
 
 func DateTime(name string, value string) entities.EntityDecoratorFunc {
-	return entities.P("dateObserved", properties.NewDateTimeProperty(value))
+	return entities.P(name, properties.NewDateTimeProperty(value))
 }
 
 func Number(name string, value float64, decorators ...properties.NumberPropertyDecoratorFunc) entities.EntityDecoratorFunc {
