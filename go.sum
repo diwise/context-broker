@@ -56,6 +56,8 @@ github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/diwise/service-chassis v0.0.0-20220426150153-706eb92d048e h1:i7JZMCANQBIxM75YcS9m0jNJD51UPO14w3lJw4Kj2Sg=
 github.com/diwise/service-chassis v0.0.0-20220426150153-706eb92d048e/go.mod h1:DOuMOFnrgt7ut1u0/DqShB/UkeSss58ATAbUAgNizOE=
+github.com/diwise/service-chassis v0.0.0-20220602203825-64e6594861be h1:+RTd2uHl6CssupkdpCsRt0J8W5XtqLvTK1Hk/rs4rvc=
+github.com/diwise/service-chassis v0.0.0-20220602203825-64e6594861be/go.mod h1:LwU0G+b2O3TI/WuiLPVUXDaDuStzNJgUHXpSS6Q9JPo=
 github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/go-control-plane v0.9.1-0.20191026205805-5f8ba28d4473/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/go-control-plane v0.9.4/go.mod h1:6rpuAdCZL397s3pYoYcLgu1mIlRU8Am5FuJP05cCM98=

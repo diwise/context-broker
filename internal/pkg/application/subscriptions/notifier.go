@@ -73,14 +73,19 @@ func (n *notifier) Stop() error {
 func (n *notifier) EntityCreated(ctx context.Context, e types.Entity) {
 	if n.started {
 		var err error
-		ctx, span := tracer.Start(ctx, "post")
+
+		logger := logging.GetFromContext(ctx)
+
+		ctx, span := tracer.Start(
+			tracing.ExtractHeaders(context.Background(), tracing.InjectHeaders(ctx)),
+			"post",
+		)
 
 		n.queue <- func() {
 			defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
 			err = postNotification(ctx, e, n.endpoint)
 			if err != nil {
-				logger := logging.GetFromContext(ctx)
 				logger.Error().Err(err).Msg("failed to post notification")
 			}
 		}
@@ -90,14 +95,19 @@ func (n *notifier) EntityCreated(ctx context.Context, e types.Entity) {
 func (n *notifier) EntityUpdated(ctx context.Context, e types.Entity) {
 	if n.started {
 		var err error
-		ctx, span := tracer.Start(ctx, "post")
+
+		logger := logging.GetFromContext(ctx)
+
+		ctx, span := tracer.Start(
+			tracing.ExtractHeaders(context.Background(), tracing.InjectHeaders(ctx)),
+			"post",
+		)
 
 		n.queue <- func() {
 			defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
 			err = postNotification(ctx, e, n.endpoint)
 			if err != nil {
-				logger := logging.GetFromContext(ctx)
 				logger.Error().Err(err).Msg("failed to post notification")
 			}
 		}
