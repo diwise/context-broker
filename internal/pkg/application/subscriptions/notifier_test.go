@@ -70,12 +70,6 @@ func notificationEntityID(idx int, is *is.I, entityID string) ValidatorFunc {
 	}
 }
 
-/*func requestBody(is *is.I, body string) ValidatorFunc {
-	return func(w http.ResponseWriter, r *http.Request, b []byte) {
-		is.Equal(string(b), body) // request body should match
-	}
-}*/
-
 func responseCode(response int) ValidatorFunc {
 	return func(w http.ResponseWriter, r *http.Request, b []byte) {
 		w.WriteHeader(response)
