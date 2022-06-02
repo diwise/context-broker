@@ -6,14 +6,15 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/diwise/context-broker/pkg/ngsild/types"
+	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"github.com/matryer/is"
-	"github.com/rs/zerolog/log"
 )
 
 func TestNewWithEmptyConfig(t *testing.T) {
 	is := is.New(t)
 
-	_, err := New(log.Logger, withEmptyConfig())
+	_, err := New(context.Background(), withEmptyConfig())
 
 	is.NoErr(err)
 }
@@ -21,37 +22,38 @@ func TestNewWithEmptyConfig(t *testing.T) {
 func TestNewWithDefaultConfig(t *testing.T) {
 	is := is.New(t)
 
-	_, err := New(log.Logger, withDefaultTestConfig(""))
+	_, err := New(context.Background(), withDefaultTestConfig(""))
 	is.NoErr(err)
 }
 
 func TestThatCreateEntityWithUnknownTenantFails(t *testing.T) {
 	is := is.New(t)
 
-	broker, err := New(log.Logger, withDefaultTestConfig(""))
+	broker, err := New(context.Background(), withDefaultTestConfig(""))
 	is.NoErr(err)
 
-	_, err = broker.CreateEntity(context.Background(), "unknown", "Device", "testid", nil, nil)
+	_, err = broker.CreateEntity(context.Background(), "unknown", testEntity("", ""), nil)
+
 	is.True(err != nil) // should have returned an error
 }
 
 func TestThatCreateEntityWithUnknownEntityTypeFails(t *testing.T) {
 	is := is.New(t)
 
-	broker, err := New(log.Logger, withDefaultTestConfig(""))
+	broker, err := New(context.Background(), withDefaultTestConfig(""))
 	is.NoErr(err)
 
-	_, err = broker.CreateEntity(context.Background(), "testtenant", "Unknown", "testid", nil, nil)
+	_, err = broker.CreateEntity(context.Background(), "testtenant", testEntity("Unknown", "id"), nil)
 	is.True(err != nil) // should have returned an error
 }
 
 func TestThatCreateEntityWithMismatchingIDFails(t *testing.T) {
 	is := is.New(t)
 
-	broker, err := New(log.Logger, withDefaultTestConfig(""))
+	broker, err := New(context.Background(), withDefaultTestConfig(""))
 	is.NoErr(err)
 
-	_, err = broker.CreateEntity(context.Background(), "testtenant", "Device", "testid", nil, nil)
+	_, err = broker.CreateEntity(context.Background(), "testtenant", testEntity("Device", "badid"), nil)
 	is.True(err != nil) // should have returned an error
 }
 
@@ -62,11 +64,40 @@ func TestThatCreateEntityWithMatchingTypeAndIDWorks(t *testing.T) {
 	}, "")
 	defer ts.Close()
 
-	broker, err := New(log.Logger, withDefaultTestConfig(ts.URL))
+	broker, err := New(context.Background(), withDefaultTestConfig(ts.URL))
 	is.NoErr(err)
 
-	_, err = broker.CreateEntity(context.Background(), "testtenant", "Device", "urn:ngsi-ld:Device:testid", nil, nil)
+	_, err = broker.CreateEntity(context.Background(), "testtenant", testEntity("Device", "urn:ngsi-ld:Device:testid"), nil)
 	is.NoErr(err) // should not return an error
+}
+
+func TestThatNotificationsAreSent_ThisTestShouldBeBrokenUp(t *testing.T) {
+	is := is.New(t)
+	ts := setupMockContextSourceResponse(http.StatusCreated, [][2]string{
+		{"Content-Type", "application/ld+json"}, {"Location", "testlocation"},
+	}, "")
+	defer ts.Close()
+
+	numberOfNotifications := 0
+	ns := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		numberOfNotifications++
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ns.Close()
+
+	t.Setenv("NOTIFIER_ENDPOINT", ns.URL)
+
+	broker, err := New(context.Background(), withDefaultTestConfig(ts.URL))
+	is.NoErr(err)
+
+	broker.Start()
+
+	_, err = broker.CreateEntity(context.Background(), "testtenant", testEntity("Device", "urn:ngsi-ld:Device:testid"), nil)
+	is.NoErr(err) // should not return an error
+
+	broker.Stop()
+
+	is.Equal(numberOfNotifications, 1)
 }
 
 func setupMockContextSourceResponse(responseCode int, headers [][2]string, responseBody string) *httptest.Server {
@@ -117,4 +148,9 @@ func withDefaultTestConfig(endpoint string) Config {
 
 func withEmptyConfig() Config {
 	return Config{}
+}
+
+func testEntity(entityType, entityID string) types.Entity {
+	e, _ := entities.New(entityID, entityType, entities.DefaultContext())
+	return e
 }

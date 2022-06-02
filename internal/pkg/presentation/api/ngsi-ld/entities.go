@@ -13,11 +13,14 @@ import (
 	"strings"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
-	"github.com/diwise/context-broker/internal/pkg/infrastructure/logging"
-	"github.com/diwise/context-broker/internal/pkg/infrastructure/tracing"
-	ngsierrors "github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/errors"
-	"github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/geojson"
 	"github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/types"
+	"github.com/diwise/context-broker/pkg/ngsild"
+	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
+	"github.com/diwise/context-broker/pkg/ngsild/geojson"
+	ngsitypes "github.com/diwise/context-broker/pkg/ngsild/types"
+	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 
@@ -54,14 +57,13 @@ func NewCreateEntityHandler(
 		)
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		traceID, ctx, log := addTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
-		entity := &types.BaseEntity{}
 		// copy the body from the request and restore it for later use
 		body, _ := ioutil.ReadAll(r.Body)
 		r.Body = io.NopCloser(bytes.NewBuffer(body))
 
-		err = json.NewDecoder(io.NopCloser(bytes.NewBuffer(body))).Decode(entity)
+		entity, err := entities.NewFromBody(body)
 
 		if err != nil {
 			ngsierrors.ReportNewInvalidRequest(
@@ -72,18 +74,20 @@ func NewCreateEntityHandler(
 			return
 		}
 
-		var result *cim.CreateEntityResult
+		entityID := entity.ID()
 
-		result, err = contextInformationManager.CreateEntity(ctx, tenant, entity.Type, entity.ID, r.Body, propagatedHeaders)
+		var result *ngsild.CreateEntityResult
+
+		result, err = contextInformationManager.CreateEntity(ctx, tenant, entity, propagatedHeaders)
 		if err != nil {
 			log.Error().Err(err).Msg("create entity failed")
 			mapCIMToNGSILDError(w, err, traceID)
 			return
 		}
 
-		log.Info().Str("entityID", entity.ID).Str("tenant", tenant).Msg("entity created")
+		log.Info().Str("entityID", entityID).Str("tenant", tenant).Msg("entity created")
 
-		onsuccess(ctx, entity.Type, entity.ID, log)
+		onsuccess(ctx, entity.Type(), entityID, log)
 
 		w.Header().Add("Location", result.Location())
 		w.WriteHeader(http.StatusCreated)
@@ -108,7 +112,7 @@ func NewQueryEntitiesHandler(
 		)
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		traceID, ctx, log := addTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 		attributeNames := r.URL.Query().Get("attrs")
 		entityTypeNames := r.URL.Query().Get("type")
@@ -137,14 +141,14 @@ func NewQueryEntitiesHandler(
 			contentType = "application/ld+json"
 		}
 
-		var entityConverter func(cim.Entity) cim.Entity
+		var entityConverter func(ngsitypes.Entity) ngsitypes.Entity
 
 		var geoJsonCollection *geojson.GeoJSONFeatureCollection
-		var entityCollection []cim.Entity
+		var entityCollection []ngsitypes.Entity
 
 		if contentType == "application/geo+json" {
 			geoJsonCollection = geojson.NewFeatureCollection()
-			entityConverter = func(e cim.Entity) cim.Entity {
+			entityConverter = func(e ngsitypes.Entity) ngsitypes.Entity {
 				gje, err := geojson.ConvertEntity(e)
 				if err == nil {
 					geoJsonCollection.Features = append(geoJsonCollection.Features, *gje)
@@ -152,8 +156,8 @@ func NewQueryEntitiesHandler(
 				return e
 			}
 		} else {
-			entityCollection = []cim.Entity{}
-			entityConverter = func(e cim.Entity) cim.Entity {
+			entityCollection = []ngsitypes.Entity{}
+			entityConverter = func(e ngsitypes.Entity) ngsitypes.Entity {
 				entityCollection = append(entityCollection, e)
 				return e
 			}
@@ -210,9 +214,9 @@ func NewRetrieveEntityHandler(
 		)
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		traceID, ctx, log := addTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
-		var entity cim.Entity
+		var entity ngsitypes.Entity
 		entity, err = contextInformationManager.RetrieveEntity(ctx, tenant, entityID, propagatedHeaders)
 
 		if err != nil {
@@ -271,7 +275,7 @@ func NewUpdateEntityAttributesHandler(
 		)
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		traceID, ctx, log := addTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 		entity := &types.BaseEntity{}
 		// copy the body from the request and restore it for later use
@@ -303,21 +307,6 @@ func NewUpdateEntityAttributesHandler(
 	})
 }
 
-func addTraceIDToLoggerAndStoreInContext(span trace.Span, logger zerolog.Logger, ctx context.Context) (string, context.Context, zerolog.Logger) {
-
-	log := logger
-	traceID := span.SpanContext().TraceID()
-	traceIDStr := ""
-
-	if traceID.IsValid() {
-		traceIDStr = traceID.String()
-		log = log.With().Str("traceID", traceIDStr).Logger()
-	}
-
-	ctx = logging.NewContextWithLogger(ctx, log)
-	return traceIDStr, ctx, log
-}
-
 func extractHeaders(r *http.Request, headers ...string) map[string][]string {
 	extractedHeaders := map[string][]string{}
 
@@ -335,18 +324,19 @@ func extractHeaders(r *http.Request, headers ...string) map[string][]string {
 }
 
 func mapCIMToNGSILDError(w http.ResponseWriter, err error, traceID string) {
-	switch e := err.(type) {
-	case cim.AlreadyExistsError:
-		ngsierrors.ReportNewAlreadyExistsError(w, e.Error(), traceID)
-	case cim.BadRequestDataError:
-		ngsierrors.ReportNewBadRequestData(w, e.Error(), traceID)
-	case cim.InvalidRequestError:
-		ngsierrors.ReportNewInvalidRequest(w, e.Error(), traceID)
-	case cim.NotFoundError:
-		ngsierrors.ReportNotFoundError(w, e.Error(), traceID)
-	case cim.UnknownTenantError:
-		ngsierrors.ReportUnknownTenantError(w, e.Error(), traceID)
+
+	switch {
+	case errors.Is(err, ngsierrors.ErrAlreadyExists):
+		ngsierrors.ReportNewAlreadyExistsError(w, err.Error(), traceID)
+	case errors.Is(err, ngsierrors.ErrBadRequest):
+		ngsierrors.ReportNewBadRequestData(w, err.Error(), traceID)
+	case errors.Is(err, ngsierrors.ErrInvalidRequest):
+		ngsierrors.ReportNewInvalidRequest(w, err.Error(), traceID)
+	case errors.Is(err, ngsierrors.ErrNotFound):
+		ngsierrors.ReportNotFoundError(w, err.Error(), traceID)
+	case errors.Is(err, ngsierrors.ErrUnknownTenant):
+		ngsierrors.ReportUnknownTenantError(w, err.Error(), traceID)
 	default:
-		ngsierrors.ReportNewInternalError(w, e.Error(), traceID)
+		ngsierrors.ReportNewInternalError(w, err.Error(), traceID)
 	}
 }

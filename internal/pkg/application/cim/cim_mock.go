@@ -5,6 +5,8 @@ package cim
 
 import (
 	"context"
+	"github.com/diwise/context-broker/pkg/ngsild"
+	"github.com/diwise/context-broker/pkg/ngsild/types"
 	"io"
 	"sync"
 )
@@ -19,16 +21,22 @@ var _ ContextInformationManager = &ContextInformationManagerMock{}
 //
 // 		// make and configure a mocked ContextInformationManager
 // 		mockedContextInformationManager := &ContextInformationManagerMock{
-// 			CreateEntityFunc: func(ctx context.Context, tenant string, entityType string, entityID string, body io.Reader, headers map[string][]string) (*CreateEntityResult, error) {
+// 			CreateEntityFunc: func(ctx context.Context, tenant string, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
 // 				panic("mock out the CreateEntity method")
 // 			},
-// 			QueryEntitiesFunc: func(ctx context.Context, tenant string, entityTypes []string, entityAttributes []string, query string, headers map[string][]string) (*QueryEntitiesResult, error) {
+// 			QueryEntitiesFunc: func(ctx context.Context, tenant string, entityTypes []string, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error) {
 // 				panic("mock out the QueryEntities method")
 // 			},
-// 			RetrieveEntityFunc: func(ctx context.Context, tenant string, entityID string, headers map[string][]string) (Entity, error) {
+// 			RetrieveEntityFunc: func(ctx context.Context, tenant string, entityID string, headers map[string][]string) (types.Entity, error) {
 // 				panic("mock out the RetrieveEntity method")
 // 			},
-// 			UpdateEntityAttributesFunc: func(ctx context.Context, tenant string, entityID string, body io.Reader, headers map[string][]string) (*UpdateEntityAttributesResult, error) {
+// 			StartFunc: func() error {
+// 				panic("mock out the Start method")
+// 			},
+// 			StopFunc: func() error {
+// 				panic("mock out the Stop method")
+// 			},
+// 			UpdateEntityAttributesFunc: func(ctx context.Context, tenant string, entityID string, body io.Reader, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
 // 				panic("mock out the UpdateEntityAttributes method")
 // 			},
 // 		}
@@ -39,16 +47,22 @@ var _ ContextInformationManager = &ContextInformationManagerMock{}
 // 	}
 type ContextInformationManagerMock struct {
 	// CreateEntityFunc mocks the CreateEntity method.
-	CreateEntityFunc func(ctx context.Context, tenant string, entityType string, entityID string, body io.Reader, headers map[string][]string) (*CreateEntityResult, error)
+	CreateEntityFunc func(ctx context.Context, tenant string, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error)
 
 	// QueryEntitiesFunc mocks the QueryEntities method.
-	QueryEntitiesFunc func(ctx context.Context, tenant string, entityTypes []string, entityAttributes []string, query string, headers map[string][]string) (*QueryEntitiesResult, error)
+	QueryEntitiesFunc func(ctx context.Context, tenant string, entityTypes []string, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error)
 
 	// RetrieveEntityFunc mocks the RetrieveEntity method.
-	RetrieveEntityFunc func(ctx context.Context, tenant string, entityID string, headers map[string][]string) (Entity, error)
+	RetrieveEntityFunc func(ctx context.Context, tenant string, entityID string, headers map[string][]string) (types.Entity, error)
+
+	// StartFunc mocks the Start method.
+	StartFunc func() error
+
+	// StopFunc mocks the Stop method.
+	StopFunc func() error
 
 	// UpdateEntityAttributesFunc mocks the UpdateEntityAttributes method.
-	UpdateEntityAttributesFunc func(ctx context.Context, tenant string, entityID string, body io.Reader, headers map[string][]string) (*UpdateEntityAttributesResult, error)
+	UpdateEntityAttributesFunc func(ctx context.Context, tenant string, entityID string, body io.Reader, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -58,12 +72,8 @@ type ContextInformationManagerMock struct {
 			Ctx context.Context
 			// Tenant is the tenant argument value.
 			Tenant string
-			// EntityType is the entityType argument value.
-			EntityType string
-			// EntityID is the entityID argument value.
-			EntityID string
-			// Body is the body argument value.
-			Body io.Reader
+			// Entity is the entity argument value.
+			Entity types.Entity
 			// Headers is the headers argument value.
 			Headers map[string][]string
 		}
@@ -93,6 +103,12 @@ type ContextInformationManagerMock struct {
 			// Headers is the headers argument value.
 			Headers map[string][]string
 		}
+		// Start holds details about calls to the Start method.
+		Start []struct {
+		}
+		// Stop holds details about calls to the Stop method.
+		Stop []struct {
+		}
 		// UpdateEntityAttributes holds details about calls to the UpdateEntityAttributes method.
 		UpdateEntityAttributes []struct {
 			// Ctx is the ctx argument value.
@@ -110,53 +126,47 @@ type ContextInformationManagerMock struct {
 	lockCreateEntity           sync.RWMutex
 	lockQueryEntities          sync.RWMutex
 	lockRetrieveEntity         sync.RWMutex
+	lockStart                  sync.RWMutex
+	lockStop                   sync.RWMutex
 	lockUpdateEntityAttributes sync.RWMutex
 }
 
 // CreateEntity calls CreateEntityFunc.
-func (mock *ContextInformationManagerMock) CreateEntity(ctx context.Context, tenant string, entityType string, entityID string, body io.Reader, headers map[string][]string) (*CreateEntityResult, error) {
+func (mock *ContextInformationManagerMock) CreateEntity(ctx context.Context, tenant string, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
 	if mock.CreateEntityFunc == nil {
 		panic("ContextInformationManagerMock.CreateEntityFunc: method is nil but ContextInformationManager.CreateEntity was just called")
 	}
 	callInfo := struct {
-		Ctx        context.Context
-		Tenant     string
-		EntityType string
-		EntityID   string
-		Body       io.Reader
-		Headers    map[string][]string
+		Ctx     context.Context
+		Tenant  string
+		Entity  types.Entity
+		Headers map[string][]string
 	}{
-		Ctx:        ctx,
-		Tenant:     tenant,
-		EntityType: entityType,
-		EntityID:   entityID,
-		Body:       body,
-		Headers:    headers,
+		Ctx:     ctx,
+		Tenant:  tenant,
+		Entity:  entity,
+		Headers: headers,
 	}
 	mock.lockCreateEntity.Lock()
 	mock.calls.CreateEntity = append(mock.calls.CreateEntity, callInfo)
 	mock.lockCreateEntity.Unlock()
-	return mock.CreateEntityFunc(ctx, tenant, entityType, entityID, body, headers)
+	return mock.CreateEntityFunc(ctx, tenant, entity, headers)
 }
 
 // CreateEntityCalls gets all the calls that were made to CreateEntity.
 // Check the length with:
 //     len(mockedContextInformationManager.CreateEntityCalls())
 func (mock *ContextInformationManagerMock) CreateEntityCalls() []struct {
-	Ctx        context.Context
-	Tenant     string
-	EntityType string
-	EntityID   string
-	Body       io.Reader
-	Headers    map[string][]string
+	Ctx     context.Context
+	Tenant  string
+	Entity  types.Entity
+	Headers map[string][]string
 } {
 	var calls []struct {
-		Ctx        context.Context
-		Tenant     string
-		EntityType string
-		EntityID   string
-		Body       io.Reader
-		Headers    map[string][]string
+		Ctx     context.Context
+		Tenant  string
+		Entity  types.Entity
+		Headers map[string][]string
 	}
 	mock.lockCreateEntity.RLock()
 	calls = mock.calls.CreateEntity
@@ -165,7 +175,7 @@ func (mock *ContextInformationManagerMock) CreateEntityCalls() []struct {
 }
 
 // QueryEntities calls QueryEntitiesFunc.
-func (mock *ContextInformationManagerMock) QueryEntities(ctx context.Context, tenant string, entityTypes []string, entityAttributes []string, query string, headers map[string][]string) (*QueryEntitiesResult, error) {
+func (mock *ContextInformationManagerMock) QueryEntities(ctx context.Context, tenant string, entityTypes []string, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error) {
 	if mock.QueryEntitiesFunc == nil {
 		panic("ContextInformationManagerMock.QueryEntitiesFunc: method is nil but ContextInformationManager.QueryEntities was just called")
 	}
@@ -216,7 +226,7 @@ func (mock *ContextInformationManagerMock) QueryEntitiesCalls() []struct {
 }
 
 // RetrieveEntity calls RetrieveEntityFunc.
-func (mock *ContextInformationManagerMock) RetrieveEntity(ctx context.Context, tenant string, entityID string, headers map[string][]string) (Entity, error) {
+func (mock *ContextInformationManagerMock) RetrieveEntity(ctx context.Context, tenant string, entityID string, headers map[string][]string) (types.Entity, error) {
 	if mock.RetrieveEntityFunc == nil {
 		panic("ContextInformationManagerMock.RetrieveEntityFunc: method is nil but ContextInformationManager.RetrieveEntity was just called")
 	}
@@ -258,8 +268,60 @@ func (mock *ContextInformationManagerMock) RetrieveEntityCalls() []struct {
 	return calls
 }
 
+// Start calls StartFunc.
+func (mock *ContextInformationManagerMock) Start() error {
+	if mock.StartFunc == nil {
+		panic("ContextInformationManagerMock.StartFunc: method is nil but ContextInformationManager.Start was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockStart.Lock()
+	mock.calls.Start = append(mock.calls.Start, callInfo)
+	mock.lockStart.Unlock()
+	return mock.StartFunc()
+}
+
+// StartCalls gets all the calls that were made to Start.
+// Check the length with:
+//     len(mockedContextInformationManager.StartCalls())
+func (mock *ContextInformationManagerMock) StartCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockStart.RLock()
+	calls = mock.calls.Start
+	mock.lockStart.RUnlock()
+	return calls
+}
+
+// Stop calls StopFunc.
+func (mock *ContextInformationManagerMock) Stop() error {
+	if mock.StopFunc == nil {
+		panic("ContextInformationManagerMock.StopFunc: method is nil but ContextInformationManager.Stop was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockStop.Lock()
+	mock.calls.Stop = append(mock.calls.Stop, callInfo)
+	mock.lockStop.Unlock()
+	return mock.StopFunc()
+}
+
+// StopCalls gets all the calls that were made to Stop.
+// Check the length with:
+//     len(mockedContextInformationManager.StopCalls())
+func (mock *ContextInformationManagerMock) StopCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockStop.RLock()
+	calls = mock.calls.Stop
+	mock.lockStop.RUnlock()
+	return calls
+}
+
 // UpdateEntityAttributes calls UpdateEntityAttributesFunc.
-func (mock *ContextInformationManagerMock) UpdateEntityAttributes(ctx context.Context, tenant string, entityID string, body io.Reader, headers map[string][]string) (*UpdateEntityAttributesResult, error) {
+func (mock *ContextInformationManagerMock) UpdateEntityAttributes(ctx context.Context, tenant string, entityID string, body io.Reader, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
 	if mock.UpdateEntityAttributesFunc == nil {
 		panic("ContextInformationManagerMock.UpdateEntityAttributesFunc: method is nil but ContextInformationManager.UpdateEntityAttributes was just called")
 	}

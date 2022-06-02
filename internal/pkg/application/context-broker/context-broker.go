@@ -2,28 +2,36 @@ package contextbroker
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"net/http"
-	"net/http/httputil"
-	"net/url"
+	"os"
 	"regexp"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
-	"github.com/diwise/context-broker/internal/pkg/infrastructure/logging"
-	"github.com/rs/zerolog"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"github.com/diwise/context-broker/internal/pkg/application/subscriptions"
+	"github.com/diwise/context-broker/pkg/ngsild"
+	"github.com/diwise/context-broker/pkg/ngsild/client"
+	"github.com/diwise/context-broker/pkg/ngsild/errors"
+	"github.com/diwise/context-broker/pkg/ngsild/types"
 )
 
 type contextBrokerApp struct {
-	tenants map[string][]ContextSourceConfig
+	tenants  map[string][]ContextSourceConfig
+	notifier subscriptions.Notifier
 }
 
-func New(log zerolog.Logger, cfg Config) (cim.ContextInformationManager, error) {
+func New(ctx context.Context, cfg Config) (cim.ContextInformationManager, error) {
+	var notifier subscriptions.Notifier
+
+	// TODO: Support multiple notifiers and separation between tenants
+	notifierEndpoint := os.Getenv("NOTIFIER_ENDPOINT")
+	if notifierEndpoint != "" {
+		notifier, _ = subscriptions.NewNotifier(ctx, notifierEndpoint)
+	}
+
 	app := &contextBrokerApp{
-		tenants: make(map[string][]ContextSourceConfig),
+		tenants:  make(map[string][]ContextSourceConfig),
+		notifier: notifier,
 	}
 
 	for _, tenant := range cfg.Tenants {
@@ -33,13 +41,14 @@ func New(log zerolog.Logger, cfg Config) (cim.ContextInformationManager, error) 
 	return app, nil
 }
 
-func (app *contextBrokerApp) CreateEntity(ctx context.Context, tenant, entityType, entityID string, body io.Reader, headers map[string][]string) (*cim.CreateEntityResult, error) {
+func (app *contextBrokerApp) CreateEntity(ctx context.Context, tenant string, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
 	sources, ok := app.tenants[tenant]
 	if !ok {
-		return nil, cim.NewUnknownTenantError(tenant)
+		return nil, errors.NewUnknownTenantError(tenant)
 	}
 
-	log := logging.GetFromContext(ctx)
+	entityID := entity.ID()
+	entityType := entity.Type()
 
 	for _, src := range sources {
 		for _, reginfo := range src.Information {
@@ -57,31 +66,22 @@ func (app *contextBrokerApp) CreateEntity(ctx context.Context, tenant, entityTyp
 					continue
 				}
 
-				response, responseBody, err := callContextSource(ctx, http.MethodPost, src.Endpoint+"/ngsi-ld/v1/entities", body, headers)
+				cbClient := client.NewContextBrokerClient(src.Endpoint)
+				result, err := cbClient.CreateEntity(ctx, entity, headers)
 				if err != nil {
 					return nil, err
 				}
 
-				if response.StatusCode == http.StatusCreated {
-					location := response.Header.Get("Location")
-					if location == "" {
-						log.Warn().Msg("downstream context source failed to provide a location header with created response")
-						location = "/ngsi-ld/v1/entities/" + url.QueryEscape(entityID)
-					}
-					return cim.NewCreateEntityResult(location), nil
+				if app.notifier != nil {
+					app.notifier.EntityCreated(ctx, entity)
 				}
 
-				contentType := response.Header.Get("Content-Type")
-				if response.StatusCode >= http.StatusBadRequest && response.StatusCode <= http.StatusInternalServerError {
-					return nil, cim.NewErrorFromProblemReport(response.StatusCode, contentType, responseBody)
-				}
-
-				return nil, fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", response.StatusCode, contentType, string(responseBody))
+				return result, nil
 			}
 		}
 	}
 
-	return nil, cim.NewNotFoundError(fmt.Sprintf("no context source found that could create type %s with id %s", entityType, entityID))
+	return nil, errors.NewNotFoundError(fmt.Sprintf("no context source found that could create type %s with id %s", entityType, entityID))
 }
 
 func notInSlice(find string, slice []string) bool {
@@ -93,10 +93,10 @@ func notInSlice(find string, slice []string) bool {
 	return true
 }
 
-func (app *contextBrokerApp) QueryEntities(ctx context.Context, tenant string, entityTypes, entityAttributes []string, query string, headers map[string][]string) (*cim.QueryEntitiesResult, error) {
+func (app *contextBrokerApp) QueryEntities(ctx context.Context, tenant string, entityTypes, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error) {
 	sources, ok := app.tenants[tenant]
 	if !ok {
-		return nil, cim.NewUnknownTenantError(tenant)
+		return nil, errors.NewUnknownTenantError(tenant)
 	}
 
 	for _, src := range sources {
@@ -106,44 +106,19 @@ func (app *contextBrokerApp) QueryEntities(ctx context.Context, tenant string, e
 					continue
 				}
 
-				response, responseBody, err := callContextSource(ctx, http.MethodGet, src.Endpoint+query, nil, headers)
-				if err != nil {
-					return nil, err
-				}
-
-				if response.StatusCode != http.StatusOK {
-					contentType := response.Header.Get("Content-Type")
-					if response.StatusCode >= http.StatusBadRequest && response.StatusCode <= http.StatusInternalServerError {
-						return nil, cim.NewErrorFromProblemReport(response.StatusCode, contentType, responseBody)
-					}
-					return nil, fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", response.StatusCode, contentType, string(responseBody))
-				}
-
-				var entities []cim.EntityImpl
-				err = json.Unmarshal(responseBody, &entities)
-				if err != nil {
-					return nil, err
-				}
-
-				qer := cim.NewQueryEntitiesResult()
-				go func() {
-					for idx := range entities {
-						qer.Found <- entities[idx]
-					}
-					qer.Found <- nil
-				}()
-				return qer, nil
+				cbClient := client.NewContextBrokerClient(src.Endpoint)
+				return cbClient.QueryEntities(ctx, entityTypes, entityAttributes, query, headers)
 			}
 		}
 	}
 
-	return nil, cim.NewNotFoundError(fmt.Sprintf("no context source found that could handle query %s", query))
+	return nil, errors.NewNotFoundError(fmt.Sprintf("no context source found that could handle query %s", query))
 }
 
-func (app *contextBrokerApp) RetrieveEntity(ctx context.Context, tenant, entityID string, headers map[string][]string) (cim.Entity, error) {
+func (app *contextBrokerApp) RetrieveEntity(ctx context.Context, tenant, entityID string, headers map[string][]string) (types.Entity, error) {
 	sources, ok := app.tenants[tenant]
 	if !ok {
-		return nil, cim.NewUnknownTenantError(tenant)
+		return nil, errors.NewUnknownTenantError(tenant)
 	}
 
 	for _, src := range sources {
@@ -159,40 +134,19 @@ func (app *contextBrokerApp) RetrieveEntity(ctx context.Context, tenant, entityI
 					continue
 				}
 
-				response, responseBody, err := callContextSource(
-					ctx, http.MethodGet, src.Endpoint+"/ngsi-ld/v1/entities/"+url.QueryEscape(entityID), nil, headers,
-				)
-
-				if err != nil {
-					return nil, err
-				}
-
-				if response.StatusCode != http.StatusOK {
-					contentType := response.Header.Get("Content-Type")
-					if response.StatusCode >= http.StatusBadRequest && response.StatusCode <= http.StatusInternalServerError {
-						return nil, cim.NewErrorFromProblemReport(response.StatusCode, contentType, responseBody)
-					}
-					return nil, fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", response.StatusCode, contentType, string(responseBody))
-				}
-
-				var entity cim.EntityImpl
-				err = json.Unmarshal(responseBody, &entity)
-				if err != nil {
-					return nil, err
-				}
-
-				return entity, nil
+				cbClient := client.NewContextBrokerClient(src.Endpoint)
+				return cbClient.RetrieveEntity(ctx, entityID, headers)
 			}
 		}
 	}
 
-	return nil, cim.NewNotFoundError(fmt.Sprintf("no context source found that could provide entity %s", entityID))
+	return nil, errors.NewNotFoundError(fmt.Sprintf("no context source found that could provide entity %s", entityID))
 }
 
-func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant, entityID string, body io.Reader, headers map[string][]string) (*cim.UpdateEntityAttributesResult, error) {
+func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant, entityID string, body io.Reader, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
 	sources, ok := app.tenants[tenant]
 	if !ok {
-		return nil, cim.NewUnknownTenantError(tenant)
+		return nil, errors.NewUnknownTenantError(tenant)
 	}
 
 	for _, src := range sources {
@@ -208,73 +162,45 @@ func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant,
 					continue
 				}
 
-				response, responseBody, err := callContextSource(
-					ctx, http.MethodPatch, src.Endpoint+"/ngsi-ld/v1/entities/"+url.QueryEscape(entityID)+"/attrs/", body, headers,
-				)
-
+				cbClient := client.NewContextBrokerClient(src.Endpoint)
+				result, err := cbClient.UpdateEntityAttributes(ctx, entityID, body, headers)
 				if err != nil {
-					return nil, err
+					return result, err
 				}
 
-				if response.StatusCode != http.StatusNoContent && response.StatusCode != http.StatusMultiStatus {
-					contentType := response.Header.Get("Content-Type")
-					if response.StatusCode >= http.StatusBadRequest && response.StatusCode <= http.StatusInternalServerError {
-						return nil, cim.NewErrorFromProblemReport(response.StatusCode, contentType, responseBody)
-					}
+				if app.notifier != nil {
+					// Spawn a go routine to fetch the updated entity in its entirety
+					go func() {
+						delete(headers, "Content-Type")
+						headers["Accept"] = []string{"application/ld+json"}
 
-					return nil, fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", response.StatusCode, contentType, string(responseBody))
+						entity, err := cbClient.RetrieveEntity(ctx, entityID, headers)
+						if err == nil {
+							app.notifier.EntityUpdated(ctx, entity)
+						}
+					}()
 				}
 
-				result, err := cim.NewUpdateEntityAttributesResult(responseBody)
-
-				if err != nil {
-					return nil, fmt.Errorf("failed to unmarshal update result: %w", err)
-				}
-
-				return result, nil
+				return result, err
 			}
 		}
 	}
 
-	return nil, cim.NewNotFoundError(fmt.Sprintf("no context source found that could update attributes for entity %s", entityID))
+	return nil, errors.NewNotFoundError(fmt.Sprintf("no context source found that could update attributes for entity %s", entityID))
 }
 
-func callContextSource(ctx context.Context, method, endpoint string, body io.Reader, headers map[string][]string) (*http.Response, []byte, error) {
-	client := http.Client{
-		Transport: otelhttp.NewTransport(http.DefaultTransport),
+func (app *contextBrokerApp) Start() error {
+	if app.notifier != nil {
+		return app.notifier.Start()
 	}
 
-	req, err := http.NewRequestWithContext(ctx, method, endpoint, body)
-	if err != nil {
-		return nil, nil, err
+	return nil
+}
+
+func (app *contextBrokerApp) Stop() error {
+	if app.notifier != nil {
+		return app.notifier.Stop()
 	}
 
-	for header, headerValue := range headers {
-		for _, val := range headerValue {
-			req.Header.Add(header, val)
-		}
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	defer resp.Body.Close()
-	respBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if resp.StatusCode >= http.StatusBadRequest {
-		reqbytes, _ := httputil.DumpRequest(req, false)
-		respbytes, _ := httputil.DumpResponse(resp, false)
-
-		log := logging.GetFromContext(ctx)
-
-		log.Error().Str("request", string(reqbytes)).Str("response", string(respbytes)).Msg("request failed")
-
-	}
-
-	return resp, respBody, nil
+	return nil
 }
