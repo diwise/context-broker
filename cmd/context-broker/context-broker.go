@@ -5,13 +5,12 @@ import (
 	"flag"
 	"net/http"
 	"os"
-	"runtime/debug"
 
 	contextbroker "github.com/diwise/context-broker/internal/pkg/application/context-broker"
-	"github.com/diwise/context-broker/internal/pkg/infrastructure/logging"
 	"github.com/diwise/context-broker/internal/pkg/infrastructure/router"
-	"github.com/diwise/context-broker/internal/pkg/infrastructure/tracing"
 	ngsild "github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld"
+	"github.com/diwise/service-chassis/pkg/infrastructure/buildinfo"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 )
 
 const serviceName string = "context-broker"
@@ -20,19 +19,12 @@ var configFilePath string
 
 func main() {
 
-	serviceVersion := version()
-
-	ctx, logger := logging.NewLogger(context.Background(), serviceName, serviceVersion)
-	logger.Info().Msg("starting up ...")
+	serviceVersion := buildinfo.SourceVersion()
+	ctx, logger, cleanup := o11y.Init(context.Background(), serviceName, serviceVersion)
+	defer cleanup()
 
 	flag.StringVar(&configFilePath, "config", "/opt/diwise/config/default.yaml", "A configuration file containing federation information")
 	flag.Parse()
-
-	cleanup, err := tracing.Init(ctx, logger, serviceName, serviceVersion)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("failed to init tracing")
-	}
-	defer cleanup()
 
 	configfile, err := os.Open(configFilePath)
 	if err != nil {
@@ -65,24 +57,4 @@ func main() {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to listen for connections")
 	}
-}
-
-func version() string {
-	buildInfo, ok := debug.ReadBuildInfo()
-	if !ok {
-		return "unknown"
-	}
-
-	buildSettings := buildInfo.Settings
-	infoMap := map[string]string{}
-	for _, s := range buildSettings {
-		infoMap[s.Key] = s.Value
-	}
-
-	sha := infoMap["vcs.revision"]
-	if infoMap["vcs.modified"] == "true" {
-		sha += "+"
-	}
-
-	return sha
 }

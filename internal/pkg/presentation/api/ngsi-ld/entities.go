@@ -13,14 +13,14 @@ import (
 	"strings"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
-	"github.com/diwise/context-broker/internal/pkg/infrastructure/logging"
-	"github.com/diwise/context-broker/internal/pkg/infrastructure/tracing"
 	"github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/types"
 	"github.com/diwise/context-broker/pkg/ngsild"
 	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
 	"github.com/diwise/context-broker/pkg/ngsild/geojson"
 	ngsitypes "github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 
@@ -57,7 +57,7 @@ func NewCreateEntityHandler(
 		)
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		traceID, ctx, log := addTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 		// copy the body from the request and restore it for later use
 		body, _ := ioutil.ReadAll(r.Body)
@@ -112,7 +112,7 @@ func NewQueryEntitiesHandler(
 		)
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		traceID, ctx, log := addTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 		attributeNames := r.URL.Query().Get("attrs")
 		entityTypeNames := r.URL.Query().Get("type")
@@ -214,7 +214,7 @@ func NewRetrieveEntityHandler(
 		)
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		traceID, ctx, log := addTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 		var entity ngsitypes.Entity
 		entity, err = contextInformationManager.RetrieveEntity(ctx, tenant, entityID, propagatedHeaders)
@@ -275,7 +275,7 @@ func NewUpdateEntityAttributesHandler(
 		)
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		traceID, ctx, log := addTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 		entity := &types.BaseEntity{}
 		// copy the body from the request and restore it for later use
@@ -305,21 +305,6 @@ func NewUpdateEntityAttributesHandler(
 			w.Write(updateResult.Bytes())
 		}
 	})
-}
-
-func addTraceIDToLoggerAndStoreInContext(span trace.Span, logger zerolog.Logger, ctx context.Context) (string, context.Context, zerolog.Logger) {
-
-	log := logger
-	traceID := span.SpanContext().TraceID()
-	traceIDStr := ""
-
-	if traceID.IsValid() {
-		traceIDStr = traceID.String()
-		log = log.With().Str("traceID", traceIDStr).Logger()
-	}
-
-	ctx = logging.NewContextWithLogger(ctx, log)
-	return traceIDStr, ctx, log
 }
 
 func extractHeaders(r *http.Request, headers ...string) map[string][]string {
