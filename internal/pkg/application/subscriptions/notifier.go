@@ -10,7 +10,9 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/diwise/context-broker/pkg/ngsild/types/subscriptions"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
 )
 
 type Notifier interface {
@@ -20,6 +22,8 @@ type Notifier interface {
 	EntityCreated(ctx context.Context, e types.Entity)
 	EntityUpdated(ctx context.Context, e types.Entity)
 }
+
+var tracer = otel.Tracer("context-broker/notifier")
 
 type action func()
 
@@ -68,8 +72,13 @@ func (n *notifier) Stop() error {
 
 func (n *notifier) EntityCreated(ctx context.Context, e types.Entity) {
 	if n.started {
+		var err error
+		ctx, span := tracer.Start(ctx, "post")
+
 		n.queue <- func() {
-			err := postNotification(ctx, e, n.endpoint)
+			defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+			err = postNotification(ctx, e, n.endpoint)
 			if err != nil {
 				logger := logging.GetFromContext(ctx)
 				logger.Error().Err(err).Msg("failed to post notification")
@@ -80,8 +89,13 @@ func (n *notifier) EntityCreated(ctx context.Context, e types.Entity) {
 
 func (n *notifier) EntityUpdated(ctx context.Context, e types.Entity) {
 	if n.started {
+		var err error
+		ctx, span := tracer.Start(ctx, "post")
+
 		n.queue <- func() {
-			err := postNotification(ctx, e, n.endpoint)
+			defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+			err = postNotification(ctx, e, n.endpoint)
 			if err != nil {
 				logger := logging.GetFromContext(ctx)
 				logger.Error().Err(err).Msg("failed to post notification")
@@ -94,7 +108,7 @@ func postNotification(ctx context.Context, e types.Entity, endpoint string) erro
 	notification := subscriptions.NewNotification(e)
 	body, err := json.MarshalIndent(notification, "", " ")
 	if err != nil {
-		return err
+		return fmt.Errorf("marshalling error (%w)", err)
 	}
 
 	httpClient := http.Client{
@@ -103,14 +117,14 @@ func postNotification(ctx context.Context, e types.Entity, endpoint string) erro
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewBuffer(body))
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to create new request (%w)", err)
 	}
 
 	req.Header.Add("Content-Type", "application/json")
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to send request (%w)", err)
 	}
 
 	defer resp.Body.Close()
