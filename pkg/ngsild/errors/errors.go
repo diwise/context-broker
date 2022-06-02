@@ -2,8 +2,103 @@ package errors
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
+
+var ErrAlreadyExists = fmt.Errorf("already exists")
+var ErrInternal = fmt.Errorf("internal error")
+var ErrNotFound = fmt.Errorf("not found")
+var ErrRequest = fmt.Errorf("request error")
+var ErrBadRequest = fmt.Errorf("bad request")
+var ErrBadResponse = fmt.Errorf("bad response")
+var ErrInvalidRequest = fmt.Errorf("invalid request")
+var ErrUnknownTenant = fmt.Errorf("unknown tenant")
+
+type myError struct {
+	msg    string
+	target error
+}
+
+func (m myError) Error() string        { return m.msg }
+func (m myError) Is(target error) bool { return target == m.target }
+
+func NewAlreadyExistsError(msg string) error {
+	return &myError{
+		msg:    msg,
+		target: ErrAlreadyExists,
+	}
+}
+
+func NewBadRequestDataError(msg string) error {
+	return &myError{
+		msg:    msg,
+		target: ErrBadRequest,
+	}
+}
+
+func NewInvalidRequestError(msg string) error {
+	return &myError{
+		msg:    msg,
+		target: ErrInvalidRequest,
+	}
+}
+
+func NewNotFoundError(msg string) error {
+	return &myError{
+		msg:    msg,
+		target: ErrNotFound,
+	}
+}
+
+func NewUnknownTenantError(msg string) error {
+	return &myError{
+		msg:    msg,
+		target: ErrUnknownTenant,
+	}
+}
+
+// TODO: Move problem report handling to a single place (presentation layer)
+
+func NewErrorFromProblemReport(code int, contentType string, body []byte) error {
+	report := &struct {
+		Type   string `json:"type"`
+		Title  string `json:"title"`
+		Detail string `json:"detail"`
+	}{}
+
+	err := json.Unmarshal(body, report)
+	if err != nil {
+		return fmt.Errorf("failed to process problem report from context source: %s", err.Error())
+	}
+
+	if code == http.StatusNotFound || report.Type == "https://uri.etsi.org/ngsi-ld/errors/ResourceNotFound" {
+		return NewNotFoundError(report.Detail)
+	}
+
+	if report.Type == "https://uri.etsi.org/ngsi-ld/errors/NonexistentTenant" {
+		return NewUnknownTenantError(report.Detail)
+	}
+
+	if report.Type == "https://uri.etsi.org/ngsi-ld/errors/BadRequestData" {
+		return NewBadRequestDataError(report.Detail)
+	}
+
+	if report.Type == "https://uri.etsi.org/ngsi-ld/errors/InvalidRequest" {
+		return NewInvalidRequestError(report.Detail)
+	}
+
+	if report.Type == "https://uri.etsi.org/ngsi-ld/errors/AlreadyExists" {
+		return NewAlreadyExistsError(report.Detail)
+	}
+
+	return NewInternalError(
+		fmt.Sprintf("[code: %d] unknown problem report of type \"%s\" with detail \"%s\" received",
+			code, report.Type, report.Detail,
+		),
+		"traceID",
+	)
+}
 
 //ProblemDetails stores details about a certain problem according to RFC7807
 //See https://tools.ietf.org/html/rfc7807
@@ -106,6 +201,10 @@ func ReportNewInvalidRequest(w http.ResponseWriter, detail, traceID string) {
 //InternalError reports that there has been an error during the operation execution
 type InternalError struct {
 	ProblemDetailsImpl
+}
+
+func (ie InternalError) Error() string {
+	return ie.detail
 }
 
 //NewInternalError creates and returns a new instance of an InternalError with the supplied problem detail

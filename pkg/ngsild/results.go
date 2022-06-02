@@ -1,6 +1,10 @@
-package cim
+package ngsild
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/diwise/context-broker/pkg/ngsild/types"
+)
 
 type CreateEntityResult struct {
 	location string
@@ -17,12 +21,12 @@ func (r CreateEntityResult) Location() string {
 }
 
 type QueryEntitiesResult struct {
-	Found chan (Entity)
+	Found chan (types.Entity)
 }
 
 func NewQueryEntitiesResult() *QueryEntitiesResult {
 	qer := &QueryEntitiesResult{}
-	qer.Found = make(chan Entity)
+	qer.Found = make(chan types.Entity)
 	return qer
 }
 

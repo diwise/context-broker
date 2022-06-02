@@ -11,6 +11,11 @@ import (
 	"testing"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
+	"github.com/diwise/context-broker/pkg/datamodels/fiware"
+	"github.com/diwise/context-broker/pkg/ngsild"
+	"github.com/diwise/context-broker/pkg/ngsild/errors"
+	ngsitypes "github.com/diwise/context-broker/pkg/ngsild/types"
+	. "github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 	"github.com/go-chi/chi/v5"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
@@ -56,8 +61,8 @@ func TestCreateEntityCanHandleAlreadyExistsError(t *testing.T) {
 	is, ts, app := setupTest(t)
 	defer ts.Close()
 
-	app.CreateEntityFunc = func(context.Context, string, string, string, io.Reader, map[string][]string) (*cim.CreateEntityResult, error) {
-		return nil, cim.NewAlreadyExistsError("already exists")
+	app.CreateEntityFunc = func(context.Context, string, ngsitypes.Entity, map[string][]string) (*ngsild.CreateEntityResult, error) {
+		return nil, errors.NewAlreadyExistsError("already exists")
 	}
 
 	resp, _ := newPostRequest(is, ts, ld_json, "/ngsi-ld/v1/entities", bytes.NewBuffer([]byte(entityJSON)))
@@ -69,7 +74,7 @@ func TestCreateEntityCanHandleInternalError(t *testing.T) {
 	is, ts, app := setupTest(t)
 	defer ts.Close()
 
-	app.CreateEntityFunc = func(context.Context, string, string, string, io.Reader, map[string][]string) (*cim.CreateEntityResult, error) {
+	app.CreateEntityFunc = func(context.Context, string, ngsitypes.Entity, map[string][]string) (*ngsild.CreateEntityResult, error) {
 		return nil, fmt.Errorf("some unknown error")
 	}
 
@@ -124,10 +129,16 @@ func TestQueryEntities(t *testing.T) {
 	is, ts, app := setupTest(t)
 	defer ts.Close()
 
-	app.QueryEntitiesFunc = func(ctx context.Context, tenant string, types []string, attrs []string, q string, h map[string][]string) (*cim.QueryEntitiesResult, error) {
-		qer := cim.NewQueryEntitiesResult()
+	app.QueryEntitiesFunc = func(ctx context.Context, tenant string, types []string, attrs []string, q string, h map[string][]string) (*ngsild.QueryEntitiesResult, error) {
+		qer := ngsild.NewQueryEntitiesResult()
 		go func() {
-			qer.Found <- cim.NewEntity(weatherObservedJson)
+			e, _ := fiware.NewWeatherObserved(
+				"Spain-WeatherObserved-Valladolid-2016-11-30T07:00:00.00Z",
+				41.640833333, -4.754444444,
+				"2016-11-30T07:00:00.00Z",
+				Temperature(3.3),
+			)
+			qer.Found <- e
 			qer.Found <- nil
 		}()
 		return qer, nil
@@ -143,10 +154,16 @@ func TestQueryEntitiesAsGeoJSON(t *testing.T) {
 	is, ts, app := setupTest(t)
 	defer ts.Close()
 
-	app.QueryEntitiesFunc = func(ctx context.Context, tenant string, types []string, attrs []string, q string, h map[string][]string) (*cim.QueryEntitiesResult, error) {
-		qer := cim.NewQueryEntitiesResult()
+	app.QueryEntitiesFunc = func(ctx context.Context, tenant string, types []string, attrs []string, q string, h map[string][]string) (*ngsild.QueryEntitiesResult, error) {
+		qer := ngsild.NewQueryEntitiesResult()
 		go func() {
-			qer.Found <- cim.NewEntity(weatherObservedJson)
+			e, _ := fiware.NewWeatherObserved(
+				"Spain-WeatherObserved-Valladolid-2016-11-30T07:00:00.00Z",
+				41.640833333, -4.754444444,
+				"2016-11-30T07:00:00.00Z",
+				Temperature(3.3),
+			)
+			qer.Found <- e
 			qer.Found <- nil
 		}()
 		return qer, nil
@@ -192,11 +209,13 @@ func setupTest(t *testing.T) (*is.I, *httptest.Server, *cim.ContextInformationMa
 
 	log := log.Logger
 	app := &cim.ContextInformationManagerMock{
-		CreateEntityFunc: func(ctx context.Context, tenant, entityType, entityID string, body io.Reader, h map[string][]string) (*cim.CreateEntityResult, error) {
-			return cim.NewCreateEntityResult("somewhere"), nil
+		CreateEntityFunc: func(ctx context.Context, tenant string, entity ngsitypes.Entity, h map[string][]string) (*ngsild.CreateEntityResult, error) {
+			return ngsild.NewCreateEntityResult("somewhere"), nil
 		},
-		QueryEntitiesFunc: func(ctx context.Context, tenant string, types []string, attrs []string, q string, h map[string][]string) (*cim.QueryEntitiesResult, error) {
-			return nil, fmt.Errorf("some unknown error")
+		QueryEntitiesFunc: func(ctx context.Context, tenant string, types []string, attrs []string, q string, h map[string][]string) (*ngsild.QueryEntitiesResult, error) {
+			qer := ngsild.NewQueryEntitiesResult()
+			go func() { qer.Found <- nil }()
+			return qer, nil
 		},
 	}
 
@@ -214,27 +233,4 @@ var entityJSON string = `{
     ]
 }`
 
-var weatherObservedJson string = `{
-	"id": "urn:ngsi-ld:WeatherObserved:Spain-WeatherObserved-Valladolid-2016-11-30T07:00:00.00Z",
-    "type": "WeatherObserved",
-    "dateObserved": {
-        "type": "Property",
-        "value": {
-            "@type": "DateTime",
-            "@value": "2016-11-30T07:00:00.00Z"
-        }
-    },
-    "temperature": {
-        "type": "Property",
-        "value": 3.3
-    },
-    "location": {
-        "type": "GeoProperty",
-        "value": {
-            "type": "Point",
-            "coordinates": [-4.754444444, 41.640833333]
-        }
-    }
-}`
-
-var weatherObservedGeoJson string = `{"type":"FeatureCollection","features":[{"id":"urn:ngsi-ld:WeatherObserved:Spain-WeatherObserved-Valladolid-2016-11-30T07:00:00.00Z","type":"Feature","geometry":{"coordinates":[-4.754444444,41.640833333],"type":"Point"},"properties":{"dateObserved":{"type":"Property","value":{"@type":"DateTime","@value":"2016-11-30T07:00:00.00Z"}},"location":{"type":"GeoProperty","value":{"coordinates":[-4.754444444,41.640833333],"type":"Point"}},"temperature":{"type":"Property","value":3.3},"type":"WeatherObserved"}}],"@context":["https://schema.lab.fiware.org/ld/context","https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"]}`
+var weatherObservedGeoJson string = `{"type":"FeatureCollection","features":[{"id":"urn:ngsi-ld:WeatherObserved:Spain-WeatherObserved-Valladolid-2016-11-30T07:00:00.00Z","type":"Feature","geometry":{"type":"Point","coordinates":[-4.754444444,41.640833333]},"properties":{"dateObserved":{"type":"Property","value":{"@type":"DateTime","@value":"2016-11-30T07:00:00.00Z"}},"location":{"type":"GeoProperty","value":{"type":"Point","coordinates":[-4.754444444,41.640833333]}},"temperature":{"type":"Property","value":3.3},"type":"WeatherObserved"}}],"@context":["https://schema.lab.fiware.org/ld/context","https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"]}`
