@@ -9,6 +9,7 @@ import (
 
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/diwise/context-broker/pkg/ngsild/types/subscriptions"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
@@ -68,7 +69,11 @@ func (n *notifier) Stop() error {
 func (n *notifier) EntityCreated(ctx context.Context, e types.Entity) {
 	if n.started {
 		n.queue <- func() {
-			postNotification(ctx, e, n.endpoint)
+			err := postNotification(ctx, e, n.endpoint)
+			if err != nil {
+				logger := logging.GetFromContext(ctx)
+				logger.Error().Err(err).Msg("failed to post notification")
+			}
 		}
 	}
 }
@@ -76,16 +81,20 @@ func (n *notifier) EntityCreated(ctx context.Context, e types.Entity) {
 func (n *notifier) EntityUpdated(ctx context.Context, e types.Entity) {
 	if n.started {
 		n.queue <- func() {
-			postNotification(ctx, e, n.endpoint)
+			err := postNotification(ctx, e, n.endpoint)
+			if err != nil {
+				logger := logging.GetFromContext(ctx)
+				logger.Error().Err(err).Msg("failed to post notification")
+			}
 		}
 	}
 }
 
-func postNotification(ctx context.Context, e types.Entity, endpoint string) {
+func postNotification(ctx context.Context, e types.Entity, endpoint string) error {
 	notification := subscriptions.NewNotification(e)
 	body, err := json.MarshalIndent(notification, "", " ")
 	if err != nil {
-		return
+		return err
 	}
 
 	httpClient := http.Client{
@@ -94,17 +103,19 @@ func postNotification(ctx context.Context, e types.Entity, endpoint string) {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewBuffer(body))
 	if err != nil {
-		return
+		return err
 	}
 
 	req.Header.Add("Content-Type", "application/json")
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return
+		return err
 	}
 
 	defer resp.Body.Close()
+
+	return nil
 }
 
 func (n *notifier) run() {
