@@ -16,7 +16,7 @@ import (
 
 func TestSingleNotificationOnCreate(t *testing.T) {
 	is := is.New(t)
-	const entityID string = "entityid"
+	const entityID string = "urn:ngsi-ld:Lifebuoy:mybuoy"
 
 	var calls int = 0
 	s := setupMockService(&calls,
@@ -29,7 +29,7 @@ func TestSingleNotificationOnCreate(t *testing.T) {
 
 	n.Start()
 
-	e, err := entities.New(entityID, "EntityType", entities.DefaultContext(), Status("off"))
+	e, err := entities.New(entityID, "Lifebuoy", entities.DefaultContext(), Status("off"))
 	is.NoErr(err)
 
 	n.EntityCreated(ctx, e)

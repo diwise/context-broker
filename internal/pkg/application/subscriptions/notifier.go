@@ -50,14 +50,16 @@ func (n *notifier) Start() error {
 
 func (n *notifier) Stop() error {
 	if n.started {
+		// Create a result channel so that we can wait for completion
 		resultChan := make(chan bool)
 
 		n.queue <- func() {
+			// close the queue to signal the consumers that we are going out of business
 			close(n.queue)
 			resultChan <- true
 		}
 
-		// read from resultChan but ignore the return value
+		// blocking read until our action has been processed
 		<-resultChan
 	}
 	return nil
@@ -106,6 +108,7 @@ func postNotification(ctx context.Context, e types.Entity, endpoint string) {
 }
 
 func (n *notifier) run() {
+	// repeat until the queue is closed
 	for action := range n.queue {
 		if action == nil {
 			return
