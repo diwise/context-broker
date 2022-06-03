@@ -15,6 +15,7 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild"
 	"github.com/diwise/context-broker/pkg/ngsild/errors"
 	ngsitypes "github.com/diwise/context-broker/pkg/ngsild/types"
+	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	. "github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 	"github.com/go-chi/chi/v5"
 	"github.com/matryer/is"
@@ -174,9 +175,44 @@ func TestQueryEntitiesAsGeoJSON(t *testing.T) {
 	is.Equal(responseBody, weatherObservedGeoJson)
 }
 
+func TestUpdateEntityAttributes(t *testing.T) {
+	is, ts, app := setupTest(t)
+	defer ts.Close()
+
+	app.UpdateEntityAttributesFunc = func(ctx context.Context, tenant, entityID string, fragment ngsitypes.EntityFragment, h map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
+		return &ngsild.UpdateEntityAttributesResult{
+			Updated: []string{entityID},
+		}, nil
+	}
+
+	fragment, err := entities.NewFragment(entities.DefaultContext(), Status("off"))
+	is.NoErr(err)
+
+	body, err := fragment.MarshalJSON()
+	is.NoErr(err)
+
+	resp, _ := newPatchRequest(is, ts, "application/ld+json", "/ngsi-ld/v1/entities/idtobepatched/attrs/", bytes.NewBuffer(body))
+
+	is.Equal(resp.StatusCode, http.StatusNoContent) // should return 204 No Content
+}
+
 func newGetRequest(is *is.I, ts *httptest.Server, accept, path string, body io.Reader) (*http.Response, string) {
 	req, _ := http.NewRequest(http.MethodGet, ts.URL+path, body)
 	req.Header.Add("Accept", accept)
+
+	resp, err := http.DefaultClient.Do(req)
+	is.NoErr(err) // http request failed
+	defer resp.Body.Close()
+
+	respBody, err := ioutil.ReadAll(resp.Body)
+	is.NoErr(err) // failed to read response body
+
+	return resp, string(respBody)
+}
+
+func newPatchRequest(is *is.I, ts *httptest.Server, contentType, path string, body io.Reader) (*http.Response, string) {
+	req, _ := http.NewRequest(http.MethodPatch, ts.URL+path, body)
+	req.Header.Add("Content-Type", contentType)
 
 	resp, err := http.DefaultClient.Do(req)
 	is.NoErr(err) // http request failed

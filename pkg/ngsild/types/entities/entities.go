@@ -41,7 +41,18 @@ func NewFragment(decorators ...EntityDecoratorFunc) (types.EntityFragment, error
 	return e, nil
 }
 
-func NewFromBody(body []byte) (types.Entity, error) {
+func NewFragmentFromJSON(body []byte) (types.EntityFragment, error) {
+	e := &EntityImpl{}
+	err := json.Unmarshal(body, e)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal entity: %w", err)
+	}
+
+	return e, nil
+}
+
+func NewFromJSON(body []byte) (types.Entity, error) {
 	e := &EntityImpl{}
 	err := json.Unmarshal(body, e)
 
@@ -136,10 +147,6 @@ func (e *EntityImpl) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("failed to unmarshal entity: %w", err)
 	}
 
-	if header.ID == "" || header.Type == "" {
-		return fmt.Errorf("required id and/or type missing in entity body")
-	}
-
 	// Delete the properties we have already dealt with
 	delete(contents, "id")
 	delete(contents, "type")
@@ -151,7 +158,7 @@ func (e *EntityImpl) UnmarshalJSON(data []byte) error {
 	ctxLength := len(header.Context)
 
 	if ctxLength < 2 {
-		return fmt.Errorf("illegal context (too short)")
+		return fmt.Errorf("invalid context (too short)")
 	}
 
 	if bytes.HasPrefix(header.Context, []byte("\"")) && bytes.HasSuffix(header.Context, []byte("\"")) {

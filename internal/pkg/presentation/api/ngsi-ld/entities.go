@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
-	"github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/types"
 	"github.com/diwise/context-broker/pkg/ngsild"
 	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
 	"github.com/diwise/context-broker/pkg/ngsild/geojson"
@@ -63,7 +62,7 @@ func NewCreateEntityHandler(
 		body, _ := ioutil.ReadAll(r.Body)
 		r.Body = io.NopCloser(bytes.NewBuffer(body))
 
-		entity, err := entities.NewFromBody(body)
+		entity, err := entities.NewFromJSON(body)
 
 		if err != nil {
 			ngsierrors.ReportNewInvalidRequest(
@@ -277,18 +276,16 @@ func NewUpdateEntityAttributesHandler(
 
 		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
-		entity := &types.BaseEntity{}
-		// copy the body from the request and restore it for later use
+		var entity ngsitypes.EntityFragment
 		body, _ := ioutil.ReadAll(r.Body)
-		r.Body = io.NopCloser(bytes.NewBuffer(body))
+		entity, err = entities.NewFragmentFromJSON(body)
 
-		err = json.NewDecoder(io.NopCloser(bytes.NewBuffer(body))).Decode(entity)
 		if err != nil {
 			mapCIMToNGSILDError(w, err, traceID)
 			return
 		}
 
-		updateResult, err := contextInformationManager.UpdateEntityAttributes(ctx, tenant, entityID, r.Body, propagatedHeaders)
+		updateResult, err := contextInformationManager.UpdateEntityAttributes(ctx, tenant, entityID, entity, propagatedHeaders)
 
 		if err != nil {
 			log.Error().Err(err).Str("entityID", entityID).Str("tenant", tenant).Msg("failed to update entity attributes")

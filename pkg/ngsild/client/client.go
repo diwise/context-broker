@@ -27,7 +27,7 @@ type ContextBrokerClient interface {
 	CreateEntity(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error)
 	QueryEntities(ctx context.Context, entityTypes, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error)
 	RetrieveEntity(ctx context.Context, entityID string, headers map[string][]string) (types.Entity, error)
-	UpdateEntityAttributes(ctx context.Context, entityID string, body io.Reader, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error)
+	UpdateEntityAttributes(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error)
 }
 
 const (
@@ -141,10 +141,10 @@ func (c cbClient) RetrieveEntity(ctx context.Context, entityID string, headers m
 		return nil, err
 	}
 
-	return entities.NewFromBody(responseBody)
+	return entities.NewFromJSON(responseBody)
 }
 
-func (c cbClient) UpdateEntityAttributes(ctx context.Context, entityID string, body io.Reader, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
+func (c cbClient) UpdateEntityAttributes(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
 	var err error
 
 	ctx, span := tracer.Start(ctx, "update-entity-attributes",
@@ -152,6 +152,9 @@ func (c cbClient) UpdateEntityAttributes(ctx context.Context, entityID string, b
 		trace.WithAttributes(attribute.String(TraceAttributeEntityID, entityID)),
 	)
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+	json, err := fragment.MarshalJSON()
+	body := bytes.NewBuffer(json)
 
 	response, responseBody, err := c.callContextSource(
 		ctx, http.MethodPatch, c.baseURL+"/ngsi-ld/v1/entities/"+url.QueryEscape(entityID)+"/attrs/", body, headers,

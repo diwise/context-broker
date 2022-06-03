@@ -9,7 +9,7 @@ import (
 
 func TestJSONMarshalling(t *testing.T) {
 	is := is.New(t)
-	e, err := NewFromBody([]byte(entityJSON))
+	e, err := NewFromJSON([]byte(entityJSON))
 
 	is.NoErr(err)
 	is.Equal(e.ID(), "urn:ngsi-ld:WeatherObserved:observationid")
@@ -23,7 +23,7 @@ func TestJSONMarshalling(t *testing.T) {
 
 func TestJSONMarshallingOfBeach(t *testing.T) {
 	is := is.New(t)
-	e, err := NewFromBody([]byte(entityJSONBeach))
+	e, err := NewFromJSON([]byte(entityJSONBeach))
 
 	is.NoErr(err)
 	is.Equal(e.ID(), "urn:ngsi-ld:Beach:se:sundsvall:facilities:284")
@@ -37,7 +37,7 @@ func TestJSONMarshallingOfBeach(t *testing.T) {
 
 func TestJSONMarshallingOfExerciseTrail(t *testing.T) {
 	is := is.New(t)
-	e, err := NewFromBody([]byte(entityJSONExerciseTrail))
+	e, err := NewFromJSON([]byte(entityJSONExerciseTrail))
 
 	is.NoErr(err)
 	is.Equal(e.ID(), "urn:ngsi-ld:ExerciseTrail:se:sundsvall:facilities:650")

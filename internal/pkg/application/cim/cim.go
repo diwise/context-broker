@@ -2,14 +2,13 @@ package cim
 
 import (
 	"context"
-	"io"
 
 	"github.com/diwise/context-broker/pkg/ngsild"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 )
 
 type EntityAttributesUpdater interface {
-	UpdateEntityAttributes(ctx context.Context, tenant, entityID string, body io.Reader, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error)
+	UpdateEntityAttributes(ctx context.Context, tenant, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error)
 }
 
 type EntityCreator interface {

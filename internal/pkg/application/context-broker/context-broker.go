@@ -3,7 +3,6 @@ package contextbroker
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"regexp"
 
@@ -143,7 +142,7 @@ func (app *contextBrokerApp) RetrieveEntity(ctx context.Context, tenant, entityI
 	return nil, errors.NewNotFoundError(fmt.Sprintf("no context source found that could provide entity %s", entityID))
 }
 
-func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant, entityID string, body io.Reader, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
+func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
 	sources, ok := app.tenants[tenant]
 	if !ok {
 		return nil, errors.NewUnknownTenantError(tenant)
@@ -163,7 +162,7 @@ func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant,
 				}
 
 				cbClient := client.NewContextBrokerClient(src.Endpoint)
-				result, err := cbClient.UpdateEntityAttributes(ctx, entityID, body, headers)
+				result, err := cbClient.UpdateEntityAttributes(ctx, entityID, fragment, headers)
 				if err != nil {
 					return result, err
 				}

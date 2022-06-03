@@ -8,7 +8,6 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild"
 	"github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
-	"io"
 	"sync"
 )
 
@@ -31,7 +30,7 @@ var _ client.ContextBrokerClient = &ContextBrokerClientMock{}
 // 			RetrieveEntityFunc: func(ctx context.Context, entityID string, headers map[string][]string) (types.Entity, error) {
 // 				panic("mock out the RetrieveEntity method")
 // 			},
-// 			UpdateEntityAttributesFunc: func(ctx context.Context, entityID string, body io.Reader, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
+// 			UpdateEntityAttributesFunc: func(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
 // 				panic("mock out the UpdateEntityAttributes method")
 // 			},
 // 		}
@@ -51,7 +50,7 @@ type ContextBrokerClientMock struct {
 	RetrieveEntityFunc func(ctx context.Context, entityID string, headers map[string][]string) (types.Entity, error)
 
 	// UpdateEntityAttributesFunc mocks the UpdateEntityAttributes method.
-	UpdateEntityAttributesFunc func(ctx context.Context, entityID string, body io.Reader, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error)
+	UpdateEntityAttributesFunc func(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -92,8 +91,8 @@ type ContextBrokerClientMock struct {
 			Ctx context.Context
 			// EntityID is the entityID argument value.
 			EntityID string
-			// Body is the body argument value.
-			Body io.Reader
+			// Fragment is the fragment argument value.
+			Fragment types.EntityFragment
 			// Headers is the headers argument value.
 			Headers map[string][]string
 		}
@@ -230,25 +229,25 @@ func (mock *ContextBrokerClientMock) RetrieveEntityCalls() []struct {
 }
 
 // UpdateEntityAttributes calls UpdateEntityAttributesFunc.
-func (mock *ContextBrokerClientMock) UpdateEntityAttributes(ctx context.Context, entityID string, body io.Reader, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
+func (mock *ContextBrokerClientMock) UpdateEntityAttributes(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
 	if mock.UpdateEntityAttributesFunc == nil {
 		panic("ContextBrokerClientMock.UpdateEntityAttributesFunc: method is nil but ContextBrokerClient.UpdateEntityAttributes was just called")
 	}
 	callInfo := struct {
 		Ctx      context.Context
 		EntityID string
-		Body     io.Reader
+		Fragment types.EntityFragment
 		Headers  map[string][]string
 	}{
 		Ctx:      ctx,
 		EntityID: entityID,
-		Body:     body,
+		Fragment: fragment,
 		Headers:  headers,
 	}
 	mock.lockUpdateEntityAttributes.Lock()
 	mock.calls.UpdateEntityAttributes = append(mock.calls.UpdateEntityAttributes, callInfo)
 	mock.lockUpdateEntityAttributes.Unlock()
-	return mock.UpdateEntityAttributesFunc(ctx, entityID, body, headers)
+	return mock.UpdateEntityAttributesFunc(ctx, entityID, fragment, headers)
 }
 
 // UpdateEntityAttributesCalls gets all the calls that were made to UpdateEntityAttributes.
@@ -257,13 +256,13 @@ func (mock *ContextBrokerClientMock) UpdateEntityAttributes(ctx context.Context,
 func (mock *ContextBrokerClientMock) UpdateEntityAttributesCalls() []struct {
 	Ctx      context.Context
 	EntityID string
-	Body     io.Reader
+	Fragment types.EntityFragment
 	Headers  map[string][]string
 } {
 	var calls []struct {
 		Ctx      context.Context
 		EntityID string
-		Body     io.Reader
+		Fragment types.EntityFragment
 		Headers  map[string][]string
 	}
 	mock.lockUpdateEntityAttributes.RLock()

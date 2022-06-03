@@ -7,7 +7,6 @@ import (
 	"context"
 	"github.com/diwise/context-broker/pkg/ngsild"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
-	"io"
 	"sync"
 )
 
@@ -36,7 +35,7 @@ var _ ContextInformationManager = &ContextInformationManagerMock{}
 // 			StopFunc: func() error {
 // 				panic("mock out the Stop method")
 // 			},
-// 			UpdateEntityAttributesFunc: func(ctx context.Context, tenant string, entityID string, body io.Reader, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
+// 			UpdateEntityAttributesFunc: func(ctx context.Context, tenant string, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
 // 				panic("mock out the UpdateEntityAttributes method")
 // 			},
 // 		}
@@ -62,7 +61,7 @@ type ContextInformationManagerMock struct {
 	StopFunc func() error
 
 	// UpdateEntityAttributesFunc mocks the UpdateEntityAttributes method.
-	UpdateEntityAttributesFunc func(ctx context.Context, tenant string, entityID string, body io.Reader, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error)
+	UpdateEntityAttributesFunc func(ctx context.Context, tenant string, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -117,8 +116,8 @@ type ContextInformationManagerMock struct {
 			Tenant string
 			// EntityID is the entityID argument value.
 			EntityID string
-			// Body is the body argument value.
-			Body io.Reader
+			// Fragment is the fragment argument value.
+			Fragment types.EntityFragment
 			// Headers is the headers argument value.
 			Headers map[string][]string
 		}
@@ -321,7 +320,7 @@ func (mock *ContextInformationManagerMock) StopCalls() []struct {
 }
 
 // UpdateEntityAttributes calls UpdateEntityAttributesFunc.
-func (mock *ContextInformationManagerMock) UpdateEntityAttributes(ctx context.Context, tenant string, entityID string, body io.Reader, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
+func (mock *ContextInformationManagerMock) UpdateEntityAttributes(ctx context.Context, tenant string, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
 	if mock.UpdateEntityAttributesFunc == nil {
 		panic("ContextInformationManagerMock.UpdateEntityAttributesFunc: method is nil but ContextInformationManager.UpdateEntityAttributes was just called")
 	}
@@ -329,19 +328,19 @@ func (mock *ContextInformationManagerMock) UpdateEntityAttributes(ctx context.Co
 		Ctx      context.Context
 		Tenant   string
 		EntityID string
-		Body     io.Reader
+		Fragment types.EntityFragment
 		Headers  map[string][]string
 	}{
 		Ctx:      ctx,
 		Tenant:   tenant,
 		EntityID: entityID,
-		Body:     body,
+		Fragment: fragment,
 		Headers:  headers,
 	}
 	mock.lockUpdateEntityAttributes.Lock()
 	mock.calls.UpdateEntityAttributes = append(mock.calls.UpdateEntityAttributes, callInfo)
 	mock.lockUpdateEntityAttributes.Unlock()
-	return mock.UpdateEntityAttributesFunc(ctx, tenant, entityID, body, headers)
+	return mock.UpdateEntityAttributesFunc(ctx, tenant, entityID, fragment, headers)
 }
 
 // UpdateEntityAttributesCalls gets all the calls that were made to UpdateEntityAttributes.
@@ -351,14 +350,14 @@ func (mock *ContextInformationManagerMock) UpdateEntityAttributesCalls() []struc
 	Ctx      context.Context
 	Tenant   string
 	EntityID string
-	Body     io.Reader
+	Fragment types.EntityFragment
 	Headers  map[string][]string
 } {
 	var calls []struct {
 		Ctx      context.Context
 		Tenant   string
 		EntityID string
-		Body     io.Reader
+		Fragment types.EntityFragment
 		Headers  map[string][]string
 	}
 	mock.lockUpdateEntityAttributes.RLock()
