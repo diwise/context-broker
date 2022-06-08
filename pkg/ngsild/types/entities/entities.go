@@ -217,8 +217,7 @@ func Context(ctx []string) EntityDecoratorFunc {
 
 func DefaultContext() EntityDecoratorFunc {
 	return Context([]string{
-		"https://schema.lab.fiware.org/ld/context",
-		"https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld",
+		"https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/default-context.jsonld",
 	})
 }
 

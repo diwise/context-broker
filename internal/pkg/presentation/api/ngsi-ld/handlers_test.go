@@ -196,8 +196,28 @@ func TestUpdateEntityAttributes(t *testing.T) {
 	is.Equal(resp.StatusCode, http.StatusNoContent) // should return 204 No Content
 }
 
+func TestRequestDefaultContext(t *testing.T) {
+	is, ts, _ := setupTest(t)
+	defer ts.Close()
+
+	resp, _ := newGetRequest(is, ts, "application/json", "/ngsi-ld/v1/jsonldContexts/default-context.jsonld", nil)
+
+	is.Equal(resp.StatusCode, http.StatusOK)
+}
+
+func TestRequestUnknownContextFailsWith404(t *testing.T) {
+	is, ts, _ := setupTest(t)
+	defer ts.Close()
+
+	resp, _ := newGetRequest(is, ts, "application/json", "/ngsi-ld/v1/jsonldContexts/unknown-context.jsonld", nil)
+
+	is.Equal(resp.StatusCode, http.StatusNotFound)
+}
+
 func newGetRequest(is *is.I, ts *httptest.Server, accept, path string, body io.Reader) (*http.Response, string) {
-	req, _ := http.NewRequest(http.MethodGet, ts.URL+path, body)
+	req, err := http.NewRequest(http.MethodGet, ts.URL+path, body)
+	is.NoErr(err)
+
 	req.Header.Add("Accept", accept)
 
 	resp, err := http.DefaultClient.Do(req)

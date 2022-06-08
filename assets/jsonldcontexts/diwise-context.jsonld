@@ -1,0 +1,8 @@
+{
+    "@context": {
+        "diwise": "https://diwise.io/ngsi-ld/",
+        "ExerciseTrail": "diwise:ExerciseTrail",
+        "Lifebuoy": "diwise:Lifebuoy"
+    }
+ }
+ 
