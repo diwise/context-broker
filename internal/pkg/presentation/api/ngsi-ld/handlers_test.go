@@ -185,7 +185,7 @@ func TestUpdateEntityAttributes(t *testing.T) {
 		}, nil
 	}
 
-	fragment, err := entities.NewFragment(entities.DefaultContext(), Status("off"))
+	fragment, err := entities.NewFragment(Status("off"))
 	is.NoErr(err)
 
 	body, err := fragment.MarshalJSON()

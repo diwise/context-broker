@@ -151,6 +151,6 @@ func withEmptyConfig() Config {
 }
 
 func testEntity(entityType, entityID string) types.Entity {
-	e, _ := entities.New(entityID, entityType, entities.DefaultContext())
+	e, _ := entities.New(entityID, entityType)
 	return e
 }

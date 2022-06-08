@@ -25,6 +25,11 @@ func New(entityID, entityType string, decorators ...EntityDecoratorFunc) (types.
 		decorator(e)
 	}
 
+	// Set the default context if it wasnt decorated by the creator
+	if e.context == nil {
+		e.context = []string{DefaultContextURL}
+	}
+
 	return e, nil
 }
 
@@ -36,6 +41,11 @@ func NewFragment(decorators ...EntityDecoratorFunc) (types.EntityFragment, error
 
 	for _, decorator := range decorators {
 		decorator(e)
+	}
+
+	// Set the default context if it wasnt decorated by the creator
+	if e.context == nil {
+		e.context = []string{DefaultContextURL}
 	}
 
 	return e, nil
@@ -215,10 +225,14 @@ func Context(ctx []string) EntityDecoratorFunc {
 	}
 }
 
+func DefaultBrokerContext(brokerURL string) EntityDecoratorFunc {
+	return Context([]string{brokerURL + "/ngsi-ld/v1/jsonldContexts/default-context.jsonld"})
+}
+
+const DefaultContextURL string = "https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/default-context.jsonld"
+
 func DefaultContext() EntityDecoratorFunc {
-	return Context([]string{
-		"https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/default-context.jsonld",
-	})
+	return Context([]string{DefaultContextURL})
 }
 
 func P(name string, value types.Property) EntityDecoratorFunc {

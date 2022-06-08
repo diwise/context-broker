@@ -19,8 +19,6 @@ func NewDevice(entityID string, decorators ...entities.EntityDecoratorFunc) (typ
 		entityID = DeviceIDPrefix + entityID
 	}
 
-	decorators = append(decorators, entities.DefaultContext())
-
 	e, err := entities.New(
 		entityID, DeviceTypeName,
 		decorators...,

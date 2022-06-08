@@ -20,7 +20,7 @@ func NewWeatherObserved(observationID string, latitude float64, longitude float6
 		observationID = WeatherObservedIDPrefix + observationID
 	}
 
-	decorators = append(decorators, entities.DefaultContext(), DateObserved(observedAt), Location(latitude, longitude))
+	decorators = append(decorators, DateObserved(observedAt), Location(latitude, longitude))
 
 	e, err := entities.New(
 		observationID, WeatherObservedTypeName,
