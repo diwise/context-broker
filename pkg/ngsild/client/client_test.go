@@ -80,7 +80,7 @@ func setupMockServiceThatReturns(responseCode int, body string, headers ...func(
 }
 
 func testEntity(entityType, entityID string) types.Entity {
-	e, _ := entities.New(entityID, entityType, entities.DefaultContext())
+	e, _ := entities.New(entityID, entityType)
 	return e
 }
 

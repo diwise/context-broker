@@ -29,7 +29,7 @@ func TestSingleNotificationOnCreate(t *testing.T) {
 
 	n.Start()
 
-	e, err := entities.New(entityID, "Lifebuoy", entities.DefaultContext(), Status("off"))
+	e, err := entities.New(entityID, "Lifebuoy", Status("off"))
 	is.NoErr(err)
 
 	n.EntityCreated(ctx, e)
