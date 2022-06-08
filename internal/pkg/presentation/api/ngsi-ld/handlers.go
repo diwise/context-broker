@@ -42,6 +42,11 @@ func RegisterHandlers(r chi.Router, app cim.ContextInformationManager, log zerol
 					func(ctx context.Context, entityType, entityID string, logger zerolog.Logger) {},
 				),
 			)
+
+			r.Get(
+				"/jsonldContexts/{contextId}",
+				NewServeContextHandler(log),
+			)
 		})
 	})
 
