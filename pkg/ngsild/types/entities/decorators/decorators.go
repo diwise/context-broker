@@ -46,12 +46,20 @@ func Number(name string, value float64, decorators ...properties.NumberPropertyD
 	return entities.P(name, np)
 }
 
+func RefSeeAlso(refs []string) entities.EntityDecoratorFunc {
+	return TextList("refSeeAlso", refs)
+}
+
 func Source(src string) entities.EntityDecoratorFunc {
 	return Text("source", src)
 }
 
 func Text(name string, value string) entities.EntityDecoratorFunc {
 	return entities.P(name, properties.NewTextProperty(value))
+}
+
+func TextList(name string, value []string) entities.EntityDecoratorFunc {
+	return entities.P(name, properties.NewTextListProperty(value))
 }
 
 func DateCreated(timestamp string) entities.EntityDecoratorFunc {
