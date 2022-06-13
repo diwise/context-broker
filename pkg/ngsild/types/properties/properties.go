@@ -7,6 +7,16 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 )
 
+const (
+	DateCreated  string = "dateCreated"
+	DateModified string = "dateModified"
+	DateObserved string = "dateObserved"
+
+	Description string = "description"
+	Location    string = "location"
+	Name        string = "name"
+)
+
 //NumberProperty holds a float64 Value
 type NumberProperty struct {
 	PropertyImpl

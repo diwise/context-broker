@@ -1,6 +1,8 @@
 package decorators
 
 import (
+	"time"
+
 	"github.com/diwise/context-broker/pkg/ngsild/geojson"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"github.com/diwise/context-broker/pkg/ngsild/types/properties"
@@ -13,29 +15,37 @@ func RefDevice(device string) entities.EntityDecoratorFunc {
 
 func Location(latitude, longitude float64) entities.EntityDecoratorFunc {
 	location := geojson.CreateGeoJSONPropertyFromWGS84(longitude, latitude)
-	return entities.P("location", location)
+	return entities.P(properties.Location, location)
 }
 
 func LocationLS(linestring [][]float64) entities.EntityDecoratorFunc {
 	location := geojson.CreateGeoJSONPropertyFromLineString(linestring)
-	return entities.P("location", location)
+	return entities.P(properties.Location, location)
 }
 
 func LocationMP(multipolygon [][][][]float64) entities.EntityDecoratorFunc {
 	location := geojson.CreateGeoJSONPropertyFromMultiPolygon(multipolygon)
-	return entities.P("location", location)
+	return entities.P(properties.Location, location)
 }
 
 func DateTime(name string, value string) entities.EntityDecoratorFunc {
 	return entities.P(name, properties.NewDateTimeProperty(value))
 }
 
+func DateTimeIfNotZero(name string, dt time.Time) entities.EntityDecoratorFunc {
+	if dt.IsZero() {
+		return NoOp()
+	}
+
+	return DateTime(name, dt.Format(time.RFC3339))
+}
+
 func Description(desc string) entities.EntityDecoratorFunc {
-	return Text("description", desc)
+	return Text(properties.Description, desc)
 }
 
 func Name(name string) entities.EntityDecoratorFunc {
-	return Text("name", name)
+	return Text(properties.Name, name)
 }
 
 func Number(name string, value float64, decorators ...properties.NumberPropertyDecoratorFunc) entities.EntityDecoratorFunc {
@@ -63,7 +73,7 @@ func TextList(name string, value []string) entities.EntityDecoratorFunc {
 }
 
 func DateCreated(timestamp string) entities.EntityDecoratorFunc {
-	return DateTime("dateCreated", timestamp)
+	return DateTime(properties.DateCreated, timestamp)
 }
 
 func DateLastValueReported(timestamp string) entities.EntityDecoratorFunc {
@@ -71,11 +81,11 @@ func DateLastValueReported(timestamp string) entities.EntityDecoratorFunc {
 }
 
 func DateModified(timestamp string) entities.EntityDecoratorFunc {
-	return DateTime("dateModified", timestamp)
+	return DateTime(properties.DateModified, timestamp)
 }
 
 func DateObserved(timestamp string) entities.EntityDecoratorFunc {
-	return DateTime("dateObserved", timestamp)
+	return DateTime(properties.DateObserved, timestamp)
 }
 
 func Status(value string) entities.EntityDecoratorFunc {
@@ -84,4 +94,8 @@ func Status(value string) entities.EntityDecoratorFunc {
 
 func Temperature(t float64) entities.EntityDecoratorFunc {
 	return Number("temperature", t)
+}
+
+func NoOp() entities.EntityDecoratorFunc {
+	return func(e *entities.EntityImpl) {}
 }
