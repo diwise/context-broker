@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
 
 	"github.com/diwise/context-broker/pkg/ngsild"
 	"github.com/diwise/context-broker/pkg/ngsild/errors"
@@ -204,6 +205,11 @@ func (c cbClient) QueryEntities(ctx context.Context, entityTypes, entityAttribut
 	}
 
 	qer := ngsild.NewQueryEntitiesResult()
+
+	if totalCount, ok := extractNGSILDResultsCount(response); ok {
+		qer.TotalCount = totalCount
+	}
+
 	go func() {
 		for idx := range entities {
 			qer.Found <- entities[idx]
@@ -253,4 +259,18 @@ func (c cbClient) callContextSource(ctx context.Context, method, endpoint string
 	}
 
 	return resp, respBody, nil
+}
+
+func extractNGSILDResultsCount(r *http.Response) (int64, bool) {
+	val, ok := r.Header[http.CanonicalHeaderKey("NGSILD-Results-Count")]
+	if !ok || len(val) == 0 {
+		return -1, false
+	}
+
+	count, err := strconv.ParseInt(val[0], 10, 64)
+	if err != nil {
+		return -1, false
+	}
+
+	return count, true
 }

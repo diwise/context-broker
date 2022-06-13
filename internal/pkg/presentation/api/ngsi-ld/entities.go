@@ -185,6 +185,9 @@ func NewQueryEntitiesHandler(
 		}
 
 		w.Header().Add("Content-Type", contentType)
+		if result.TotalCount >= 0 {
+			w.Header().Add("NGSILD-Results-Count", fmt.Sprintf("%d", result.TotalCount))
+		}
 		w.WriteHeader(http.StatusOK)
 		// TODO: Add a RFC 8288 Link header with information about previous and/or next page if they exist
 		w.Write(responseBody)

@@ -21,12 +21,15 @@ func (r CreateEntityResult) Location() string {
 }
 
 type QueryEntitiesResult struct {
-	Found chan (types.Entity)
+	Found      chan (types.Entity)
+	TotalCount int64
 }
 
 func NewQueryEntitiesResult() *QueryEntitiesResult {
-	qer := &QueryEntitiesResult{}
-	qer.Found = make(chan types.Entity)
+	qer := &QueryEntitiesResult{
+		Found:      make(chan types.Entity),
+		TotalCount: -1,
+	}
 	return qer
 }
 
