@@ -1,7 +1,7 @@
 {
     "@context": [
         "https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/diwise-context.jsonld",
-        "https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/fiware-context.jsonld",
+        "https://smartdatamodels.org/context.jsonld",
         "https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/water-meter-context.jsonld",
         "https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/ngsi-ld-core-context-v1.5.jsonld"
     ]
