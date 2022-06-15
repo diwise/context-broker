@@ -10,12 +10,19 @@ type Entity interface {
 
 	ID() string
 	Type() string
+
+	KeyValues() EntityKeyValueMapper
+}
+
+type EntityKeyValueMapper interface {
 }
 
 type Property interface {
 	Type() string
+	Value() any
 }
 
 type Relationship interface {
 	Type() string
+	Object() any
 }

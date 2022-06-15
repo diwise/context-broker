@@ -125,6 +125,25 @@ func NewQueryEntitiesHandler(
 			return
 		}
 
+		options := r.URL.Query().Get("options")
+		keyValueFormatRequested := false
+
+		if options != "" && strings.Contains(options, "keyValues") {
+			opts := strings.Split(options, ",")
+			numOptions := len(opts)
+			if numOptions == 1 {
+				q := r.URL.Query()
+				q.Del("options")
+				r.URL.RawQuery = q.Encode()
+
+				keyValueFormatRequested = true
+			} else {
+				err = errors.New("no options besides keyValues are supported")
+				ngsierrors.ReportNewBadRequestData(w, err.Error(), traceID)
+				return
+			}
+		}
+
 		entityTypes := strings.Split(entityTypeNames, ",")
 		attributes := strings.Split(attributeNames, ",")
 
@@ -144,6 +163,7 @@ func NewQueryEntitiesHandler(
 
 		var geoJsonCollection *geojson.GeoJSONFeatureCollection
 		var entityCollection []ngsitypes.Entity
+		var entityKeyValues []ngsitypes.EntityKeyValueMapper
 
 		if contentType == "application/geo+json" {
 			geoJsonCollection = geojson.NewFeatureCollection()
@@ -154,10 +174,16 @@ func NewQueryEntitiesHandler(
 				}
 				return e
 			}
-		} else {
+		} else if !keyValueFormatRequested {
 			entityCollection = []ngsitypes.Entity{}
 			entityConverter = func(e ngsitypes.Entity) ngsitypes.Entity {
 				entityCollection = append(entityCollection, e)
+				return e
+			}
+		} else {
+			entityKeyValues = []ngsitypes.EntityKeyValueMapper{}
+			entityConverter = func(e ngsitypes.Entity) ngsitypes.Entity {
+				entityKeyValues = append(entityKeyValues, e.KeyValues())
 				return e
 			}
 		}
@@ -174,8 +200,10 @@ func NewQueryEntitiesHandler(
 
 		if geoJsonCollection != nil {
 			responseBody, err = json.Marshal(geoJsonCollection)
-		} else {
+		} else if entityCollection != nil {
 			responseBody, err = json.Marshal(entityCollection)
+		} else {
+			responseBody, err = json.Marshal(entityKeyValues)
 		}
 
 		if err != nil {

@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/diwise/context-broker/pkg/ngsild/types"
-	"github.com/diwise/context-broker/pkg/ngsild/types/properties"
 )
 
 //Relationship is a base type for all types of relationships
@@ -15,29 +14,37 @@ type RelationshipImpl struct {
 //SingleObjectRelationship stores information about an entity's relation to a single object
 type SingleObjectRelationship struct {
 	RelationshipImpl
-	Object string `json:"object"`
+	Obj string `json:"object"`
 }
 
 func (sor *SingleObjectRelationship) Type() string {
 	return sor.RelationshipImpl.Type
 }
 
+func (sor *SingleObjectRelationship) Object() any {
+	return sor.Obj
+}
+
 //NewSingleObjectRelationship accepts an object ID as a string and returns a new SingleObjectRelationship
 func NewSingleObjectRelationship(object string) *SingleObjectRelationship {
 	return &SingleObjectRelationship{
 		RelationshipImpl: RelationshipImpl{Type: "Relationship"},
-		Object:           object,
+		Obj:              object,
 	}
 }
 
 //MultiObjectRelationship stores information about an entity's relation to multiple objects
 type MultiObjectRelationship struct {
 	RelationshipImpl
-	Object []string `json:"object"`
+	Obj []string `json:"object"`
 }
 
 func (mor *MultiObjectRelationship) Type() string {
 	return mor.RelationshipImpl.Type
+}
+
+func (mor *MultiObjectRelationship) Object() any {
+	return mor.Obj
 }
 
 //NewMultiObjectRelationship accepts an array of object ID:s and returns a new MultiObjectRelationship
@@ -46,7 +53,7 @@ func NewMultiObjectRelationship(objects []string) *MultiObjectRelationship {
 		RelationshipImpl: RelationshipImpl{Type: "Relationship"},
 	}
 
-	p.Object = objects
+	p.Obj = objects
 
 	return p
 }
@@ -70,6 +77,6 @@ func UnmarshalR(body map[string]any) (types.Relationship, error) {
 		}
 		return NewMultiObjectRelationship(objects), nil
 	default:
-		return properties.NewTextProperty(fmt.Sprintf("support for type %T not implemented", typedObject)), nil
+		return NewSingleObjectRelationship(fmt.Sprintf("support for type %T not implemented", typedObject)), nil
 	}
 }
