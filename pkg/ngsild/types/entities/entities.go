@@ -219,6 +219,35 @@ func (e *EntityImpl) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func (e EntityImpl) KeyValues() types.EntityKeyValueMapper {
+	return kvMapper{
+		e: e,
+	}
+}
+
+type kvMapper struct {
+	e EntityImpl
+}
+
+func (mapper kvMapper) MarshalJSON() ([]byte, error) {
+	contents := map[string]any{
+		"id":   mapper.e.ID(),
+		"type": mapper.e.Type(),
+	}
+
+	for k, p := range mapper.e.properties {
+		contents[k] = p.Value()
+	}
+
+	for k, r := range mapper.e.relationships {
+		contents[k] = r.Object()
+	}
+
+	contents["@context"] = mapper.e.context
+
+	return json.Marshal(&contents)
+}
+
 func Context(ctx []string) EntityDecoratorFunc {
 	return func(e *EntityImpl) {
 		e.context = ctx
