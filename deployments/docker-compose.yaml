@@ -7,28 +7,11 @@ services:
       dockerfile: ./deployments/Dockerfile
     restart: always
     depends_on:
-      - deviceregistry
       - orion-ld
+    volumes:
+      - ./configs/context-broker.yaml:/opt/diwise/config/default.yaml
     ports:
       - '8080:8080'
-
-
-  deviceregistry:
-    image: 'ghcr.io/diwise/iot-device-registry@sha256:21d58ba600ff1d37e16f311ce8f08a584cc1778a72c198d50a9eee57e498afac'
-    restart: always
-    environment:
-      DIWISE_SQLDB_HOST: 'postgresdb'
-      DIWISE_SQLDB_USER: 'testuser'
-      DIWISE_SQLDB_NAME: 'brokertest'
-      DIWISE_SQLDB_PASSWORD: 'testpass'
-      DIWISE_SQLDB_SSLMODE: 'disable'
-      RABBITMQ_DISABLED: 'true'
-      SERVICE_PORT: '8990'
-    depends_on:
-      - postgresdb
-    ports:
-      - '8990'
-  
 
   orion-ld:
     image: 'quay.io/fiware/orion-ld@sha256:ea838e5b405170b6d42af9035a30454a21870f7f3738db73da27585bf6a478b3'
@@ -48,17 +31,6 @@ services:
       - postgresdb
     ports:
       - '8081:1026'
-
-
-  postgresdb:
-    image: 'ghcr.io/diwise/test-db-postgresql:prod-824e7cffd65dd3766c88441a48cffd5b2acd55f2'
-    restart: always
-    environment:
-      POSTGRES_DB: 'brokertest'
-      POSTGRES_USER: 'testuser'
-      POSTGRES_PASSWORD: 'testpass'
-    ports:
-      - '5432'
 
 
   mongodb:
@@ -88,24 +60,6 @@ services:
         - mongodb
     ports:
       - '8082:8081'
-
-
-  ingress:
-    image: 'ghcr.io/diwise/ingress-mqtt@sha256:b304da14581cfe86be3bfaf4bd639a3cfdb04fc8eef859d47967c054cb96d21c'
-    restart: always
-    depends_on:
-      - context-broker
-    environment:
-      MQTT_HOST: $MQTT_HOST
-      MQTT_PORT: $MQTT_PORT
-      MQTT_USER: $MQTT_USER
-      MQTT_PASSWORD: $MQTT_PASSWORD
-      MQTT_TOPIC_0: 'application/2/device/#'
-      MQTT_TOPIC_1: 'application/21/device/#'
-      MQTT_TOPIC_2: 'application/22/device/#'
-      MQTT_TOPIC_3: 'iothub/out'
-      DIWISE_CONTEXT_BROKER_URL: 'http://context-broker:8080'
-      RABBITMQ_DISABLED: 'true'
 
 
 volumes:
