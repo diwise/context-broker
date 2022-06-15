@@ -65,23 +65,27 @@ type PropertyImpl struct {
 //GeoJSONProperty is used to encapsulate different GeoJSONGeometry types
 type GeoJSONProperty struct {
 	PropertyImpl
-	Value GeoJSONGeometry `json:"value"`
+	Val GeoJSONGeometry `json:"value"`
 }
 
 func (gjp *GeoJSONProperty) GeoPropertyType() string {
-	return gjp.Value.GeoPropertyType()
+	return gjp.Val.GeoPropertyType()
 }
 
 func (gjp *GeoJSONProperty) GeoPropertyValue() GeoJSONGeometry {
-	return gjp.Value
+	return gjp.Val
 }
 
 func (gjp *GeoJSONProperty) GetAsPoint() GeoJSONPropertyPoint {
-	return gjp.Value.GetAsPoint()
+	return gjp.Val.GetAsPoint()
 }
 
 func (gjp *GeoJSONProperty) Type() string {
 	return gjp.PropertyImpl.Type
+}
+
+func (gjp *GeoJSONProperty) Value() any {
+	return gjp.GeoPropertyValue()
 }
 
 //GeoJSONPropertyPoint is used as the value object for a GeoJSONPropertyPoint
@@ -160,7 +164,7 @@ func (gjpmp *GeoJSONPropertyMultiPolygon) GetAsPoint() GeoJSONPropertyPoint {
 func CreateGeoJSONPropertyFromWGS84(longitude, latitude float64) *GeoJSONProperty {
 	p := &GeoJSONProperty{
 		PropertyImpl: PropertyImpl{Type: "GeoProperty"},
-		Value: &GeoJSONPropertyPoint{
+		Val: &GeoJSONPropertyPoint{
 			Type:        "Point",
 			Coordinates: [2]float64{longitude, latitude},
 		},
@@ -173,7 +177,7 @@ func CreateGeoJSONPropertyFromWGS84(longitude, latitude float64) *GeoJSONPropert
 func CreateGeoJSONPropertyFromLineString(coordinates [][]float64) *GeoJSONProperty {
 	p := &GeoJSONProperty{
 		PropertyImpl: PropertyImpl{Type: "GeoProperty"},
-		Value: &GeoJSONPropertyLineString{
+		Val: &GeoJSONPropertyLineString{
 			Type:        "LineString",
 			Coordinates: coordinates,
 		},
@@ -186,7 +190,7 @@ func CreateGeoJSONPropertyFromLineString(coordinates [][]float64) *GeoJSONProper
 func CreateGeoJSONPropertyFromMultiPolygon(coordinates [][][][]float64) *GeoJSONProperty {
 	p := &GeoJSONProperty{
 		PropertyImpl: PropertyImpl{Type: "GeoProperty"},
-		Value: &GeoJSONPropertyMultiPolygon{
+		Val: &GeoJSONPropertyMultiPolygon{
 			Type:        "MultiPolygon",
 			Coordinates: coordinates,
 		},

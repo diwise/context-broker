@@ -20,7 +20,7 @@ const (
 //NumberProperty holds a float64 Value
 type NumberProperty struct {
 	PropertyImpl
-	Value      float64 `json:"value"`
+	Val        float64 `json:"value"`
 	ObservedAt *string `json:"observedAt,omitempty"`
 	UnitCode   *string `json:"unitCode,omitempty"`
 }
@@ -29,11 +29,15 @@ func (np *NumberProperty) Type() string {
 	return np.PropertyImpl.Type
 }
 
+func (np *NumberProperty) Value() any {
+	return np.Val
+}
+
 //NewNumberProperty is a convenience function for creating NumberProperty instances
 func NewNumberProperty(value float64) *NumberProperty {
 	return &NumberProperty{
 		PropertyImpl: PropertyImpl{Type: "Property"},
-		Value:        value,
+		Val:          value,
 	}
 }
 
@@ -45,7 +49,7 @@ type PropertyImpl struct {
 //DateTimeProperty stores date and time values (surprise, surprise ...)
 type DateTimeProperty struct {
 	PropertyImpl
-	Value struct {
+	Val struct {
 		Type  string `json:"@type"`
 		Value string `json:"@value"`
 	} `json:"value"`
@@ -71,8 +75,8 @@ func NewDateTimeProperty(value string) *DateTimeProperty {
 		PropertyImpl: PropertyImpl{Type: "Property"},
 	}
 
-	dtp.Value.Type = "DateTime"
-	dtp.Value.Value = value
+	dtp.Val.Type = "DateTime"
+	dtp.Val.Value = value
 
 	return dtp
 }
@@ -81,31 +85,43 @@ func (dtp *DateTimeProperty) Type() string {
 	return dtp.PropertyImpl.Type
 }
 
+func (dtp *DateTimeProperty) Value() any {
+	return dtp.Val.Value
+}
+
 //TextProperty stores values of type text
 type TextProperty struct {
 	PropertyImpl
-	Value string `json:"value"`
+	Val string `json:"value"`
 }
 
 func (tp *TextProperty) Type() string {
 	return tp.PropertyImpl.Type
 }
 
+func (tp *TextProperty) Value() any {
+	return tp.Val
+}
+
 //TextListProperty stores values of type text list
 type TextListProperty struct {
 	PropertyImpl
-	Value []string `json:"value"`
+	Val []string `json:"value"`
 }
 
 func (tlp *TextListProperty) Type() string {
 	return tlp.PropertyImpl.Type
 }
 
+func (tlp *TextListProperty) Value() any {
+	return tlp.Val
+}
+
 //NewTextListProperty accepts a value as a string array and returns a new TextListProperty
 func NewTextListProperty(value []string) *TextListProperty {
 	return &TextListProperty{
 		PropertyImpl: PropertyImpl{Type: "Property"},
-		Value:        value,
+		Val:          value,
 	}
 }
 
@@ -119,7 +135,7 @@ func NewNumberPropertyFromString(value string) *NumberProperty {
 func NewTextProperty(value string) *TextProperty {
 	return &TextProperty{
 		PropertyImpl: PropertyImpl{Type: "Property"},
-		Value:        value,
+		Val:          value,
 	}
 }
 
