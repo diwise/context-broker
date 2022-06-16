@@ -246,6 +246,25 @@ func NewRetrieveEntityHandler(
 
 		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
+		options := r.URL.Query().Get("options")
+		keyValueFormatRequested := false
+
+		if options != "" && strings.Contains(options, "keyValues") {
+			opts := strings.Split(options, ",")
+			numOptions := len(opts)
+			if numOptions == 1 {
+				q := r.URL.Query()
+				q.Del("options")
+				r.URL.RawQuery = q.Encode()
+
+				keyValueFormatRequested = true
+			} else {
+				err = errors.New("no options besides keyValues are supported")
+				ngsierrors.ReportNewBadRequestData(w, err.Error(), traceID)
+				return
+			}
+		}
+
 		var entity ngsitypes.Entity
 		entity, err = contextInformationManager.RetrieveEntity(ctx, tenant, entityID, propagatedHeaders)
 
@@ -268,8 +287,10 @@ func NewRetrieveEntityHandler(
 			if err == nil {
 				responseBody, err = json.Marshal(gjf)
 			}
-		} else {
+		} else if !keyValueFormatRequested {
 			responseBody, err = json.Marshal(entity)
+		} else {
+			responseBody, err = json.Marshal(entity.KeyValues())
 		}
 
 		if err != nil {
