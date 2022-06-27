@@ -86,7 +86,7 @@ func (dtp *DateTimeProperty) Type() string {
 }
 
 func (dtp *DateTimeProperty) Value() any {
-	return dtp.Val.Value
+	return dtp.Val
 }
 
 //TextProperty stores values of type text
