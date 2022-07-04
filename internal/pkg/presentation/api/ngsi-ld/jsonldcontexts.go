@@ -30,6 +30,7 @@ func NewServeContextHandler(logger zerolog.Logger) http.HandlerFunc {
 
 		logger.Info().Msg("default context requested from client")
 
+		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write(responseBytes)
 	})

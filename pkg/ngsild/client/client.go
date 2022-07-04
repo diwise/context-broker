@@ -205,6 +205,10 @@ func (c cbClient) QueryEntities(ctx context.Context, entityTypes, entityAttribut
 	var entities []entities.EntityImpl
 	err = json.Unmarshal(responseBody, &entities)
 	if err != nil {
+		if c.debug && len(responseBody) < 1000 {
+			err = fmt.Errorf("unmarshaling of %s failed with err %s", string(responseBody), err.Error())
+		}
+
 		return nil, err
 	}
 
