@@ -10,10 +10,7 @@ import (
 //TODO: Load from file in file system instead of hardcoding a constant
 const DefaultContext string = `{
     "@context": [
-        "https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/diwise-context.jsonld",
-        "https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/fiware-context.jsonld",
-        "https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/water-meter-context.jsonld",
-        "https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/ngsi-ld-core-context-v1.5.jsonld"
+        "https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/default-context.jsonld"
     ]
 }`
 
