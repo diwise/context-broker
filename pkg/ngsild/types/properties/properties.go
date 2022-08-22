@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/diwise/context-broker/pkg/ngsild/types"
+	"github.com/diwise/context-broker/pkg/ngsild/types/relationships"
 )
 
 const (
@@ -22,6 +23,7 @@ type NumberProperty struct {
 	PropertyImpl
 	Val        float64 `json:"value"`
 	ObservedAt *string `json:"observedAt,omitempty"`
+	ObservedBy types.Relationship `json:"observedBy,omitempty"`
 	UnitCode   *string `json:"unitCode,omitempty"`
 }
 
@@ -60,6 +62,12 @@ type NumberPropertyDecoratorFunc func(np *NumberProperty)
 func ObservedAt(timestamp string) NumberPropertyDecoratorFunc {
 	return func(np *NumberProperty) {
 		np.ObservedAt = &timestamp
+	}
+}
+
+func ObservedBy(object string) NumberPropertyDecoratorFunc {
+	return func(np *NumberProperty) {
+		np.ObservedBy = relationships.NewSingleObjectRelationship(object)
 	}
 }
 
