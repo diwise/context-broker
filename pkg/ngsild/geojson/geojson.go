@@ -62,7 +62,7 @@ type PropertyImpl struct {
 	Type string `json:"type"`
 }
 
-//GeoJSONProperty is used to encapsulate different GeoJSONGeometry types
+// GeoJSONProperty is used to encapsulate different GeoJSONGeometry types
 type GeoJSONProperty struct {
 	PropertyImpl
 	Val GeoJSONGeometry `json:"value"`
@@ -88,7 +88,7 @@ func (gjp *GeoJSONProperty) Value() any {
 	return gjp.GeoPropertyValue()
 }
 
-//GeoJSONPropertyPoint is used as the value object for a GeoJSONPropertyPoint
+// GeoJSONPropertyPoint is used as the value object for a GeoJSONPropertyPoint
 type GeoJSONPropertyPoint struct {
 	Type        string     `json:"type"`
 	Coordinates [2]float64 `json:"coordinates"`
@@ -118,7 +118,7 @@ func (gjpp GeoJSONPropertyPoint) Longitude() float64 {
 	return gjpp.Coordinates[0]
 }
 
-//GeoJSONPropertyLineString is used as the value object for a GeoJSONPropertyLineString
+// GeoJSONPropertyLineString is used as the value object for a GeoJSONPropertyLineString
 type GeoJSONPropertyLineString struct {
 	Type        string      `json:"type"`
 	Coordinates [][]float64 `json:"coordinates"`
@@ -139,7 +139,7 @@ func (gjpls *GeoJSONPropertyLineString) GetAsPoint() GeoJSONPropertyPoint {
 	}
 }
 
-//GeoJSONPropertyMultiPolygon is used as the value object for a GeoJSONPropertyMultiPolygon
+// GeoJSONPropertyMultiPolygon is used as the value object for a GeoJSONPropertyMultiPolygon
 type GeoJSONPropertyMultiPolygon struct {
 	Type        string          `json:"type"`
 	Coordinates [][][][]float64 `json:"coordinates"`
@@ -160,7 +160,7 @@ func (gjpmp *GeoJSONPropertyMultiPolygon) GetAsPoint() GeoJSONPropertyPoint {
 	}
 }
 
-//CreateGeoJSONPropertyFromWGS84 creates a GeoJSONProperty from a WGS84 coordinate
+// CreateGeoJSONPropertyFromWGS84 creates a GeoJSONProperty from a WGS84 coordinate
 func CreateGeoJSONPropertyFromWGS84(longitude, latitude float64) *GeoJSONProperty {
 	p := &GeoJSONProperty{
 		PropertyImpl: PropertyImpl{Type: "GeoProperty"},
@@ -173,7 +173,7 @@ func CreateGeoJSONPropertyFromWGS84(longitude, latitude float64) *GeoJSONPropert
 	return p
 }
 
-//CreateGeoJSONPropertyFromLineString creates a GeoJSONProperty from an array of line coordinate arrays
+// CreateGeoJSONPropertyFromLineString creates a GeoJSONProperty from an array of line coordinate arrays
 func CreateGeoJSONPropertyFromLineString(coordinates [][]float64) *GeoJSONProperty {
 	p := &GeoJSONProperty{
 		PropertyImpl: PropertyImpl{Type: "GeoProperty"},
@@ -186,7 +186,7 @@ func CreateGeoJSONPropertyFromLineString(coordinates [][]float64) *GeoJSONProper
 	return p
 }
 
-//CreateGeoJSONPropertyFromMultiPolygon creates a GeoJSONProperty from an array of polygon coordinate arrays
+// CreateGeoJSONPropertyFromMultiPolygon creates a GeoJSONProperty from an array of polygon coordinate arrays
 func CreateGeoJSONPropertyFromMultiPolygon(coordinates [][][][]float64) *GeoJSONProperty {
 	p := &GeoJSONProperty{
 		PropertyImpl: PropertyImpl{Type: "GeoProperty"},

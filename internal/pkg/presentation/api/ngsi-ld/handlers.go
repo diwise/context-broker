@@ -84,7 +84,7 @@ func NGSIMiddleware() func(http.Handler) http.Handler {
 	}
 }
 
-//GetTenantFromContext extracts the tenant name, if any, from the provided context
+// GetTenantFromContext extracts the tenant name, if any, from the provided context
 func GetTenantFromContext(ctx context.Context) string {
 	tenant, ok := ctx.Value(tenantCtxKey).(string)
 

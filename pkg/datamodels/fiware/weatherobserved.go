@@ -9,7 +9,7 @@ import (
 	. "github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 )
 
-//NewWeatherObserved creates a new instance of WeatherObserved
+// NewWeatherObserved creates a new instance of WeatherObserved
 func NewWeatherObserved(observationID string, latitude float64, longitude float64, observedAt string, decorators ...entities.EntityDecoratorFunc) (types.Entity, error) {
 
 	if len(decorators) == 0 {

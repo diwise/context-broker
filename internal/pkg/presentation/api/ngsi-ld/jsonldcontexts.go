@@ -7,7 +7,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-//TODO: Load from file in file system instead of hardcoding a constant
+// TODO: Load from file in file system instead of hardcoding a constant
 const DefaultContext string = `{
     "@context": [
         "https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/diwise-context.jsonld",

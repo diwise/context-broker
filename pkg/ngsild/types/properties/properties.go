@@ -18,13 +18,13 @@ const (
 	Name        string = "name"
 )
 
-//NumberProperty holds a float64 Value
+// NumberProperty holds a float64 Value
 type NumberProperty struct {
 	PropertyImpl
-	Val        float64 `json:"value"`
-	ObservedAt *string `json:"observedAt,omitempty"`
+	Val        float64            `json:"value"`
+	ObservedAt *string            `json:"observedAt,omitempty"`
 	ObservedBy types.Relationship `json:"observedBy,omitempty"`
-	UnitCode   *string `json:"unitCode,omitempty"`
+	UnitCode   *string            `json:"unitCode,omitempty"`
 }
 
 func (np *NumberProperty) Type() string {
@@ -35,7 +35,7 @@ func (np *NumberProperty) Value() any {
 	return np.Val
 }
 
-//NewNumberProperty is a convenience function for creating NumberProperty instances
+// NewNumberProperty is a convenience function for creating NumberProperty instances
 func NewNumberProperty(value float64) *NumberProperty {
 	return &NumberProperty{
 		PropertyImpl: PropertyImpl{Type: "Property"},
@@ -43,12 +43,12 @@ func NewNumberProperty(value float64) *NumberProperty {
 	}
 }
 
-//Property contains the mandatory Type property
+// Property contains the mandatory Type property
 type PropertyImpl struct {
 	Type string `json:"type"`
 }
 
-//DateTimeProperty stores date and time values (surprise, surprise ...)
+// DateTimeProperty stores date and time values (surprise, surprise ...)
 type DateTimeProperty struct {
 	PropertyImpl
 	Val struct {
@@ -77,7 +77,7 @@ func UnitCode(code string) NumberPropertyDecoratorFunc {
 	}
 }
 
-//NewDateTimeProperty creates a property from a UTC time stamp
+// NewDateTimeProperty creates a property from a UTC time stamp
 func NewDateTimeProperty(value string) *DateTimeProperty {
 	dtp := &DateTimeProperty{
 		PropertyImpl: PropertyImpl{Type: "Property"},
@@ -97,7 +97,7 @@ func (dtp *DateTimeProperty) Value() any {
 	return dtp.Val
 }
 
-//TextProperty stores values of type text
+// TextProperty stores values of type text
 type TextProperty struct {
 	PropertyImpl
 	Val string `json:"value"`
@@ -111,7 +111,7 @@ func (tp *TextProperty) Value() any {
 	return tp.Val
 }
 
-//TextListProperty stores values of type text list
+// TextListProperty stores values of type text list
 type TextListProperty struct {
 	PropertyImpl
 	Val []string `json:"value"`
@@ -125,7 +125,7 @@ func (tlp *TextListProperty) Value() any {
 	return tlp.Val
 }
 
-//NewTextListProperty accepts a value as a string array and returns a new TextListProperty
+// NewTextListProperty accepts a value as a string array and returns a new TextListProperty
 func NewTextListProperty(value []string) *TextListProperty {
 	return &TextListProperty{
 		PropertyImpl: PropertyImpl{Type: "Property"},
@@ -133,13 +133,13 @@ func NewTextListProperty(value []string) *TextListProperty {
 	}
 }
 
-//NewNumberPropertyFromString accepts a value as a string and returns a new NumberProperty
+// NewNumberPropertyFromString accepts a value as a string and returns a new NumberProperty
 func NewNumberPropertyFromString(value string) *NumberProperty {
 	number, _ := strconv.ParseFloat(value, 64)
 	return NewNumberProperty(number)
 }
 
-//NewTextProperty accepts a value as a string and returns a new TextProperty
+// NewTextProperty accepts a value as a string and returns a new TextProperty
 func NewTextProperty(value string) *TextProperty {
 	return &TextProperty{
 		PropertyImpl: PropertyImpl{Type: "Property"},

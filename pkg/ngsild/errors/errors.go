@@ -100,8 +100,8 @@ func NewErrorFromProblemReport(code int, contentType string, body []byte) error 
 	)
 }
 
-//ProblemDetails stores details about a certain problem according to RFC7807
-//See https://tools.ietf.org/html/rfc7807
+// ProblemDetails stores details about a certain problem according to RFC7807
+// See https://tools.ietf.org/html/rfc7807
 type ProblemDetails interface {
 	ContentType() string
 	Type() string
@@ -111,7 +111,7 @@ type ProblemDetails interface {
 	WriteResponse(w http.ResponseWriter)
 }
 
-//ProblemDetailsImpl is an implementation of the ProblemDetails interface
+// ProblemDetailsImpl is an implementation of the ProblemDetails interface
 type ProblemDetailsImpl struct {
 	typ     string
 	title   string
@@ -125,12 +125,12 @@ const (
 	ProblemReportContentType string = "application/problem+json"
 )
 
-//AlreadyExists reports that the request tries to create an already existing entity
+// AlreadyExists reports that the request tries to create an already existing entity
 type AlreadyExists struct {
 	ProblemDetailsImpl
 }
 
-//NewAlreadyExists creates and returns a new instance of an AlreadyExists with the supplied problem detail
+// NewAlreadyExists creates and returns a new instance of an AlreadyExists with the supplied problem detail
 func NewAlreadyExists(detail, traceID string) *AlreadyExists {
 	return &AlreadyExists{
 		ProblemDetailsImpl: ProblemDetailsImpl{
@@ -143,18 +143,18 @@ func NewAlreadyExists(detail, traceID string) *AlreadyExists {
 	}
 }
 
-//ReportNewAlreadyExistsError creates an AlreadyExists instance and sends it to the supplied http.ResponseWriter
+// ReportNewAlreadyExistsError creates an AlreadyExists instance and sends it to the supplied http.ResponseWriter
 func ReportNewAlreadyExistsError(w http.ResponseWriter, detail, traceID string) {
 	ae := NewAlreadyExists(detail, traceID)
 	ae.WriteResponse(w)
 }
 
-//BadRequestData reports that the request includes input data which does not meet the requirements of the operation
+// BadRequestData reports that the request includes input data which does not meet the requirements of the operation
 type BadRequestData struct {
 	ProblemDetailsImpl
 }
 
-//NewBadRequestData creates and returns a new instance of a BadRequestData with the supplied problem detail
+// NewBadRequestData creates and returns a new instance of a BadRequestData with the supplied problem detail
 func NewBadRequestData(detail, traceID string) *BadRequestData {
 	return &BadRequestData{
 		ProblemDetailsImpl: ProblemDetailsImpl{
@@ -167,19 +167,19 @@ func NewBadRequestData(detail, traceID string) *BadRequestData {
 	}
 }
 
-//ReportNewBadRequestData creates a BadRequestData instance and sends it to the supplied http.ResponseWriter
+// ReportNewBadRequestData creates a BadRequestData instance and sends it to the supplied http.ResponseWriter
 func ReportNewBadRequestData(w http.ResponseWriter, detail, traceID string) {
 	brd := NewBadRequestData(detail, traceID)
 	brd.WriteResponse(w)
 }
 
-//InvalidRequest reports that the request associated to the operation is syntactically
-//invalid or includes wrong content
+// InvalidRequest reports that the request associated to the operation is syntactically
+// invalid or includes wrong content
 type InvalidRequest struct {
 	ProblemDetailsImpl
 }
 
-//NewInvalidRequest creates and returns a new instance of an InvalidRequest with the supplied problem detail
+// NewInvalidRequest creates and returns a new instance of an InvalidRequest with the supplied problem detail
 func NewInvalidRequest(detail, traceID string) *InvalidRequest {
 	return &InvalidRequest{
 		ProblemDetailsImpl: ProblemDetailsImpl{
@@ -192,13 +192,13 @@ func NewInvalidRequest(detail, traceID string) *InvalidRequest {
 	}
 }
 
-//ReportNewInvalidRequest creates an InvalidRequest instance and sends it to the supplied http.ResponseWriter
+// ReportNewInvalidRequest creates an InvalidRequest instance and sends it to the supplied http.ResponseWriter
 func ReportNewInvalidRequest(w http.ResponseWriter, detail, traceID string) {
 	ir := NewInvalidRequest(detail, traceID)
 	ir.WriteResponse(w)
 }
 
-//InternalError reports that there has been an error during the operation execution
+// InternalError reports that there has been an error during the operation execution
 type InternalError struct {
 	ProblemDetailsImpl
 }
@@ -207,7 +207,7 @@ func (ie InternalError) Error() string {
 	return ie.detail
 }
 
-//NewInternalError creates and returns a new instance of an InternalError with the supplied problem detail
+// NewInternalError creates and returns a new instance of an InternalError with the supplied problem detail
 func NewInternalError(detail, traceID string) *InternalError {
 	return &InternalError{
 		ProblemDetailsImpl: ProblemDetailsImpl{
@@ -220,18 +220,18 @@ func NewInternalError(detail, traceID string) *InternalError {
 	}
 }
 
-//ReportNewInternalError creates an InternalError instance and sends it to the supplied http.ResponseWriter
+// ReportNewInternalError creates an InternalError instance and sends it to the supplied http.ResponseWriter
 func ReportNewInternalError(w http.ResponseWriter, detail, traceID string) {
 	ie := NewInternalError(detail, traceID)
 	ie.WriteResponse(w)
 }
 
-//NotFound reports that the request failed with a not found error of some kind
+// NotFound reports that the request failed with a not found error of some kind
 type NotFound struct {
 	ProblemDetailsImpl
 }
 
-//NewNotFound creates and returns a new instance of a NotFound with the supplied problem detail
+// NewNotFound creates and returns a new instance of a NotFound with the supplied problem detail
 func NewNotFound(detail, traceID string) *NotFound {
 	return &NotFound{
 		ProblemDetailsImpl: ProblemDetailsImpl{
@@ -244,7 +244,7 @@ func NewNotFound(detail, traceID string) *NotFound {
 	}
 }
 
-//ReportNotFoundError creates a NotFound instance and sends it to the supplied http.ResponseWriter
+// ReportNotFoundError creates a NotFound instance and sends it to the supplied http.ResponseWriter
 func ReportNotFoundError(w http.ResponseWriter, detail, traceID string) {
 	nf := NewNotFound(detail, traceID)
 	nf.WriteResponse(w)
@@ -271,12 +271,12 @@ func ReportUnauthorizedRequest(w http.ResponseWriter, detail, traceID string) {
 	ur.WriteResponse(w)
 }
 
-//UnknownTenant reports that the request tries to interact with an unknown tenant
+// UnknownTenant reports that the request tries to interact with an unknown tenant
 type UnknownTenant struct {
 	ProblemDetailsImpl
 }
 
-//NewUnknownTenant creates and returns a new instance of an UnknownTenant with the supplied problem detail
+// NewUnknownTenant creates and returns a new instance of an UnknownTenant with the supplied problem detail
 func NewUnknownTenant(detail, traceID string) *UnknownTenant {
 	return &UnknownTenant{
 		ProblemDetailsImpl: ProblemDetailsImpl{
@@ -289,18 +289,18 @@ func NewUnknownTenant(detail, traceID string) *UnknownTenant {
 	}
 }
 
-//ReportUnknownTenantError creates an UnknownTenant instance and sends it to the supplied http.ResponseWriter
+// ReportUnknownTenantError creates an UnknownTenant instance and sends it to the supplied http.ResponseWriter
 func ReportUnknownTenantError(w http.ResponseWriter, detail, traceID string) {
 	ut := NewUnknownTenant(detail, traceID)
 	ut.WriteResponse(w)
 }
 
-//ContentType returns the ContentType to be used when returning this problem
+// ContentType returns the ContentType to be used when returning this problem
 func (p *ProblemDetailsImpl) ContentType() string {
 	return ProblemReportContentType
 }
 
-//MarshalJSON is called when a ProblemDetailsImpl instance should be serialized to JSON
+// MarshalJSON is called when a ProblemDetailsImpl instance should be serialized to JSON
 func (p *ProblemDetailsImpl) MarshalJSON() ([]byte, error) {
 	var traceID *string
 
@@ -326,7 +326,7 @@ func (p *ProblemDetailsImpl) MarshalJSON() ([]byte, error) {
 	return j, nil
 }
 
-//ResponseCode returns the HTTP response code to be used when returning a specific problem
+// ResponseCode returns the HTTP response code to be used when returning a specific problem
 func (p *ProblemDetailsImpl) ResponseCode() int {
 
 	if p.code != 0 {
@@ -336,7 +336,7 @@ func (p *ProblemDetailsImpl) ResponseCode() int {
 	return http.StatusBadRequest
 }
 
-//WriteResponse writes the contents of this instance to a http.ResponseWriter
+// WriteResponse writes the contents of this instance to a http.ResponseWriter
 func (p *ProblemDetailsImpl) WriteResponse(w http.ResponseWriter) {
 	w.Header().Add("Content-Type", p.ContentType())
 	w.Header().Add("Content-Language", "en")

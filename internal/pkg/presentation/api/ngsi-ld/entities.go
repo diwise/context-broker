@@ -37,7 +37,7 @@ const (
 
 type CreateEntityCompletionCallback func(ctx context.Context, entityType, entityID string, logger zerolog.Logger)
 
-//NewCreateEntityHandler handles incoming POST requests for NGSI entities
+// NewCreateEntityHandler handles incoming POST requests for NGSI entities
 func NewCreateEntityHandler(
 	contextInformationManager cim.EntityCreator,
 	logger zerolog.Logger,
@@ -93,7 +93,7 @@ func NewCreateEntityHandler(
 	})
 }
 
-//NewQueryEntitiesHandler handles GET requests for NGSI entities
+// NewQueryEntitiesHandler handles GET requests for NGSI entities
 func NewQueryEntitiesHandler(
 	contextInformationManager cim.EntityQuerier,
 	logger zerolog.Logger) http.HandlerFunc {
@@ -222,7 +222,7 @@ func NewQueryEntitiesHandler(
 	})
 }
 
-//NewRetrieveEntityHandler retrieves entity by ID.
+// NewRetrieveEntityHandler retrieves entity by ID.
 func NewRetrieveEntityHandler(
 	contextInformationManager cim.EntityRetriever,
 	logger zerolog.Logger) http.HandlerFunc {
@@ -304,7 +304,7 @@ func NewRetrieveEntityHandler(
 	})
 }
 
-//NewUpdateEntityAttributesHandler handles PATCH requests for NGSI entitity attributes
+// NewUpdateEntityAttributesHandler handles PATCH requests for NGSI entitity attributes
 func NewUpdateEntityAttributesHandler(
 	contextInformationManager cim.EntityAttributesUpdater,
 	logger zerolog.Logger) http.HandlerFunc {
