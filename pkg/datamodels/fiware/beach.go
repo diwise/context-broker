@@ -9,7 +9,7 @@ import (
 	dec "github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 )
 
-//NewBeach creates a new instance of Beach
+// NewBeach creates a new instance of Beach
 func NewBeach(entityID string, name string, decorators ...entities.EntityDecoratorFunc) (types.Entity, error) {
 
 	if len(decorators) == 0 {

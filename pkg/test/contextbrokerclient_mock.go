@@ -17,28 +17,28 @@ var _ client.ContextBrokerClient = &ContextBrokerClientMock{}
 
 // ContextBrokerClientMock is a mock implementation of ContextBrokerClient.
 //
-// 	func TestSomethingThatUsesContextBrokerClient(t *testing.T) {
+//	func TestSomethingThatUsesContextBrokerClient(t *testing.T) {
 //
-// 		// make and configure a mocked ContextBrokerClient
-// 		mockedContextBrokerClient := &ContextBrokerClientMock{
-// 			CreateEntityFunc: func(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
-// 				panic("mock out the CreateEntity method")
-// 			},
-// 			QueryEntitiesFunc: func(ctx context.Context, entityTypes []string, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error) {
-// 				panic("mock out the QueryEntities method")
-// 			},
-// 			RetrieveEntityFunc: func(ctx context.Context, entityID string, headers map[string][]string) (types.Entity, error) {
-// 				panic("mock out the RetrieveEntity method")
-// 			},
-// 			UpdateEntityAttributesFunc: func(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
-// 				panic("mock out the UpdateEntityAttributes method")
-// 			},
-// 		}
+//		// make and configure a mocked ContextBrokerClient
+//		mockedContextBrokerClient := &ContextBrokerClientMock{
+//			CreateEntityFunc: func(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
+//				panic("mock out the CreateEntity method")
+//			},
+//			QueryEntitiesFunc: func(ctx context.Context, entityTypes []string, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error) {
+//				panic("mock out the QueryEntities method")
+//			},
+//			RetrieveEntityFunc: func(ctx context.Context, entityID string, headers map[string][]string) (types.Entity, error) {
+//				panic("mock out the RetrieveEntity method")
+//			},
+//			UpdateEntityAttributesFunc: func(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
+//				panic("mock out the UpdateEntityAttributes method")
+//			},
+//		}
 //
-// 		// use mockedContextBrokerClient in code that requires ContextBrokerClient
-// 		// and then make assertions.
+//		// use mockedContextBrokerClient in code that requires ContextBrokerClient
+//		// and then make assertions.
 //
-// 	}
+//	}
 type ContextBrokerClientMock struct {
 	// CreateEntityFunc mocks the CreateEntity method.
 	CreateEntityFunc func(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error)
@@ -125,7 +125,8 @@ func (mock *ContextBrokerClientMock) CreateEntity(ctx context.Context, entity ty
 
 // CreateEntityCalls gets all the calls that were made to CreateEntity.
 // Check the length with:
-//     len(mockedContextBrokerClient.CreateEntityCalls())
+//
+//	len(mockedContextBrokerClient.CreateEntityCalls())
 func (mock *ContextBrokerClientMock) CreateEntityCalls() []struct {
 	Ctx     context.Context
 	Entity  types.Entity
@@ -168,7 +169,8 @@ func (mock *ContextBrokerClientMock) QueryEntities(ctx context.Context, entityTy
 
 // QueryEntitiesCalls gets all the calls that were made to QueryEntities.
 // Check the length with:
-//     len(mockedContextBrokerClient.QueryEntitiesCalls())
+//
+//	len(mockedContextBrokerClient.QueryEntitiesCalls())
 func (mock *ContextBrokerClientMock) QueryEntitiesCalls() []struct {
 	Ctx              context.Context
 	EntityTypes      []string
@@ -211,7 +213,8 @@ func (mock *ContextBrokerClientMock) RetrieveEntity(ctx context.Context, entityI
 
 // RetrieveEntityCalls gets all the calls that were made to RetrieveEntity.
 // Check the length with:
-//     len(mockedContextBrokerClient.RetrieveEntityCalls())
+//
+//	len(mockedContextBrokerClient.RetrieveEntityCalls())
 func (mock *ContextBrokerClientMock) RetrieveEntityCalls() []struct {
 	Ctx      context.Context
 	EntityID string
@@ -252,7 +255,8 @@ func (mock *ContextBrokerClientMock) UpdateEntityAttributes(ctx context.Context,
 
 // UpdateEntityAttributesCalls gets all the calls that were made to UpdateEntityAttributes.
 // Check the length with:
-//     len(mockedContextBrokerClient.UpdateEntityAttributesCalls())
+//
+//	len(mockedContextBrokerClient.UpdateEntityAttributesCalls())
 func (mock *ContextBrokerClientMock) UpdateEntityAttributesCalls() []struct {
 	Ctx      context.Context
 	EntityID string

@@ -6,12 +6,12 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 )
 
-//Relationship is a base type for all types of relationships
+// Relationship is a base type for all types of relationships
 type RelationshipImpl struct {
 	Type string `json:"type"`
 }
 
-//SingleObjectRelationship stores information about an entity's relation to a single object
+// SingleObjectRelationship stores information about an entity's relation to a single object
 type SingleObjectRelationship struct {
 	RelationshipImpl
 	Obj string `json:"object"`
@@ -25,7 +25,7 @@ func (sor *SingleObjectRelationship) Object() any {
 	return sor.Obj
 }
 
-//NewSingleObjectRelationship accepts an object ID as a string and returns a new SingleObjectRelationship
+// NewSingleObjectRelationship accepts an object ID as a string and returns a new SingleObjectRelationship
 func NewSingleObjectRelationship(object string) *SingleObjectRelationship {
 	return &SingleObjectRelationship{
 		RelationshipImpl: RelationshipImpl{Type: "Relationship"},
@@ -33,7 +33,7 @@ func NewSingleObjectRelationship(object string) *SingleObjectRelationship {
 	}
 }
 
-//MultiObjectRelationship stores information about an entity's relation to multiple objects
+// MultiObjectRelationship stores information about an entity's relation to multiple objects
 type MultiObjectRelationship struct {
 	RelationshipImpl
 	Obj []string `json:"object"`
@@ -47,7 +47,7 @@ func (mor *MultiObjectRelationship) Object() any {
 	return mor.Obj
 }
 
-//NewMultiObjectRelationship accepts an array of object ID:s and returns a new MultiObjectRelationship
+// NewMultiObjectRelationship accepts an array of object ID:s and returns a new MultiObjectRelationship
 func NewMultiObjectRelationship(objects []string) *MultiObjectRelationship {
 	p := &MultiObjectRelationship{
 		RelationshipImpl: RelationshipImpl{Type: "Relationship"},
