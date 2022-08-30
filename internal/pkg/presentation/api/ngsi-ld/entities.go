@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -59,7 +58,7 @@ func NewCreateEntityHandler(
 		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 		// copy the body from the request and restore it for later use
-		body, _ := ioutil.ReadAll(r.Body)
+		body, _ := io.ReadAll(r.Body)
 		r.Body = io.NopCloser(bytes.NewBuffer(body))
 
 		entity, err := entities.NewFromJSON(body)
@@ -304,6 +303,53 @@ func NewRetrieveEntityHandler(
 	})
 }
 
+// NewMergeEntityHandler handles PATCH requests for NGSI entitities
+func NewMergeEntityHandler(
+	contextInformationManager cim.EntityMerger,
+	logger zerolog.Logger) http.HandlerFunc {
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var err error
+
+		ctx := r.Context()
+		tenant := GetTenantFromContext(ctx)
+		entityID, _ := url.QueryUnescape(chi.URLParam(r, "entityId"))
+
+		propagatedHeaders := extractHeaders(r, "Content-Type", "Link")
+
+		ctx, span := tracer.Start(ctx, "merge-entity",
+			trace.WithAttributes(
+				attribute.String(TraceAttributeNGSILDTenant, tenant),
+				attribute.String(TraceAttributeEntityID, entityID),
+			),
+		)
+		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+
+		var entity ngsitypes.EntityFragment
+		body, _ := io.ReadAll(r.Body)
+		entity, err = entities.NewFragmentFromJSON(body)
+
+		if err != nil {
+			mapCIMToNGSILDError(w, err, traceID)
+			return
+		}
+
+		_, err = contextInformationManager.MergeEntity(ctx, tenant, entityID, entity, propagatedHeaders)
+
+		if err != nil {
+			log.Error().Err(err).Str("entityID", entityID).Str("tenant", tenant).Msg("failed to merge entity attributes")
+			mapCIMToNGSILDError(w, err, traceID)
+			return
+		}
+
+		log.Info().Str("entityID", entityID).Str("tenant", tenant).Msg("entities merged")
+
+		w.WriteHeader(http.StatusNoContent)
+	})
+}
+
 // NewUpdateEntityAttributesHandler handles PATCH requests for NGSI entitity attributes
 func NewUpdateEntityAttributesHandler(
 	contextInformationManager cim.EntityAttributesUpdater,
@@ -329,7 +375,7 @@ func NewUpdateEntityAttributesHandler(
 		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 		var entity ngsitypes.EntityFragment
-		body, _ := ioutil.ReadAll(r.Body)
+		body, _ := io.ReadAll(r.Body)
 		entity, err = entities.NewFragmentFromJSON(body)
 
 		if err != nil {

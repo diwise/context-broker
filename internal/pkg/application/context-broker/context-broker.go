@@ -142,6 +142,52 @@ func (app *contextBrokerApp) RetrieveEntity(ctx context.Context, tenant, entityI
 	return nil, errors.NewNotFoundError(fmt.Sprintf("no context source found that could provide entity %s", entityID))
 }
 
+func (app *contextBrokerApp) MergeEntity(ctx context.Context, tenant, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error) {
+	sources, ok := app.tenants[tenant]
+	if !ok {
+		return nil, errors.NewUnknownTenantError(tenant)
+	}
+
+	for _, src := range sources {
+		for _, reginfo := range src.Information {
+			for _, entityInfo := range reginfo.Entities {
+
+				regexpForID, err := regexp.CompilePOSIX(entityInfo.IDPattern)
+				if err != nil {
+					continue
+				}
+
+				if !regexpForID.MatchString(entityID) {
+					continue
+				}
+
+				cbClient := client.NewContextBrokerClient(src.Endpoint)
+				result, err := cbClient.MergeEntity(ctx, entityID, fragment, headers)
+				if err != nil {
+					return result, err
+				}
+
+				if app.notifier != nil {
+					// Spawn a go routine to fetch the updated entity in its entirety
+					go func() {
+						delete(headers, "Content-Type")
+						headers["Accept"] = []string{"application/ld+json"}
+
+						entity, err := cbClient.RetrieveEntity(ctx, entityID, headers)
+						if err == nil {
+							app.notifier.EntityUpdated(ctx, entity)
+						}
+					}()
+				}
+
+				return result, err
+			}
+		}
+	}
+
+	return nil, errors.NewNotFoundError(fmt.Sprintf("no context source found that could update attributes for entity %s", entityID))
+}
+
 func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
 	sources, ok := app.tenants[tenant]
 	if !ok {

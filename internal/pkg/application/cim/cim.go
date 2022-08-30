@@ -15,6 +15,10 @@ type EntityCreator interface {
 	CreateEntity(ctx context.Context, tenant string, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error)
 }
 
+type EntityMerger interface {
+	MergeEntity(ctx context.Context, tenant, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error)
+}
+
 type EntityQuerier interface {
 	QueryEntities(ctx context.Context, tenant string, entityTypes, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error)
 }
@@ -26,6 +30,7 @@ type EntityRetriever interface {
 type ContextInformationManager interface {
 	EntityAttributesUpdater
 	EntityCreator
+	EntityMerger
 	EntityQuerier
 	EntityRetriever
 
