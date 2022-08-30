@@ -162,7 +162,7 @@ func (c cbClient) MergeEntity(ctx context.Context, entityID string, fragment typ
 	body := bytes.NewBuffer(json)
 
 	response, responseBody, err := c.callContextSource(
-		ctx, http.MethodPatch, c.baseURL+"/ngsi-ld/v1/entities/"+url.QueryEscape(entityID)+"/", body, headers,
+		ctx, http.MethodPatch, c.baseURL+"/ngsi-ld/v1/entities/"+url.QueryEscape(entityID), body, headers,
 	)
 
 	if err != nil {
