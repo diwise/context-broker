@@ -12,15 +12,20 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/context-broker/pkg/ngsild/errors"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
+	"github.com/diwise/service-chassis/pkg/infrastructure/env"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
 
 type contextBrokerApp struct {
-	tenants  map[string][]ContextSourceConfig
-	notifier subscriptions.Notifier
+	tenants     map[string][]ContextSourceConfig
+	notifier    subscriptions.Notifier
+	debugClient string
 }
 
 func New(ctx context.Context, cfg Config) (cim.ContextInformationManager, error) {
 	var notifier subscriptions.Notifier
+
+	logger := logging.GetFromContext(ctx)
 
 	// TODO: Support multiple notifiers and separation between tenants
 	notifierEndpoint := os.Getenv("NOTIFIER_ENDPOINT")
@@ -29,8 +34,9 @@ func New(ctx context.Context, cfg Config) (cim.ContextInformationManager, error)
 	}
 
 	app := &contextBrokerApp{
-		tenants:  make(map[string][]ContextSourceConfig),
-		notifier: notifier,
+		tenants:     make(map[string][]ContextSourceConfig),
+		notifier:    notifier,
+		debugClient: env.GetVariableOrDefault(logger, "CONTEXT_BROKER_CLIENT_DEBUG", "false"),
 	}
 
 	for _, tenant := range cfg.Tenants {
@@ -65,7 +71,7 @@ func (app *contextBrokerApp) CreateEntity(ctx context.Context, tenant string, en
 					continue
 				}
 
-				cbClient := client.NewContextBrokerClient(src.Endpoint)
+				cbClient := client.NewContextBrokerClient(src.Endpoint, client.Debug(app.debugClient))
 				result, err := cbClient.CreateEntity(ctx, entity, headers)
 				if err != nil {
 					return nil, err
@@ -105,7 +111,7 @@ func (app *contextBrokerApp) QueryEntities(ctx context.Context, tenant string, e
 					continue
 				}
 
-				cbClient := client.NewContextBrokerClient(src.Endpoint)
+				cbClient := client.NewContextBrokerClient(src.Endpoint, client.Debug(app.debugClient))
 				return cbClient.QueryEntities(ctx, entityTypes, entityAttributes, query, headers)
 			}
 		}
@@ -133,7 +139,7 @@ func (app *contextBrokerApp) RetrieveEntity(ctx context.Context, tenant, entityI
 					continue
 				}
 
-				cbClient := client.NewContextBrokerClient(src.Endpoint)
+				cbClient := client.NewContextBrokerClient(src.Endpoint, client.Debug(app.debugClient))
 				return cbClient.RetrieveEntity(ctx, entityID, headers)
 			}
 		}
@@ -161,7 +167,7 @@ func (app *contextBrokerApp) MergeEntity(ctx context.Context, tenant, entityID s
 					continue
 				}
 
-				cbClient := client.NewContextBrokerClient(src.Endpoint)
+				cbClient := client.NewContextBrokerClient(src.Endpoint, client.Debug(app.debugClient))
 				result, err := cbClient.MergeEntity(ctx, entityID, fragment, headers)
 				if err != nil {
 					return result, err
@@ -207,7 +213,7 @@ func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant,
 					continue
 				}
 
-				cbClient := client.NewContextBrokerClient(src.Endpoint)
+				cbClient := client.NewContextBrokerClient(src.Endpoint, client.Debug(app.debugClient))
 				result, err := cbClient.UpdateEntityAttributes(ctx, entityID, fragment, headers)
 				if err != nil {
 					return result, err
