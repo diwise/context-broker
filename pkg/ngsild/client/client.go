@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -28,6 +27,7 @@ type ContextBrokerClient interface {
 	CreateEntity(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error)
 	QueryEntities(ctx context.Context, entityTypes, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error)
 	RetrieveEntity(ctx context.Context, entityID string, headers map[string][]string) (types.Entity, error)
+	MergeEntity(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error)
 	UpdateEntityAttributes(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error)
 }
 
@@ -149,6 +149,38 @@ func (c cbClient) RetrieveEntity(ctx context.Context, entityID string, headers m
 	return entities.NewFromJSON(responseBody)
 }
 
+func (c cbClient) MergeEntity(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error) {
+	var err error
+
+	ctx, span := tracer.Start(ctx, "merge-entity",
+		trace.WithAttributes(attribute.String(TraceAttributeNGSILDTenant, c.tenant)),
+		trace.WithAttributes(attribute.String(TraceAttributeEntityID, entityID)),
+	)
+	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+	json, err := fragment.MarshalJSON()
+	body := bytes.NewBuffer(json)
+
+	response, responseBody, err := c.callContextSource(
+		ctx, http.MethodPatch, c.baseURL+"/ngsi-ld/v1/entities/"+url.QueryEscape(entityID), body, headers,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode != http.StatusNoContent && response.StatusCode != http.StatusMultiStatus {
+		contentType := response.Header.Get("Content-Type")
+		if response.StatusCode >= http.StatusBadRequest && response.StatusCode <= http.StatusInternalServerError {
+			return nil, errors.NewErrorFromProblemReport(response.StatusCode, contentType, responseBody)
+		}
+
+		return nil, fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", response.StatusCode, contentType, string(responseBody))
+	}
+
+	return ngsild.NewMergeEntityResult(responseBody)
+}
+
 func (c cbClient) UpdateEntityAttributes(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
 	var err error
 
@@ -253,12 +285,12 @@ func (c cbClient) callContextSource(ctx context.Context, method, endpoint string
 	}
 
 	defer resp.Body.Close()
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to read response body: %s (%w)", err.Error(), errors.ErrBadResponse)
 	}
 
-	if c.debug && resp.StatusCode >= http.StatusBadRequest {
+	if c.debug && resp.StatusCode >= http.StatusBadRequest && resp.StatusCode != http.StatusUnauthorized && resp.StatusCode != http.StatusNotFound {
 		reqbytes, _ := httputil.DumpRequest(req, false)
 		respbytes, _ := httputil.DumpResponse(resp, false)
 

@@ -33,6 +33,14 @@ func NewQueryEntitiesResult() *QueryEntitiesResult {
 	return qer
 }
 
+type MergeEntityResult struct {
+}
+
+func NewMergeEntityResult(body []byte) (*MergeEntityResult, error) {
+	mer := &MergeEntityResult{}
+	return mer, nil
+}
+
 type UpdateEntityAttributesResult struct {
 	Updated    []string `json:"updated"`
 	NotUpdated []struct {

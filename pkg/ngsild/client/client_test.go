@@ -65,6 +65,17 @@ func TestCreateEntityHandlesBadRequestError(t *testing.T) {
 	is.True(errors.Is(err, ngsierrors.ErrBadRequest))
 }
 
+func TestMergeEntity(t *testing.T) {
+	is := is.New(t)
+
+	s := setupMockServiceThatReturns(http.StatusNoContent, "")
+	c := NewContextBrokerClient(s.URL)
+
+	_, err := c.MergeEntity(context.Background(), "id", testEntity("Road", "id"), nil)
+
+	is.NoErr(err)
+}
+
 func setupMockServiceThatReturns(responseCode int, body string, headers ...func(w http.ResponseWriter)) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		for _, applyHeaderTo := range headers {

@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -224,7 +223,7 @@ func newGetRequest(is *is.I, ts *httptest.Server, accept, path string, body io.R
 	is.NoErr(err) // http request failed
 	defer resp.Body.Close()
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	is.NoErr(err) // failed to read response body
 
 	return resp, string(respBody)
@@ -238,7 +237,7 @@ func newPatchRequest(is *is.I, ts *httptest.Server, contentType, path string, bo
 	is.NoErr(err) // http request failed
 	defer resp.Body.Close()
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	is.NoErr(err) // failed to read response body
 
 	return resp, string(respBody)
@@ -252,7 +251,7 @@ func newPostRequest(is *is.I, ts *httptest.Server, contentType, path string, bod
 	is.NoErr(err) // http request failed
 	defer resp.Body.Close()
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	is.NoErr(err) // failed to read response body
 
 	return resp, string(respBody)
