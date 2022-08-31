@@ -15,8 +15,8 @@ type EntityDecoratorFunc func(e *EntityImpl)
 
 func New(entityID, entityType string, decorators ...EntityDecoratorFunc) (types.Entity, error) {
 	e := &EntityImpl{
-		entityID:      entityID,
-		entityType:    entityType,
+		entityID:      &entityID,
+		entityType:    &entityType,
 		properties:    map[string]types.Property{},
 		relationships: map[string]types.Relationship{},
 	}
@@ -94,8 +94,8 @@ func NewFromSlice(body []byte) ([]types.Entity, error) {
 }
 
 type EntityImpl struct {
-	entityID   string
-	entityType string
+	entityID   *string
+	entityType *string
 
 	context       []string
 	properties    map[string]types.Property
@@ -103,11 +103,17 @@ type EntityImpl struct {
 }
 
 func (e EntityImpl) ID() string {
-	return e.entityID
+	if e.entityID != nil {
+		return *e.entityID
+	}
+	return ""
 }
 
 func (e EntityImpl) Type() string {
-	return e.entityType
+	if e.entityType != nil {
+		return *e.entityType
+	}
+	return ""
 }
 
 func (e EntityImpl) ForEachAttribute(callback func(attributeType, attributeName string, contents any)) error {
@@ -124,9 +130,17 @@ func (e EntityImpl) ForEachAttribute(callback func(attributeType, attributeName 
 }
 
 func (e EntityImpl) MarshalJSON() ([]byte, error) {
-	contents := map[string]any{
-		"id":   e.ID(),
-		"type": e.Type(),
+
+	contents := map[string]any{}
+
+	// Only marshal id if non empty
+	if entityID := e.ID(); len(entityID) > 0 {
+		contents["id"] = entityID
+	}
+
+	// Only marshal type if non empty
+	if entityType := e.Type(); len(entityType) > 0 {
+		contents["type"] = entityType
 	}
 
 	for k, p := range e.properties {
@@ -147,8 +161,8 @@ func (e *EntityImpl) UnmarshalJSON(data []byte) error {
 	json.Unmarshal(data, &contents)
 
 	header := struct {
-		ID      string          `json:"id"`
-		Type    string          `json:"type"`
+		ID      *string         `json:"id,omitempty"`
+		Type    *string         `json:"type,omitempty"`
 		Context json.RawMessage `json:"@context"`
 	}{}
 
