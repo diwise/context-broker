@@ -290,7 +290,7 @@ func (c cbClient) callContextSource(ctx context.Context, method, endpoint string
 		return nil, nil, fmt.Errorf("failed to read response body: %s (%w)", err.Error(), errors.ErrBadResponse)
 	}
 
-	if c.debug && resp.StatusCode >= http.StatusBadRequest {
+	if c.debug && resp.StatusCode >= http.StatusBadRequest && resp.StatusCode != http.StatusUnauthorized && resp.StatusCode != http.StatusNotFound {
 		reqbytes, _ := httputil.DumpRequest(req, false)
 		respbytes, _ := httputil.DumpResponse(resp, false)
 
