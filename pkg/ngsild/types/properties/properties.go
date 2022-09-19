@@ -155,7 +155,28 @@ func UnmarshalP(body map[string]any) (types.Property, error) {
 
 	switch typedValue := value.(type) {
 	case float64:
-		return NewNumberProperty(typedValue), nil
+		np := NewNumberProperty(typedValue)
+		// Parse property metadata
+		if obsA, ok := body["observedAt"]; ok {
+			if observedAt, ok := obsA.(string); ok {
+				np.ObservedAt = &observedAt
+			}
+		}
+		if unit, ok := body["unitCode"]; ok {
+			if unitCode, ok := unit.(string); ok {
+				np.UnitCode = &unitCode
+			}
+		}
+		if obsB, ok := body["observedBy"]; ok {
+			if observedBy, ok := obsB.(map[string]any); ok {
+				r, err := relationships.UnmarshalR(observedBy)
+				if err != nil {
+					return nil, fmt.Errorf("observedBy is not a valid relationship: %w", err)
+				}
+				np.ObservedBy = r
+			}
+		}
+		return np, nil
 	case string:
 		return NewTextProperty(typedValue), nil
 	case map[string]any:
