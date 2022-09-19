@@ -51,9 +51,9 @@ func NewNotFoundError(msg string) error {
 	}
 }
 
-func NewUnknownTenantError(msg string) error {
+func NewUnknownTenantError(tenant string) error {
 	return &myError{
-		msg:    msg,
+		msg:    fmt.Sprintf("unknown tenant: %s", tenant),
 		target: ErrUnknownTenant,
 	}
 }

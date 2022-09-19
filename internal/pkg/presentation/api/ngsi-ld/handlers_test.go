@@ -3,6 +3,7 @@ package ngsild
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -195,6 +196,28 @@ func TestUpdateEntityAttributes(t *testing.T) {
 	is.Equal(resp.StatusCode, http.StatusNoContent) // should return 204 No Content
 }
 
+func TestUpdateEntityAttributesWithPropertyMetadata(t *testing.T) {
+	is, ts, app := setupTest(t)
+	defer ts.Close()
+
+	app.UpdateEntityAttributesFunc = func(ctx context.Context, tenant, entityID string, fragment ngsitypes.EntityFragment, h map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
+		const expectedFragmentJSON string = `{"@context":["https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/default-context.jsonld"],"waterConsumption":{"type":"Property","value":100,"observedAt":"2006-01-02T15:04:05Z","observedBy":{"type":"Relationship","object":"some_device"},"unitCode":"LTR"}}`
+
+		reqb, err := json.Marshal(fragment)
+		is.NoErr(err)
+		is.Equal(string(reqb), expectedFragmentJSON)
+
+		return &ngsild.UpdateEntityAttributesResult{
+			Updated: []string{entityID},
+		}, nil
+	}
+
+	body := []byte("{\"@context\":[\"https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/default-context.jsonld\"],\"waterConsumption\":{\"type\":\"Property\",\"value\":100,\"observedAt\":\"2006-01-02T15:04:05Z\",\"observedBy\":{\"type\":\"Relationship\",\"object\":\"some_device\"},\"unitCode\":\"LTR\"}}")
+
+	resp, _ := newPatchRequest(is, ts, "application/ld+json", "/ngsi-ld/v1/entities/idtobepatched/attrs/", bytes.NewBuffer(body))
+
+	is.Equal(resp.StatusCode, http.StatusNoContent) // should return 204 No Content
+}
 func TestRequestDefaultContext(t *testing.T) {
 	is, ts, _ := setupTest(t)
 	defer ts.Close()
