@@ -34,6 +34,7 @@ func TestCreateEntity(t *testing.T) {
 			responseCode(http.StatusCreated),
 		),
 	)
+	defer s.Close()
 
 	c := NewContextBrokerClient(s.URL())
 
@@ -53,6 +54,8 @@ func TestCreateEntityHandlesMissingLocationheader(t *testing.T) {
 			responseCode(http.StatusCreated),
 		),
 	)
+	defer s.Close()
+
 	c := NewContextBrokerClient(s.URL())
 
 	result, err := c.CreateEntity(context.Background(), testEntity("Road", "id"), nil)
@@ -68,6 +71,8 @@ func TestCreateEntityThrowsErrorOnNon201Success(t *testing.T) {
 		expects(is, anyInput()),
 		returns(responseCode(http.StatusNoContent)),
 	)
+	defer s.Close()
+
 	c := NewContextBrokerClient(s.URL())
 
 	_, err := c.CreateEntity(context.Background(), testEntity("Road", "id"), nil)
@@ -90,6 +95,7 @@ func TestCreateEntityHandlesBadRequestError(t *testing.T) {
 			responseBody(b),
 		),
 	)
+	defer s.Close()
 
 	c := NewContextBrokerClient(s.URL())
 
@@ -111,6 +117,8 @@ func TestMergeEntity(t *testing.T) {
 		),
 		returns(responseCode(http.StatusNoContent)),
 	)
+	defer s.Close()
+
 	c := NewContextBrokerClient(s.URL())
 
 	_, err := c.MergeEntity(context.Background(), "id", testEntity("Road", "id"), nil)
@@ -135,6 +143,8 @@ func TestUpdateEntityAttributesWithMetaData(t *testing.T) {
 			responseCode(http.StatusNoContent),
 		),
 	)
+	defer s.Close()
+
 	c := NewContextBrokerClient(s.URL())
 
 	props := []entities.EntityDecoratorFunc{
