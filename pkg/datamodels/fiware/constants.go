@@ -23,6 +23,10 @@ const (
 	DeviceModelTypeName string = "DeviceModel"
 	//DeviceModelIDPrefix contains the mandatory prefix for DeviceModel ID:s
 	DeviceModelIDPrefix string = urnPrefix + DeviceModelTypeName + ":"
+	//GreenspaceRecordTypeName is a type name constant for GreenspaceRecord
+	GreenspaceRecordTypeName string = "GreenspaceRecord"
+	//GreenspaceRecordIDPrefix ...
+	GreenspaceRecordIDPrefix string = urnPrefix + GreenspaceRecordTypeName + ":"
 	//Open311ServiceRequestTypeName is a type name constant for Open311ServiceRequest
 	Open311ServiceRequestTypeName string = "Open311ServiceRequest"
 	//Open311ServiceRequestIDPrefix ...
