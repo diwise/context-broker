@@ -3,6 +3,7 @@
         "diwise": "https://diwise.io/ngsi-ld/",
         "ExerciseTrail": "diwise:ExerciseTrail",
         "Lifebuoy": "diwise:Lifebuoy",
+        "SportsField": "diwise:SportsField",
         "dateLastPreparation": {
             "@id": "https://uri.diwise.io/ns/data-models#dateLastPreparation",
             "@type": "https://uri.etsi.org/ngsi-ld/DateTime"
