@@ -12,9 +12,14 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/context-broker/pkg/ngsild/errors"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
+	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
+	"go.opentelemetry.io/otel"
 )
+
+var tracer = otel.Tracer("context-broker/context-broker")
 
 type contextBrokerApp struct {
 	tenants     map[string][]ContextSourceConfig
@@ -178,6 +183,13 @@ func (app *contextBrokerApp) MergeEntity(ctx context.Context, tenant, entityID s
 					go func() {
 						delete(headers, "Content-Type")
 						headers["Accept"] = []string{"application/ld+json"}
+						headers["Link"] = []string{entities.LinkHeader}
+
+						ctx, span := tracer.Start(
+							tracing.ExtractHeaders(context.Background(), tracing.InjectHeaders(ctx)),
+							"post",
+						)
+						defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
 						entity, err := cbClient.RetrieveEntity(ctx, entityID, headers)
 						if err == nil {
@@ -224,6 +236,13 @@ func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant,
 					go func() {
 						delete(headers, "Content-Type")
 						headers["Accept"] = []string{"application/ld+json"}
+						headers["Link"] = []string{entities.LinkHeader}
+
+						ctx, span := tracer.Start(
+							tracing.ExtractHeaders(context.Background(), tracing.InjectHeaders(ctx)),
+							"post",
+						)
+						defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
 						entity, err := cbClient.RetrieveEntity(ctx, entityID, headers)
 						if err == nil {
