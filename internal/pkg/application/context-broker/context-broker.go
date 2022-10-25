@@ -16,10 +16,7 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
-	"go.opentelemetry.io/otel"
 )
-
-var tracer = otel.Tracer("context-broker/context-broker")
 
 type contextBrokerApp struct {
 	tenants     map[string][]ContextSourceConfig
