@@ -185,11 +185,7 @@ func (app *contextBrokerApp) MergeEntity(ctx context.Context, tenant, entityID s
 						headers["Accept"] = []string{"application/ld+json"}
 						headers["Link"] = []string{entities.LinkHeader}
 
-						ctx, span := tracer.Start(
-							tracing.ExtractHeaders(context.Background(), tracing.InjectHeaders(ctx)),
-							"post",
-						)
-						defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+						ctx := tracing.ExtractHeaders(context.Background(), tracing.InjectHeaders(ctx))
 
 						entity, err := cbClient.RetrieveEntity(ctx, entityID, headers)
 						if err == nil {
@@ -238,11 +234,7 @@ func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant,
 						headers["Accept"] = []string{"application/ld+json"}
 						headers["Link"] = []string{entities.LinkHeader}
 
-						ctx, span := tracer.Start(
-							tracing.ExtractHeaders(context.Background(), tracing.InjectHeaders(ctx)),
-							"post",
-						)
-						defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+						ctx := tracing.ExtractHeaders(context.Background(), tracing.InjectHeaders(ctx))
 
 						entity, err := cbClient.RetrieveEntity(ctx, entityID, headers)
 						if err == nil {
