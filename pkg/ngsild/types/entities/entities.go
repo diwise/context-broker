@@ -274,7 +274,7 @@ func DefaultBrokerContext(brokerURL string) EntityDecoratorFunc {
 
 const DefaultContextURL string = "https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/default-context.jsonld"
 
-var LinkHeader string = fmt.Sprintf(`<%s>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"`, DefaultContextURL)
+const LinkHeader string = `<` + DefaultContextURL + `>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"`
 
 func DefaultContext() EntityDecoratorFunc {
 	return Context([]string{DefaultContextURL})
