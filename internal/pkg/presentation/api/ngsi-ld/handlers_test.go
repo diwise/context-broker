@@ -18,6 +18,7 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	. "github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/jwtauth/v5"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 )
@@ -27,11 +28,15 @@ const (
 	geo_json string = "application/geo+json"
 )
 
+var acceptJSONLD = [][]string{{"Accept", ld_json}}
+var acceptJSON = [][]string{{"Accept", "application/json"}}
+var jsonLDContent = [][]string{{"Content-Type", ld_json}}
+
 func TestCreateEntity(t *testing.T) {
 	is, ts, _ := setupTest(t)
 	defer ts.Close()
 
-	resp, _ := newPostRequest(is, ts, ld_json, "/ngsi-ld/v1/entities", bytes.NewBuffer([]byte(entityJSON)))
+	resp, _ := testRequest(is, ts, http.MethodPost, jsonLDContent, "/ngsi-ld/v1/entities", bytes.NewBuffer([]byte(entityJSON)))
 
 	is.Equal(resp.StatusCode, http.StatusCreated) // Check status code
 }
@@ -53,7 +58,7 @@ func TestCreateEntityWithBadDataReturnsInvalidRequest(t *testing.T) {
 	is, ts, _ := setupTest(t)
 	defer ts.Close()
 
-	resp, _ := newPostRequest(is, ts, ld_json, "/ngsi-ld/v1/entities", bytes.NewBuffer([]byte("this is not my json")))
+	resp, _ := testRequest(is, ts, http.MethodPost, jsonLDContent, "/ngsi-ld/v1/entities", bytes.NewBuffer([]byte("this is not my json")))
 
 	is.Equal(resp.StatusCode, http.StatusBadRequest) // Check status code
 }
@@ -66,7 +71,7 @@ func TestCreateEntityCanHandleAlreadyExistsError(t *testing.T) {
 		return nil, errors.NewAlreadyExistsError("already exists")
 	}
 
-	resp, _ := newPostRequest(is, ts, ld_json, "/ngsi-ld/v1/entities", bytes.NewBuffer([]byte(entityJSON)))
+	resp, _ := testRequest(is, ts, http.MethodPost, jsonLDContent, "/ngsi-ld/v1/entities", bytes.NewBuffer([]byte(entityJSON)))
 
 	is.Equal(resp.StatusCode, http.StatusConflict) // Check status code
 }
@@ -79,7 +84,7 @@ func TestCreateEntityCanHandleInternalError(t *testing.T) {
 		return nil, fmt.Errorf("some unknown error")
 	}
 
-	resp, _ := newPostRequest(is, ts, ld_json, "/ngsi-ld/v1/entities", bytes.NewBuffer([]byte(entityJSON)))
+	resp, _ := testRequest(is, ts, http.MethodPost, jsonLDContent, "/ngsi-ld/v1/entities", bytes.NewBuffer([]byte(entityJSON)))
 
 	is.Equal(resp.StatusCode, http.StatusInternalServerError) // Check status code
 }
@@ -88,7 +93,7 @@ func TestQueryEntitiesWithNoTypesOrAttrsReturnsBadRequest(t *testing.T) {
 	is, ts, _ := setupTest(t)
 	defer ts.Close()
 
-	resp, _ := newGetRequest(is, ts, ld_json, "/ngsi-ld/v1/entities", nil)
+	resp, _ := testRequest(is, ts, http.MethodGet, acceptJSONLD, "/ngsi-ld/v1/entities", nil)
 
 	is.Equal(resp.StatusCode, http.StatusBadRequest) // Check status code
 }
@@ -97,7 +102,7 @@ func TestQueryEntitiesForwardsSingleType(t *testing.T) {
 	is, ts, app := setupTest(t)
 	defer ts.Close()
 
-	_, _ = newGetRequest(is, ts, ld_json, "/ngsi-ld/v1/entities?type=A", nil)
+	_, _ = testRequest(is, ts, http.MethodGet, acceptJSONLD, "/ngsi-ld/v1/entities?type=A", nil)
 
 	is.Equal(len(app.QueryEntitiesCalls()), 1)
 	is.Equal(len(app.QueryEntitiesCalls()[0].EntityTypes), 1)
@@ -108,7 +113,7 @@ func TestQueryEntitiesForwardsMultipleTypes(t *testing.T) {
 	is, ts, app := setupTest(t)
 	defer ts.Close()
 
-	_, _ = newGetRequest(is, ts, ld_json, "/ngsi-ld/v1/entities?type=A,B,C", nil)
+	_, _ = testRequest(is, ts, http.MethodGet, acceptJSONLD, "/ngsi-ld/v1/entities?type=A,B,C", nil)
 
 	is.Equal(len(app.QueryEntitiesCalls()), 1)
 	is.Equal(len(app.QueryEntitiesCalls()[0].EntityTypes), 3)
@@ -120,7 +125,7 @@ func TestQueryEntitiesForwardsCorrectPathAndQuery(t *testing.T) {
 	defer ts.Close()
 
 	pathAndQuery := "/ngsi-ld/v1/entities?type=A,B,C"
-	_, _ = newGetRequest(is, ts, ld_json, pathAndQuery, nil)
+	_, _ = testRequest(is, ts, http.MethodGet, acceptJSONLD, pathAndQuery, nil)
 
 	is.Equal(len(app.QueryEntitiesCalls()), 1)
 	is.Equal(app.QueryEntitiesCalls()[0].Query, pathAndQuery)
@@ -145,7 +150,7 @@ func TestQueryEntities(t *testing.T) {
 		return qer, nil
 	}
 
-	_, _ = newGetRequest(is, ts, ld_json, "/ngsi-ld/v1/entities?type=A", nil)
+	_, _ = testRequest(is, ts, http.MethodGet, acceptJSONLD, "/ngsi-ld/v1/entities?type=A", nil)
 
 	is.Equal(len(app.QueryEntitiesCalls()), 1)
 	//is.Equal(responseBody, "test")
@@ -170,7 +175,7 @@ func TestQueryEntitiesAsGeoJSON(t *testing.T) {
 		return qer, nil
 	}
 
-	_, responseBody := newGetRequest(is, ts, geo_json, "/ngsi-ld/v1/entities?type=A", nil)
+	_, responseBody := testRequest(is, ts, http.MethodGet, [][]string{{"Accept", geo_json}}, "/ngsi-ld/v1/entities?type=A", nil)
 
 	is.Equal(responseBody, weatherObservedGeoJson)
 }
@@ -191,7 +196,7 @@ func TestUpdateEntityAttributes(t *testing.T) {
 	body, err := fragment.MarshalJSON()
 	is.NoErr(err)
 
-	resp, _ := newPatchRequest(is, ts, "application/ld+json", "/ngsi-ld/v1/entities/idtobepatched/attrs/", bytes.NewBuffer(body))
+	resp, _ := testRequest(is, ts, http.MethodPatch, jsonLDContent, "/ngsi-ld/v1/entities/idtobepatched/attrs/", bytes.NewBuffer(body))
 
 	is.Equal(resp.StatusCode, http.StatusNoContent) // should return 204 No Content
 }
@@ -214,7 +219,7 @@ func TestUpdateEntityAttributesWithPropertyMetadata(t *testing.T) {
 
 	body := []byte("{\"@context\":[\"https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/default-context.jsonld\"],\"waterConsumption\":{\"type\":\"Property\",\"value\":100,\"observedAt\":\"2006-01-02T15:04:05Z\",\"observedBy\":{\"type\":\"Relationship\",\"object\":\"some_device\"},\"unitCode\":\"LTR\"}}")
 
-	resp, _ := newPatchRequest(is, ts, "application/ld+json", "/ngsi-ld/v1/entities/idtobepatched/attrs/", bytes.NewBuffer(body))
+	resp, _ := testRequest(is, ts, http.MethodPatch, jsonLDContent, "/ngsi-ld/v1/entities/idtobepatched/attrs/", bytes.NewBuffer(body))
 
 	is.Equal(resp.StatusCode, http.StatusNoContent) // should return 204 No Content
 }
@@ -222,7 +227,7 @@ func TestRequestDefaultContext(t *testing.T) {
 	is, ts, _ := setupTest(t)
 	defer ts.Close()
 
-	resp, _ := newGetRequest(is, ts, "application/json", "/ngsi-ld/v1/jsonldContexts/default-context.jsonld", nil)
+	resp, _ := testRequest(is, ts, http.MethodGet, acceptJSON, "/ngsi-ld/v1/jsonldContexts/default-context.jsonld", nil)
 
 	is.Equal(resp.StatusCode, http.StatusOK)
 }
@@ -231,44 +236,18 @@ func TestRequestUnknownContextFailsWith404(t *testing.T) {
 	is, ts, _ := setupTest(t)
 	defer ts.Close()
 
-	resp, _ := newGetRequest(is, ts, "application/json", "/ngsi-ld/v1/jsonldContexts/unknown-context.jsonld", nil)
+	resp, _ := testRequest(is, ts, http.MethodGet, acceptJSON, "/ngsi-ld/v1/jsonldContexts/unknown-context.jsonld", nil)
 
 	is.Equal(resp.StatusCode, http.StatusNotFound)
 }
 
-func newGetRequest(is *is.I, ts *httptest.Server, accept, path string, body io.Reader) (*http.Response, string) {
-	req, err := http.NewRequest(http.MethodGet, ts.URL+path, body)
+func testRequest(is *is.I, ts *httptest.Server, method string, headers [][]string, path string, body io.Reader) (*http.Response, string) {
+	req, err := http.NewRequest(method, ts.URL+path, body)
 	is.NoErr(err)
 
-	req.Header.Add("Accept", accept)
-
-	resp, err := http.DefaultClient.Do(req)
-	is.NoErr(err) // http request failed
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	is.NoErr(err) // failed to read response body
-
-	return resp, string(respBody)
-}
-
-func newPatchRequest(is *is.I, ts *httptest.Server, contentType, path string, body io.Reader) (*http.Response, string) {
-	req, _ := http.NewRequest(http.MethodPatch, ts.URL+path, body)
-	req.Header.Add("Content-Type", contentType)
-
-	resp, err := http.DefaultClient.Do(req)
-	is.NoErr(err) // http request failed
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	is.NoErr(err) // failed to read response body
-
-	return resp, string(respBody)
-}
-
-func newPostRequest(is *is.I, ts *httptest.Server, contentType, path string, body io.Reader) (*http.Response, string) {
-	req, _ := http.NewRequest(http.MethodPost, ts.URL+path, body)
-	req.Header.Add("Content-Type", contentType)
+	for _, hdr := range headers {
+		req.Header.Add(hdr[0], hdr[1])
+	}
 
 	resp, err := http.DefaultClient.Do(req)
 	is.NoErr(err) // http request failed
@@ -297,9 +276,16 @@ func setupTest(t *testing.T) (*is.I, *httptest.Server, *cim.ContextInformationMa
 		},
 	}
 
-	RegisterHandlers(r, app, log)
+	policies := bytes.NewBufferString(opaModule)
+	RegisterHandlers(r, policies, app, log)
 
 	return is, ts, app
+}
+
+func createJWTWithTenants(tenants []string) string {
+	tokenAuth := jwtauth.New("HS256", []byte("secret"), nil)
+	_, tokenString, _ := tokenAuth.Encode(map[string]any{"user_id": 123, "azp": "diwise-frontend", "tenants": tenants})
+	return "Bearer " + tokenString
 }
 
 var entityJSON string = `{
@@ -312,3 +298,19 @@ var entityJSON string = `{
 }`
 
 var weatherObservedGeoJson string = `{"type":"FeatureCollection","features":[{"id":"urn:ngsi-ld:WeatherObserved:Spain-WeatherObserved-Valladolid-2016-11-30T07:00:00.00Z","type":"Feature","geometry":{"type":"Point","coordinates":[-4.754444444,41.640833333]},"properties":{"dateObserved":{"type":"Property","value":{"@type":"DateTime","@value":"2016-11-30T07:00:00.00Z"}},"location":{"type":"GeoProperty","value":{"type":"Point","coordinates":[-4.754444444,41.640833333]}},"temperature":{"type":"Property","value":3.3},"type":"WeatherObserved"}}],"@context":["https://schema.lab.fiware.org/ld/context","https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"]}`
+
+const opaModule string = `
+#
+# Use https://play.openpolicyagent.org for easier editing/validation of this policy file
+#
+
+package example.authz
+
+default allow := false
+
+allow = response {
+	response := {
+		"ok": true
+	}
+}
+`

@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
+	"github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/auth"
 	"github.com/diwise/context-broker/pkg/ngsild"
 	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
 	"github.com/diwise/context-broker/pkg/ngsild/geojson"
@@ -39,6 +40,7 @@ type CreateEntityCompletionCallback func(ctx context.Context, entityType, entity
 // NewCreateEntityHandler handles incoming POST requests for NGSI entities
 func NewCreateEntityHandler(
 	contextInformationManager cim.EntityCreator,
+	authenticator auth.Enticator,
 	logger zerolog.Logger,
 	onsuccess CreateEntityCompletionCallback) http.HandlerFunc {
 
@@ -73,6 +75,14 @@ func NewCreateEntityHandler(
 		}
 
 		entityID := entity.ID()
+		entityType := entity.Type()
+
+		err = authenticator.CheckAccess(ctx, r, tenant, []string{entityType})
+		if err != nil {
+			log.Warn().Err(err).Msg("access not granted")
+			ngsierrors.ReportUnauthorizedRequest(w, "not authorized", traceID)
+			return
+		}
 
 		var result *ngsild.CreateEntityResult
 
@@ -85,7 +95,7 @@ func NewCreateEntityHandler(
 
 		log.Info().Str("entityID", entityID).Str("tenant", tenant).Msg("entity created")
 
-		onsuccess(ctx, entity.Type(), entityID, log)
+		onsuccess(ctx, entityType, entityID, log)
 
 		w.Header().Add("Location", result.Location())
 		w.WriteHeader(http.StatusCreated)
@@ -95,6 +105,7 @@ func NewCreateEntityHandler(
 // NewQueryEntitiesHandler handles GET requests for NGSI entities
 func NewQueryEntitiesHandler(
 	contextInformationManager cim.EntityQuerier,
+	authenticator auth.Enticator,
 	logger zerolog.Logger) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -145,6 +156,14 @@ func NewQueryEntitiesHandler(
 
 		entityTypes := strings.Split(entityTypeNames, ",")
 		attributes := strings.Split(attributeNames, ",")
+
+		err = authenticator.CheckAccess(ctx, r, tenant, entityTypes)
+		if err != nil {
+			log.Warn().Err(err).Msg("access not granted")
+			messageToSendToNonAuthenticatedClients := "not found"
+			ngsierrors.ReportNotFoundError(w, messageToSendToNonAuthenticatedClients, traceID)
+			return
+		}
 
 		result, err := contextInformationManager.QueryEntities(ctx, tenant, entityTypes, attributes, r.URL.Path+"?"+r.URL.RawQuery, propagatedHeaders)
 		if err != nil {
@@ -224,6 +243,7 @@ func NewQueryEntitiesHandler(
 // NewRetrieveEntityHandler retrieves entity by ID.
 func NewRetrieveEntityHandler(
 	contextInformationManager cim.EntityRetriever,
+	authenticator auth.Enticator,
 	logger zerolog.Logger) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -267,6 +287,19 @@ func NewRetrieveEntityHandler(
 		var entity ngsitypes.Entity
 		entity, err = contextInformationManager.RetrieveEntity(ctx, tenant, entityID, propagatedHeaders)
 
+		if err == nil {
+			// Checking access after we have retrieved the entity allows us to use the type
+			// information when we decide if the client is allowed to retrieve this entity or not
+			autherr := authenticator.CheckAccess(ctx, r, tenant, []string{entity.Type()})
+			if autherr != nil {
+				err = autherr
+				log.Warn().Err(err).Msg("access not granted")
+				messageToSendToNonAuthenticatedClients := "not found"
+				ngsierrors.ReportNotFoundError(w, messageToSendToNonAuthenticatedClients, traceID)
+				return
+			}
+		}
+
 		if err != nil {
 			log.Error().Err(err).Msg("retrieve entity failed")
 			mapCIMToNGSILDError(w, err, traceID)
@@ -306,6 +339,7 @@ func NewRetrieveEntityHandler(
 // NewMergeEntityHandler handles PATCH requests for NGSI entitities
 func NewMergeEntityHandler(
 	contextInformationManager cim.EntityMerger,
+	authenticator auth.Enticator,
 	logger zerolog.Logger) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -336,6 +370,14 @@ func NewMergeEntityHandler(
 			return
 		}
 
+		err = authenticator.CheckAccess(ctx, r, tenant, []string{})
+		if err != nil {
+			log.Warn().Err(err).Msg("access not granted")
+			messageToSendToNonAuthenticatedClients := "not found"
+			ngsierrors.ReportNotFoundError(w, messageToSendToNonAuthenticatedClients, traceID)
+			return
+		}
+
 		_, err = contextInformationManager.MergeEntity(ctx, tenant, entityID, entity, propagatedHeaders)
 
 		if err != nil {
@@ -353,6 +395,7 @@ func NewMergeEntityHandler(
 // NewUpdateEntityAttributesHandler handles PATCH requests for NGSI entitity attributes
 func NewUpdateEntityAttributesHandler(
 	contextInformationManager cim.EntityAttributesUpdater,
+	authenticator auth.Enticator,
 	logger zerolog.Logger) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -380,6 +423,14 @@ func NewUpdateEntityAttributesHandler(
 
 		if err != nil {
 			mapCIMToNGSILDError(w, err, traceID)
+			return
+		}
+
+		err = authenticator.CheckAccess(ctx, r, tenant, []string{})
+		if err != nil {
+			log.Warn().Err(err).Msg("access not granted")
+			messageToSendToNonAuthenticatedClients := "not found"
+			ngsierrors.ReportNotFoundError(w, messageToSendToNonAuthenticatedClients, traceID)
 			return
 		}
 

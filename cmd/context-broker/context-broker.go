@@ -16,6 +16,7 @@ import (
 const serviceName string = "context-broker"
 
 var configFilePath string
+var opaFilePath string
 
 func main() {
 
@@ -24,6 +25,7 @@ func main() {
 	defer cleanup()
 
 	flag.StringVar(&configFilePath, "config", "/opt/diwise/config/default.yaml", "A configuration file containing federation information")
+	flag.StringVar(&opaFilePath, "policies", "/opt/diwise/config/authz.rego", "An authorization policy file")
 	flag.Parse()
 
 	configfile, err := os.Open(configFilePath)
@@ -44,7 +46,14 @@ func main() {
 	defer app.Stop()
 
 	r := router.New(serviceName)
-	ngsild.RegisterHandlers(r, app, logger)
+
+	policies, err := os.Open(opaFilePath)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("unable to open opa policy file")
+	}
+	defer policies.Close()
+
+	ngsild.RegisterHandlers(r, policies, app, logger)
 
 	port := os.Getenv("SERVICE_PORT")
 	if port == "" {

@@ -2,15 +2,17 @@ package ngsild
 
 import (
 	"context"
+	"io"
 	"net/http"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
+	"github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/auth"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/zerolog"
 )
 
-func RegisterHandlers(r chi.Router, app cim.ContextInformationManager, log zerolog.Logger) error {
+func RegisterHandlers(r chi.Router, policies io.Reader, app cim.ContextInformationManager, log zerolog.Logger) error {
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -21,29 +23,34 @@ func RegisterHandlers(r chi.Router, app cim.ContextInformationManager, log zerol
 			r.Use(middleware.AllowContentType("application/json", "application/ld+json"))
 			r.Use(NGSIMiddleware())
 
+			authenticator, err := auth.NewAuthenticator(context.Background(), log, policies)
+			if err != nil {
+				log.Fatal().Err(err).Msg("failed to create api authenticator")
+			}
+
 			r.Get(
 				"/entities",
-				NewQueryEntitiesHandler(app, log),
+				NewQueryEntitiesHandler(app, authenticator, log),
 			)
 
 			r.Get(
 				"/entities/{entityId}",
-				NewRetrieveEntityHandler(app, log),
+				NewRetrieveEntityHandler(app, authenticator, log),
 			)
 			r.Patch(
 				"/entities/{entityId}",
-				NewMergeEntityHandler(app, log),
+				NewMergeEntityHandler(app, authenticator, log),
 			)
 
 			r.Patch(
 				"/entities/{entityId}/attrs/",
-				NewUpdateEntityAttributesHandler(app, log),
+				NewUpdateEntityAttributesHandler(app, authenticator, log),
 			)
 
 			r.Post(
 				"/entities",
 				NewCreateEntityHandler(
-					app, log,
+					app, authenticator, log,
 					func(ctx context.Context, entityType, entityID string, logger zerolog.Logger) {},
 				),
 			)
