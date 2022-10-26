@@ -18,7 +18,6 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	. "github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/jwtauth/v5"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog/log"
 )
@@ -280,12 +279,6 @@ func setupTest(t *testing.T) (*is.I, *httptest.Server, *cim.ContextInformationMa
 	RegisterHandlers(r, policies, app, log)
 
 	return is, ts, app
-}
-
-func createJWTWithTenants(tenants []string) string {
-	tokenAuth := jwtauth.New("HS256", []byte("secret"), nil)
-	_, tokenString, _ := tokenAuth.Encode(map[string]any{"user_id": 123, "azp": "diwise-frontend", "tenants": tenants})
-	return "Bearer " + tokenString
 }
 
 var entityJSON string = `{
