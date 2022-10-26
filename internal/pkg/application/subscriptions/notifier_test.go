@@ -2,30 +2,41 @@ package subscriptions
 
 import (
 	"context"
-	"encoding/json"
-	"io/ioutil"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	. "github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
-	"github.com/diwise/context-broker/pkg/ngsild/types/subscriptions"
+	testutils "github.com/diwise/service-chassis/pkg/test/http"
+	"github.com/diwise/service-chassis/pkg/test/http/expects"
+	"github.com/diwise/service-chassis/pkg/test/http/response"
 	"github.com/matryer/is"
 )
+
+var Expects = testutils.Expects
+var Returns = testutils.Returns
+
+var method = expects.RequestMethod
+var bodyContaining = expects.RequestBodyContaining
 
 func TestSingleNotificationOnCreate(t *testing.T) {
 	is := is.New(t)
 	const entityID string = "urn:ngsi-ld:Lifebuoy:mybuoy"
 
-	var calls int = 0
-	s := setupMockService(&calls,
-		notificationEntityCount(is, 1), notificationEntityID(0, is, entityID),
-		responseCode(http.StatusOK),
+	s := testutils.NewMockServiceThat(
+		Expects(
+			is,
+			method(http.MethodPost),
+			bodyContaining("urn:ngsi-ld:Lifebuoy:mybuoy"),
+		),
+		Returns(
+			response.Code(http.StatusOK),
+		),
 	)
+	defer s.Close()
 
 	ctx := context.Background()
-	n, _ := NewNotifier(ctx, s.URL)
+	n, _ := NewNotifier(ctx, s.URL())
 
 	n.Start()
 
@@ -36,42 +47,5 @@ func TestSingleNotificationOnCreate(t *testing.T) {
 
 	n.Stop()
 
-	is.Equal(calls, 1)
-}
-
-type ValidatorFunc func(w http.ResponseWriter, r *http.Request, body []byte)
-
-func setupMockService(callCounter *int, validators ...ValidatorFunc) *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		*callCounter++
-		b, _ := ioutil.ReadAll(r.Body)
-
-		for _, f := range validators {
-			f(w, r, b)
-		}
-	}))
-}
-
-func notificationEntityCount(is *is.I, count int) ValidatorFunc {
-	return func(w http.ResponseWriter, r *http.Request, b []byte) {
-		n := subscriptions.Notification{}
-		json.Unmarshal(b, &n)
-
-		is.Equal(count, len(n.Data)) // entity count should match
-	}
-}
-
-func notificationEntityID(idx int, is *is.I, entityID string) ValidatorFunc {
-	return func(w http.ResponseWriter, r *http.Request, b []byte) {
-		n := subscriptions.Notification{}
-		json.Unmarshal(b, &n)
-
-		is.Equal(entityID, n.Data[idx].ID()) // entity id should match
-	}
-}
-
-func responseCode(response int) ValidatorFunc {
-	return func(w http.ResponseWriter, r *http.Request, b []byte) {
-		w.WriteHeader(response)
-	}
+	is.Equal(s.RequestCount(), 1)
 }

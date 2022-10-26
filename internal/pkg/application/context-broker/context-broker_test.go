@@ -3,11 +3,13 @@ package contextbroker
 import (
 	"context"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
+	testutils "github.com/diwise/service-chassis/pkg/test/http"
+	"github.com/diwise/service-chassis/pkg/test/http/expects"
+	"github.com/diwise/service-chassis/pkg/test/http/response"
 	"github.com/matryer/is"
 )
 
@@ -57,14 +59,24 @@ func TestThatCreateEntityWithMismatchingIDFails(t *testing.T) {
 	is.True(err != nil) // should have returned an error
 }
 
+var Expects = testutils.Expects
+var Returns = testutils.Returns
+var anyInput = expects.AnyInput
+
 func TestThatCreateEntityWithMatchingTypeAndIDWorks(t *testing.T) {
 	is := is.New(t)
-	ts := setupMockContextSourceResponse(http.StatusCreated, [][2]string{
-		{"Content-Type", "application/ld+json"}, {"Location", "testlocation"},
-	}, "")
-	defer ts.Close()
 
-	broker, err := New(context.Background(), withDefaultTestConfig(ts.URL))
+	s := testutils.NewMockServiceThat(
+		Expects(is, anyInput()),
+		Returns(
+			response.ContentType("application/ld+json"),
+			response.Location("testlocation"),
+			response.Code(http.StatusCreated),
+		),
+	)
+	defer s.Close()
+
+	broker, err := New(context.Background(), withDefaultTestConfig(s.URL()))
 	is.NoErr(err)
 
 	_, err = broker.CreateEntity(context.Background(), "testtenant", testEntity("Device", "urn:ngsi-ld:Device:testid"), nil)
@@ -73,21 +85,23 @@ func TestThatCreateEntityWithMatchingTypeAndIDWorks(t *testing.T) {
 
 func TestThatNotificationsAreSent_ThisTestShouldBeBrokenUp(t *testing.T) {
 	is := is.New(t)
-	ts := setupMockContextSourceResponse(http.StatusCreated, [][2]string{
-		{"Content-Type", "application/ld+json"}, {"Location", "testlocation"},
-	}, "")
-	defer ts.Close()
 
-	numberOfNotifications := 0
-	ns := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		numberOfNotifications++
-		w.WriteHeader(http.StatusOK)
-	}))
+	s := testutils.NewMockServiceThat(
+		Expects(is, anyInput()),
+		Returns(
+			response.ContentType("application/ld+json"),
+			response.Location("testlocation"),
+			response.Code(http.StatusCreated),
+		),
+	)
+	defer s.Close()
+
+	ns := testutils.NewMockServiceThat(Expects(is, anyInput()), Returns(response.Code(http.StatusOK)))
 	defer ns.Close()
 
-	t.Setenv("NOTIFIER_ENDPOINT", ns.URL)
+	t.Setenv("NOTIFIER_ENDPOINT", ns.URL())
 
-	broker, err := New(context.Background(), withDefaultTestConfig(ts.URL))
+	broker, err := New(context.Background(), withDefaultTestConfig(s.URL()))
 	is.NoErr(err)
 
 	broker.Start()
@@ -97,18 +111,7 @@ func TestThatNotificationsAreSent_ThisTestShouldBeBrokenUp(t *testing.T) {
 
 	broker.Stop()
 
-	is.Equal(numberOfNotifications, 1)
-}
-
-func setupMockContextSourceResponse(responseCode int, headers [][2]string, responseBody string) *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		for _, hdr := range headers {
-			w.Header().Add(hdr[0], hdr[1])
-		}
-
-		w.WriteHeader(responseCode)
-		w.Write([]byte(responseBody))
-	}))
+	is.Equal(ns.RequestCount(), 1)
 }
 
 func withDefaultTestConfig(endpoint string) Config {

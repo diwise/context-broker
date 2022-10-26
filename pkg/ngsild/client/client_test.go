@@ -4,9 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
@@ -14,24 +12,35 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 	"github.com/diwise/context-broker/pkg/ngsild/types/properties"
+	testutils "github.com/diwise/service-chassis/pkg/test/http"
+	"github.com/diwise/service-chassis/pkg/test/http/expects"
+	"github.com/diwise/service-chassis/pkg/test/http/response"
+
 	"github.com/matryer/is"
 )
+
+var Expects = testutils.Expects
+var Returns = testutils.Returns
+var anyInput = expects.AnyInput
+var method = expects.RequestMethod
+var path = expects.RequestPath
+var body = expects.RequestBody
 
 func TestCreateEntity(t *testing.T) {
 	is := is.New(t)
 
 	locationHeader := "/ngsi-ld/v1/entities/id"
-	s := setupMockServiceThat(
-		expects(
+	s := testutils.NewMockServiceThat(
+		Expects(
 			is,
-			requestMethod(http.MethodPost),
-			requestPath("/ngsi-ld/v1/entities"),
-			requestBody("{\"@context\":[\"https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/default-context.jsonld\"],\"id\":\"id\",\"type\":\"Road\"}"),
+			method(http.MethodPost),
+			path("/ngsi-ld/v1/entities"),
+			body("{\"@context\":[\"https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/default-context.jsonld\"],\"id\":\"id\",\"type\":\"Road\"}"),
 		),
-		returns(
-			contenttype("application/ld+json"),
-			location(locationHeader),
-			responseCode(http.StatusCreated),
+		Returns(
+			response.ContentType("application/ld+json"),
+			response.Location(locationHeader),
+			response.Code(http.StatusCreated),
 		),
 	)
 	defer s.Close()
@@ -47,11 +56,11 @@ func TestCreateEntity(t *testing.T) {
 func TestCreateEntityHandlesMissingLocationheader(t *testing.T) {
 	is := is.New(t)
 
-	s := setupMockServiceThat(
-		expects(is, anyInput()),
-		returns(
-			contenttype("application/ld+json"),
-			responseCode(http.StatusCreated),
+	s := testutils.NewMockServiceThat(
+		Expects(is, anyInput()),
+		Returns(
+			response.ContentType("application/ld+json"),
+			response.Code(http.StatusCreated),
 		),
 	)
 	defer s.Close()
@@ -67,9 +76,9 @@ func TestCreateEntityHandlesMissingLocationheader(t *testing.T) {
 func TestCreateEntityThrowsErrorOnNon201Success(t *testing.T) {
 	is := is.New(t)
 
-	s := setupMockServiceThat(
-		expects(is, anyInput()),
-		returns(responseCode(http.StatusNoContent)),
+	s := testutils.NewMockServiceThat(
+		Expects(is, anyInput()),
+		Returns(response.Code(http.StatusNoContent)),
 	)
 	defer s.Close()
 
@@ -87,12 +96,12 @@ func TestCreateEntityHandlesBadRequestError(t *testing.T) {
 	pr := ngsierrors.NewBadRequestData("bad request", "traceID")
 	b, _ := json.Marshal(pr)
 
-	s := setupMockServiceThat(
-		expects(is, anyInput()),
-		returns(
-			contenttype("application/problem+json"),
-			responseCode(http.StatusBadRequest),
-			responseBody(b),
+	s := testutils.NewMockServiceThat(
+		Expects(is, anyInput()),
+		Returns(
+			response.ContentType("application/problem+json"),
+			response.Code(http.StatusBadRequest),
+			response.Body(b),
 		),
 	)
 	defer s.Close()
@@ -108,14 +117,14 @@ func TestCreateEntityHandlesBadRequestError(t *testing.T) {
 func TestMergeEntity(t *testing.T) {
 	is := is.New(t)
 
-	s := setupMockServiceThat(
-		expects(
+	s := testutils.NewMockServiceThat(
+		Expects(
 			is,
-			requestMethod(http.MethodPatch),
-			requestPath("/ngsi-ld/v1/entities/id"),
-			requestBody("{\"@context\":[\"https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/default-context.jsonld\"],\"id\":\"id\",\"type\":\"Road\"}"),
+			method(http.MethodPatch),
+			path("/ngsi-ld/v1/entities/id"),
+			body("{\"@context\":[\"https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/default-context.jsonld\"],\"id\":\"id\",\"type\":\"Road\"}"),
 		),
-		returns(responseCode(http.StatusNoContent)),
+		Returns(response.Code(http.StatusNoContent)),
 	)
 	defer s.Close()
 
@@ -130,17 +139,17 @@ func TestMergeEntity(t *testing.T) {
 func TestUpdateEntityAttributesWithMetaData(t *testing.T) {
 	is := is.New(t)
 
-	s := setupMockServiceThat(
-		expects(
+	s := testutils.NewMockServiceThat(
+		Expects(
 			is,
-			requestMethod(http.MethodPatch),
-			requestPath("/ngsi-ld/v1/entities/id/attrs/"),
-			requestBody(
+			method(http.MethodPatch),
+			path("/ngsi-ld/v1/entities/id/attrs/"),
+			body(
 				"{\"@context\":[\"https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/default-context.jsonld\"],\"waterConsumption\":{\"type\":\"Property\",\"value\":100,\"observedAt\":\"2006-01-02T15:04:05Z\",\"observedBy\":{\"type\":\"Relationship\",\"object\":\"some_device\"},\"unitCode\":\"LTR\"}}",
 			),
 		),
-		returns(
-			responseCode(http.StatusNoContent),
+		Returns(
+			response.Code(http.StatusNoContent),
 		),
 	)
 	defer s.Close()
@@ -157,115 +166,7 @@ func TestUpdateEntityAttributesWithMetaData(t *testing.T) {
 	is.Equal(s.RequestCount(), 1)
 }
 
-func setupMockServiceThat(expects func(r *http.Request), returns func(w http.ResponseWriter)) MockService {
-
-	mock := &mockSvc{}
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		mock.requestCount++
-		expects(r)
-		returns(w)
-	}))
-
-	mock.server = srv
-
-	return mock
-}
-
-type MockService interface {
-	Close()
-	RequestCount() int
-	URL() string
-}
-
-type mockSvc struct {
-	requestCount int
-	server       *httptest.Server
-	closed       bool
-}
-
-func (m *mockSvc) Close() {
-	if !m.closed {
-		m.server.Close()
-	}
-	m.closed = true
-}
-
-func (m *mockSvc) RequestCount() int {
-	return m.requestCount
-}
-
-func (m *mockSvc) URL() string {
-	return m.server.URL
-}
-
 func testEntity(entityType, entityID string) types.Entity {
 	e, _ := entities.New(entityID, entityType)
 	return e
-}
-
-func expects(is *is.I, facts ...func(*is.I, *http.Request)) func(r *http.Request) {
-	return func(r *http.Request) {
-		for _, checkFact := range facts {
-			checkFact(is, r)
-		}
-	}
-}
-
-func anyInput() func(*is.I, *http.Request) {
-	return func(*is.I, *http.Request) {}
-}
-
-func requestBody(body string) func(*is.I, *http.Request) {
-	return func(is *is.I, r *http.Request) {
-		reqBytes, err := io.ReadAll(r.Body)
-		is.NoErr(err)
-
-		reqString := string(reqBytes)
-		is.Equal(reqString, body)
-	}
-}
-
-func requestMethod(method string) func(*is.I, *http.Request) {
-	return func(is *is.I, r *http.Request) {
-		is.Equal(r.Method, method)
-	}
-}
-
-func requestPath(path string) func(*is.I, *http.Request) {
-	return func(is *is.I, r *http.Request) {
-		is.Equal(r.URL.Path, path)
-	}
-}
-
-func returns(writers ...func(w http.ResponseWriter)) func(w http.ResponseWriter) {
-	return func(w http.ResponseWriter) {
-		for _, writeResult := range writers {
-			writeResult(w)
-		}
-	}
-}
-
-func contenttype(contentType string) func(w http.ResponseWriter) {
-	return func(w http.ResponseWriter) {
-		w.Header().Add("Content-Type", contentType)
-	}
-}
-
-func location(loc string) func(w http.ResponseWriter) {
-	return func(w http.ResponseWriter) {
-		w.Header().Add("Location", loc)
-	}
-}
-
-func responseBody(body []byte) func(w http.ResponseWriter) {
-	return func(w http.ResponseWriter) {
-		w.Write(body)
-	}
-}
-
-func responseCode(code int) func(w http.ResponseWriter) {
-	return func(w http.ResponseWriter) {
-		w.WriteHeader(code)
-	}
 }
