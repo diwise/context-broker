@@ -31,10 +31,6 @@ type ContextBrokerClient interface {
 	UpdateEntityAttributes(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error)
 }
 
-const (
-	DefaultNGSITenant string = ""
-)
-
 func Debug(enabled string) func(*cbClient) {
 	return func(c *cbClient) {
 		c.debug = (enabled == "true")
@@ -50,7 +46,7 @@ func Tenant(tenant string) func(*cbClient) {
 func NewContextBrokerClient(broker string, options ...func(*cbClient)) ContextBrokerClient {
 	c := &cbClient{
 		baseURL: broker,
-		tenant:  DefaultNGSITenant,
+		tenant:  entities.DefaultNGSITenant,
 		debug:   false,
 	}
 
@@ -269,7 +265,7 @@ func (c cbClient) callContextSource(ctx context.Context, method, endpoint string
 		return nil, nil, fmt.Errorf("failed to create request: %s (%w)", err.Error(), errors.ErrInternal)
 	}
 
-	if c.tenant != DefaultNGSITenant {
+	if c.tenant != entities.DefaultNGSITenant {
 		req.Header.Add("NGSILD-Tenant", c.tenant)
 	}
 
