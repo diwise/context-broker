@@ -2,6 +2,7 @@
     "@context": {
         "diwise": "https://diwise.io/ngsi-ld/",
         "ExerciseTrail": "diwise:ExerciseTrail",
+        "IndoorEnvironmentObserved": "diwise:IndoorEnvironmentObserved",
         "Lifebuoy": "diwise:Lifebuoy",
         "SportsField": "diwise:SportsField",
         "dateLastPreparation": {
@@ -11,5 +12,4 @@
         "difficulty": "https://uri.diwise.io/ns/data-models#difficulty",
         "paymentRequired": "https://uri.diwise.io/ns/data-models#paymentRequired"
     }
- }
- 
+}
