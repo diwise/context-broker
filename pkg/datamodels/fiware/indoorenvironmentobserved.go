@@ -9,7 +9,7 @@ import (
 	ed "github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 )
 
-func NewIndoorEnvironmentObserved(id, dateObserved string, decorators ...entities.EntityDecoratorFunc) (types.Entity, error) {
+func NewIndoorEnvironmentObserved(id, dateObserved string, latitude, longitude float64, decorators ...entities.EntityDecoratorFunc) (types.Entity, error) {
 
 	if len(decorators) == 0 {
 		return nil, fmt.Errorf("at least one property must be set in an indoorenvironmentobserved entity")
@@ -19,7 +19,7 @@ func NewIndoorEnvironmentObserved(id, dateObserved string, decorators ...entitie
 		id = IndoorEnvironmentObservedIDPrefix + id
 	}
 
-	decorators = append(decorators, ed.DateObserved(dateObserved))
+	decorators = append(decorators, ed.DateObserved(dateObserved), ed.Location(latitude, longitude))
 
 	return entities.New(id, IndoorEnvironmentObservedTypeName, decorators...)
 }
