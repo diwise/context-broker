@@ -25,8 +25,6 @@ func QueryEntities[T any](ctx context.Context, broker, tenant, entityType string
 	limit := 50
 	offset := 0
 
-	result := make([]T, 0, limit)
-
 	entityAttributes := ""
 
 	if len(attributes) > 0 {
@@ -57,8 +55,6 @@ func QueryEntities[T any](ctx context.Context, broker, tenant, entityType string
 			req.Header.Add("NGSILD-Tenant", tenant)
 		}
 
-		logger.Debug().Msgf("calling %s", url)
-
 		resp, err = httpClient.Do(req)
 		if err != nil {
 			err = fmt.Errorf("failed to send request: %w", err)
@@ -86,6 +82,8 @@ func QueryEntities[T any](ctx context.Context, broker, tenant, entityType string
 			return 0, fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", resp.StatusCode, contentType, string(respBody))
 		}
 
+		result := make([]T, 0, limit)
+
 		err = json.Unmarshal(respBody, &result)
 		if err != nil {
 			err = fmt.Errorf("failed to unmarshal response: %w", err)
@@ -102,9 +100,6 @@ func QueryEntities[T any](ctx context.Context, broker, tenant, entityType string
 		if batchSize < limit {
 			break
 		}
-
-		// Reset result size before continuing
-		result = result[:0]
 	}
 
 	return
