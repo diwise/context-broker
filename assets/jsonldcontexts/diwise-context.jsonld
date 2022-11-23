@@ -5,6 +5,7 @@
         "IndoorEnvironmentObserved": "diwise:IndoorEnvironmentObserved",
         "Lifebuoy": "diwise:Lifebuoy",
         "SportsField": "diwise:SportsField",
+        "SportsVenue": "diwise:SportsVenue",
         "dateLastPreparation": {
             "@id": "https://uri.diwise.io/ns/data-models#dateLastPreparation",
             "@type": "https://uri.etsi.org/ngsi-ld/DateTime"
