@@ -11,4 +11,8 @@ const (
 	SportsFieldTypeName string = "SportsField"
 	//SportsFieldIDPrefix contains the mandatory prefix for SportsField ID:s
 	SportsFieldIDPrefix string = urnPrefix + SportsFieldTypeName + ":"
+	//SportsVenueTypeName is a type name constant for SportsVenue
+	SportsVenueTypeName string = "SportsVenue"
+	//SportsVenueIDPrefix contains the mandatory prefix for SportsVenue ID:s
+	SportsVenueIDPrefix string = urnPrefix + SportsVenueTypeName + ":"
 )
