@@ -153,6 +153,12 @@ func UnmarshalP(body map[string]any) (types.Property, error) {
 		return nil, fmt.Errorf("properties without a value attribute are not supported")
 	}
 
+	if value == nil {
+		// nil values are not allowed, but can happen anyway ...
+		// here we handle them by returning an empty slice of strings instead
+		return NewTextListProperty([]string{}), nil
+	}
+
 	switch typedValue := value.(type) {
 	case float64:
 		np := NewNumberProperty(typedValue)
