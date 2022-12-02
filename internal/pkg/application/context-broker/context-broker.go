@@ -169,7 +169,11 @@ func (app *contextBrokerApp) RetrieveTemporalEvolutionOfEntity(ctx context.Conte
 					continue
 				}
 
-				cbClient := client.NewContextBrokerClient(src.Endpoint, client.Debug(app.debugClient))
+				if !src.Temporal.Enabled {
+					return nil, errors.NewNotFoundError("matching context source does not support temporal evolution")
+				}
+
+				cbClient := client.NewContextBrokerClient(src.TemporalEndpoint(), client.Debug(app.debugClient))
 				return cbClient.RetrieveTemporalEvolutionOfEntity(ctx, entityID, headers)
 			}
 		}

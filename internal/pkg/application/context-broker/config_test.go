@@ -32,6 +32,17 @@ func TestLoadContextSource(t *testing.T) {
 	is.Equal(len(csource.Information), 1) // should find a single registration info
 }
 
+func TestLoadTemporalEndpoint(t *testing.T) {
+	is, config := setupConfigTest(t)
+	tenant := config.Tenants[0]
+
+	is.Equal(len(tenant.ContextSources), 1) // should find a single context source
+
+	csource := tenant.ContextSources[0]
+	is.True(csource.Temporal.Enabled)
+	is.Equal(csource.Temporal.Endpoint, "http://tempz:1337")
+}
+
 func TestLoadRegistrationInfo(t *testing.T) {
 	is, config := setupConfigTest(t)
 	csource := config.Tenants[0].ContextSources[0]
@@ -57,6 +68,9 @@ tenants:
     name: Kommunen
     contextSources:
     - endpoint: http://lolcathost:1234
+      temporal:
+        enabled: true
+        endpoint: http://tempz:1337
       information:
       - entities:
         - idPattern: ^urn:ngsi-ld:Device:.+
