@@ -14,6 +14,9 @@ type Entity interface {
 	KeyValues() EntityKeyValueMapper
 }
 
+type EntityTemporal interface {
+}
+
 type EntityKeyValueMapper interface {
 }
 

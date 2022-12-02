@@ -27,12 +27,18 @@ type EntityRetriever interface {
 	RetrieveEntity(ctx context.Context, tenant, entityID string, headers map[string][]string) (types.Entity, error)
 }
 
+type EntityTemporalRetriever interface {
+	RetrieveTemporalEvolutionOfEntity(ctx context.Context, tenant, entityID string, headers map[string][]string) (types.EntityTemporal, error)
+}
+
 type ContextInformationManager interface {
 	EntityAttributesUpdater
 	EntityCreator
 	EntityMerger
 	EntityQuerier
 	EntityRetriever
+
+	EntityTemporalRetriever
 
 	Start() error
 	Stop() error

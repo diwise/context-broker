@@ -49,6 +49,11 @@ func RegisterHandlers(r chi.Router, app cim.ContextInformationManager, log zerol
 			)
 
 			r.Get(
+				"/temporal/entities/{entityId}",
+				NewRetrieveTemporalEvolutionOfAnEntityHandler(app, log),
+			)
+
+			r.Get(
 				"/jsonldContexts/{contextId}",
 				NewServeContextHandler(log),
 			)

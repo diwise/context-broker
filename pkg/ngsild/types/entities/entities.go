@@ -3,6 +3,7 @@ package entities
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/diwise/context-broker/pkg/ngsild/geojson"
@@ -75,6 +76,10 @@ func NewFromJSON(body []byte) (types.Entity, error) {
 	}
 
 	return e, nil
+}
+
+func NewTemporalFromJSON(body []byte) (types.EntityTemporal, error) {
+	return nil, errors.New("not implemented")
 }
 
 func NewFromSlice(body []byte) ([]types.Entity, error) {

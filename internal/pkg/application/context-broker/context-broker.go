@@ -150,6 +150,34 @@ func (app *contextBrokerApp) RetrieveEntity(ctx context.Context, tenant, entityI
 	return nil, errors.NewNotFoundError(fmt.Sprintf("no context source found that could provide entity %s", entityID))
 }
 
+func (app *contextBrokerApp) RetrieveTemporalEvolutionOfEntity(ctx context.Context, tenant, entityID string, headers map[string][]string) (types.EntityTemporal, error) {
+	sources, ok := app.tenants[tenant]
+	if !ok {
+		return nil, errors.NewUnknownTenantError(tenant)
+	}
+
+	for _, src := range sources {
+		for _, reginfo := range src.Information {
+			for _, entityInfo := range reginfo.Entities {
+
+				regexpForID, err := regexp.CompilePOSIX(entityInfo.IDPattern)
+				if err != nil {
+					continue
+				}
+
+				if !regexpForID.MatchString(entityID) {
+					continue
+				}
+
+				cbClient := client.NewContextBrokerClient(src.Endpoint, client.Debug(app.debugClient))
+				return cbClient.RetrieveTemporalEvolutionOfEntity(ctx, entityID, headers)
+			}
+		}
+	}
+
+	return nil, errors.NewNotFoundError(fmt.Sprintf("no context source found that could provide temporal evolution of entity %s", entityID))
+}
+
 func (app *contextBrokerApp) MergeEntity(ctx context.Context, tenant, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error) {
 	sources, ok := app.tenants[tenant]
 	if !ok {

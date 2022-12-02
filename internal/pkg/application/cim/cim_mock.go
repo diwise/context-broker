@@ -32,6 +32,9 @@ var _ ContextInformationManager = &ContextInformationManagerMock{}
 // 			RetrieveEntityFunc: func(ctx context.Context, tenant string, entityID string, headers map[string][]string) (types.Entity, error) {
 // 				panic("mock out the RetrieveEntity method")
 // 			},
+// 			RetrieveTemporalEvolutionOfEntityFunc: func(ctx context.Context, tenant string, entityID string, headers map[string][]string) (types.EntityTemporal, error) {
+// 				panic("mock out the RetrieveTemporalEvolutionOfEntity method")
+// 			},
 // 			StartFunc: func() error {
 // 				panic("mock out the Start method")
 // 			},
@@ -59,6 +62,9 @@ type ContextInformationManagerMock struct {
 
 	// RetrieveEntityFunc mocks the RetrieveEntity method.
 	RetrieveEntityFunc func(ctx context.Context, tenant string, entityID string, headers map[string][]string) (types.Entity, error)
+
+	// RetrieveTemporalEvolutionOfEntityFunc mocks the RetrieveTemporalEvolutionOfEntity method.
+	RetrieveTemporalEvolutionOfEntityFunc func(ctx context.Context, tenant string, entityID string, headers map[string][]string) (types.EntityTemporal, error)
 
 	// StartFunc mocks the Start method.
 	StartFunc func() error
@@ -121,6 +127,17 @@ type ContextInformationManagerMock struct {
 			// Headers is the headers argument value.
 			Headers map[string][]string
 		}
+		// RetrieveTemporalEvolutionOfEntity holds details about calls to the RetrieveTemporalEvolutionOfEntity method.
+		RetrieveTemporalEvolutionOfEntity []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Tenant is the tenant argument value.
+			Tenant string
+			// EntityID is the entityID argument value.
+			EntityID string
+			// Headers is the headers argument value.
+			Headers map[string][]string
+		}
 		// Start holds details about calls to the Start method.
 		Start []struct {
 		}
@@ -141,13 +158,14 @@ type ContextInformationManagerMock struct {
 			Headers map[string][]string
 		}
 	}
-	lockCreateEntity           sync.RWMutex
-	lockMergeEntity            sync.RWMutex
-	lockQueryEntities          sync.RWMutex
-	lockRetrieveEntity         sync.RWMutex
-	lockStart                  sync.RWMutex
-	lockStop                   sync.RWMutex
-	lockUpdateEntityAttributes sync.RWMutex
+	lockCreateEntity                      sync.RWMutex
+	lockMergeEntity                       sync.RWMutex
+	lockQueryEntities                     sync.RWMutex
+	lockRetrieveEntity                    sync.RWMutex
+	lockRetrieveTemporalEvolutionOfEntity sync.RWMutex
+	lockStart                             sync.RWMutex
+	lockStop                              sync.RWMutex
+	lockUpdateEntityAttributes            sync.RWMutex
 }
 
 // CreateEntity calls CreateEntityFunc.
@@ -331,6 +349,49 @@ func (mock *ContextInformationManagerMock) RetrieveEntityCalls() []struct {
 	mock.lockRetrieveEntity.RLock()
 	calls = mock.calls.RetrieveEntity
 	mock.lockRetrieveEntity.RUnlock()
+	return calls
+}
+
+// RetrieveTemporalEvolutionOfEntity calls RetrieveTemporalEvolutionOfEntityFunc.
+func (mock *ContextInformationManagerMock) RetrieveTemporalEvolutionOfEntity(ctx context.Context, tenant string, entityID string, headers map[string][]string) (types.EntityTemporal, error) {
+	if mock.RetrieveTemporalEvolutionOfEntityFunc == nil {
+		panic("ContextInformationManagerMock.RetrieveTemporalEvolutionOfEntityFunc: method is nil but ContextInformationManager.RetrieveTemporalEvolutionOfEntity was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		Tenant   string
+		EntityID string
+		Headers  map[string][]string
+	}{
+		Ctx:      ctx,
+		Tenant:   tenant,
+		EntityID: entityID,
+		Headers:  headers,
+	}
+	mock.lockRetrieveTemporalEvolutionOfEntity.Lock()
+	mock.calls.RetrieveTemporalEvolutionOfEntity = append(mock.calls.RetrieveTemporalEvolutionOfEntity, callInfo)
+	mock.lockRetrieveTemporalEvolutionOfEntity.Unlock()
+	return mock.RetrieveTemporalEvolutionOfEntityFunc(ctx, tenant, entityID, headers)
+}
+
+// RetrieveTemporalEvolutionOfEntityCalls gets all the calls that were made to RetrieveTemporalEvolutionOfEntity.
+// Check the length with:
+//     len(mockedContextInformationManager.RetrieveTemporalEvolutionOfEntityCalls())
+func (mock *ContextInformationManagerMock) RetrieveTemporalEvolutionOfEntityCalls() []struct {
+	Ctx      context.Context
+	Tenant   string
+	EntityID string
+	Headers  map[string][]string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Tenant   string
+		EntityID string
+		Headers  map[string][]string
+	}
+	mock.lockRetrieveTemporalEvolutionOfEntity.RLock()
+	calls = mock.calls.RetrieveTemporalEvolutionOfEntity
+	mock.lockRetrieveTemporalEvolutionOfEntity.RUnlock()
 	return calls
 }
 
