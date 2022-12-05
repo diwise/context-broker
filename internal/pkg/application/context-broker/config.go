@@ -17,7 +17,26 @@ type RegistrationInfo struct {
 
 type ContextSourceConfig struct {
 	Endpoint    string             `yaml:"endpoint"`
+	Temporal    TemporalInfo       `yaml:"temporal"`
 	Information []RegistrationInfo `yaml:"information"`
+}
+
+func (cs *ContextSourceConfig) TemporalEndpoint() string {
+	if !cs.Temporal.Enabled {
+		return ""
+	}
+
+	// temporal endpoint can be overriden if the API is handled by a different service
+	if cs.Temporal.Endpoint != "" {
+		return cs.Temporal.Endpoint
+	}
+
+	return cs.Endpoint
+}
+
+type TemporalInfo struct {
+	Enabled  bool   `yaml:"enabled"`
+	Endpoint string `yaml:"endpoint"`
 }
 
 type Tenant struct {

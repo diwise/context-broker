@@ -17,31 +17,34 @@ var _ client.ContextBrokerClient = &ContextBrokerClientMock{}
 
 // ContextBrokerClientMock is a mock implementation of ContextBrokerClient.
 //
-// 	func TestSomethingThatUsesContextBrokerClient(t *testing.T) {
+//	func TestSomethingThatUsesContextBrokerClient(t *testing.T) {
 //
-// 		// make and configure a mocked ContextBrokerClient
-// 		mockedContextBrokerClient := &ContextBrokerClientMock{
-// 			CreateEntityFunc: func(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
-// 				panic("mock out the CreateEntity method")
-// 			},
-// 			MergeEntityFunc: func(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error) {
-// 				panic("mock out the MergeEntity method")
-// 			},
-// 			QueryEntitiesFunc: func(ctx context.Context, entityTypes []string, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error) {
-// 				panic("mock out the QueryEntities method")
-// 			},
-// 			RetrieveEntityFunc: func(ctx context.Context, entityID string, headers map[string][]string) (types.Entity, error) {
-// 				panic("mock out the RetrieveEntity method")
-// 			},
-// 			UpdateEntityAttributesFunc: func(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
-// 				panic("mock out the UpdateEntityAttributes method")
-// 			},
-// 		}
+//		// make and configure a mocked ContextBrokerClient
+//		mockedContextBrokerClient := &ContextBrokerClientMock{
+//			CreateEntityFunc: func(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
+//				panic("mock out the CreateEntity method")
+//			},
+//			MergeEntityFunc: func(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error) {
+//				panic("mock out the MergeEntity method")
+//			},
+//			QueryEntitiesFunc: func(ctx context.Context, entityTypes []string, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error) {
+//				panic("mock out the QueryEntities method")
+//			},
+//			RetrieveEntityFunc: func(ctx context.Context, entityID string, headers map[string][]string) (types.Entity, error) {
+//				panic("mock out the RetrieveEntity method")
+//			},
+//			RetrieveTemporalEvolutionOfEntityFunc: func(ctx context.Context, entityID string, headers map[string][]string) (types.EntityTemporal, error) {
+//				panic("mock out the RetrieveTemporalEvolutionOfEntity method")
+//			},
+//			UpdateEntityAttributesFunc: func(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
+//				panic("mock out the UpdateEntityAttributes method")
+//			},
+//		}
 //
-// 		// use mockedContextBrokerClient in code that requires ContextBrokerClient
-// 		// and then make assertions.
+//		// use mockedContextBrokerClient in code that requires ContextBrokerClient
+//		// and then make assertions.
 //
-// 	}
+//	}
 type ContextBrokerClientMock struct {
 	// CreateEntityFunc mocks the CreateEntity method.
 	CreateEntityFunc func(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error)
@@ -54,6 +57,9 @@ type ContextBrokerClientMock struct {
 
 	// RetrieveEntityFunc mocks the RetrieveEntity method.
 	RetrieveEntityFunc func(ctx context.Context, entityID string, headers map[string][]string) (types.Entity, error)
+
+	// RetrieveTemporalEvolutionOfEntityFunc mocks the RetrieveTemporalEvolutionOfEntity method.
+	RetrieveTemporalEvolutionOfEntityFunc func(ctx context.Context, entityID string, headers map[string][]string) (types.EntityTemporal, error)
 
 	// UpdateEntityAttributesFunc mocks the UpdateEntityAttributes method.
 	UpdateEntityAttributesFunc func(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error)
@@ -102,6 +108,15 @@ type ContextBrokerClientMock struct {
 			// Headers is the headers argument value.
 			Headers map[string][]string
 		}
+		// RetrieveTemporalEvolutionOfEntity holds details about calls to the RetrieveTemporalEvolutionOfEntity method.
+		RetrieveTemporalEvolutionOfEntity []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// EntityID is the entityID argument value.
+			EntityID string
+			// Headers is the headers argument value.
+			Headers map[string][]string
+		}
 		// UpdateEntityAttributes holds details about calls to the UpdateEntityAttributes method.
 		UpdateEntityAttributes []struct {
 			// Ctx is the ctx argument value.
@@ -114,11 +129,12 @@ type ContextBrokerClientMock struct {
 			Headers map[string][]string
 		}
 	}
-	lockCreateEntity           sync.RWMutex
-	lockMergeEntity            sync.RWMutex
-	lockQueryEntities          sync.RWMutex
-	lockRetrieveEntity         sync.RWMutex
-	lockUpdateEntityAttributes sync.RWMutex
+	lockCreateEntity                      sync.RWMutex
+	lockMergeEntity                       sync.RWMutex
+	lockQueryEntities                     sync.RWMutex
+	lockRetrieveEntity                    sync.RWMutex
+	lockRetrieveTemporalEvolutionOfEntity sync.RWMutex
+	lockUpdateEntityAttributes            sync.RWMutex
 }
 
 // CreateEntity calls CreateEntityFunc.
@@ -143,7 +159,8 @@ func (mock *ContextBrokerClientMock) CreateEntity(ctx context.Context, entity ty
 
 // CreateEntityCalls gets all the calls that were made to CreateEntity.
 // Check the length with:
-//     len(mockedContextBrokerClient.CreateEntityCalls())
+//
+//	len(mockedContextBrokerClient.CreateEntityCalls())
 func (mock *ContextBrokerClientMock) CreateEntityCalls() []struct {
 	Ctx     context.Context
 	Entity  types.Entity
@@ -184,7 +201,8 @@ func (mock *ContextBrokerClientMock) MergeEntity(ctx context.Context, entityID s
 
 // MergeEntityCalls gets all the calls that were made to MergeEntity.
 // Check the length with:
-//     len(mockedContextBrokerClient.MergeEntityCalls())
+//
+//	len(mockedContextBrokerClient.MergeEntityCalls())
 func (mock *ContextBrokerClientMock) MergeEntityCalls() []struct {
 	Ctx      context.Context
 	EntityID string
@@ -229,7 +247,8 @@ func (mock *ContextBrokerClientMock) QueryEntities(ctx context.Context, entityTy
 
 // QueryEntitiesCalls gets all the calls that were made to QueryEntities.
 // Check the length with:
-//     len(mockedContextBrokerClient.QueryEntitiesCalls())
+//
+//	len(mockedContextBrokerClient.QueryEntitiesCalls())
 func (mock *ContextBrokerClientMock) QueryEntitiesCalls() []struct {
 	Ctx              context.Context
 	EntityTypes      []string
@@ -272,7 +291,8 @@ func (mock *ContextBrokerClientMock) RetrieveEntity(ctx context.Context, entityI
 
 // RetrieveEntityCalls gets all the calls that were made to RetrieveEntity.
 // Check the length with:
-//     len(mockedContextBrokerClient.RetrieveEntityCalls())
+//
+//	len(mockedContextBrokerClient.RetrieveEntityCalls())
 func (mock *ContextBrokerClientMock) RetrieveEntityCalls() []struct {
 	Ctx      context.Context
 	EntityID string
@@ -286,6 +306,46 @@ func (mock *ContextBrokerClientMock) RetrieveEntityCalls() []struct {
 	mock.lockRetrieveEntity.RLock()
 	calls = mock.calls.RetrieveEntity
 	mock.lockRetrieveEntity.RUnlock()
+	return calls
+}
+
+// RetrieveTemporalEvolutionOfEntity calls RetrieveTemporalEvolutionOfEntityFunc.
+func (mock *ContextBrokerClientMock) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityID string, headers map[string][]string) (types.EntityTemporal, error) {
+	if mock.RetrieveTemporalEvolutionOfEntityFunc == nil {
+		panic("ContextBrokerClientMock.RetrieveTemporalEvolutionOfEntityFunc: method is nil but ContextBrokerClient.RetrieveTemporalEvolutionOfEntity was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		EntityID string
+		Headers  map[string][]string
+	}{
+		Ctx:      ctx,
+		EntityID: entityID,
+		Headers:  headers,
+	}
+	mock.lockRetrieveTemporalEvolutionOfEntity.Lock()
+	mock.calls.RetrieveTemporalEvolutionOfEntity = append(mock.calls.RetrieveTemporalEvolutionOfEntity, callInfo)
+	mock.lockRetrieveTemporalEvolutionOfEntity.Unlock()
+	return mock.RetrieveTemporalEvolutionOfEntityFunc(ctx, entityID, headers)
+}
+
+// RetrieveTemporalEvolutionOfEntityCalls gets all the calls that were made to RetrieveTemporalEvolutionOfEntity.
+// Check the length with:
+//
+//	len(mockedContextBrokerClient.RetrieveTemporalEvolutionOfEntityCalls())
+func (mock *ContextBrokerClientMock) RetrieveTemporalEvolutionOfEntityCalls() []struct {
+	Ctx      context.Context
+	EntityID string
+	Headers  map[string][]string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		EntityID string
+		Headers  map[string][]string
+	}
+	mock.lockRetrieveTemporalEvolutionOfEntity.RLock()
+	calls = mock.calls.RetrieveTemporalEvolutionOfEntity
+	mock.lockRetrieveTemporalEvolutionOfEntity.RUnlock()
 	return calls
 }
 
@@ -313,7 +373,8 @@ func (mock *ContextBrokerClientMock) UpdateEntityAttributes(ctx context.Context,
 
 // UpdateEntityAttributesCalls gets all the calls that were made to UpdateEntityAttributes.
 // Check the length with:
-//     len(mockedContextBrokerClient.UpdateEntityAttributesCalls())
+//
+//	len(mockedContextBrokerClient.UpdateEntityAttributesCalls())
 func (mock *ContextBrokerClientMock) UpdateEntityAttributesCalls() []struct {
 	Ctx      context.Context
 	EntityID string

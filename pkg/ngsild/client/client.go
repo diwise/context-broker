@@ -27,6 +27,7 @@ type ContextBrokerClient interface {
 	CreateEntity(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error)
 	QueryEntities(ctx context.Context, entityTypes, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error)
 	RetrieveEntity(ctx context.Context, entityID string, headers map[string][]string) (types.Entity, error)
+	RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityID string, headers map[string][]string) (types.EntityTemporal, error)
 	MergeEntity(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error)
 	UpdateEntityAttributes(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error)
 }
@@ -143,6 +144,37 @@ func (c cbClient) RetrieveEntity(ctx context.Context, entityID string, headers m
 	}
 
 	return entities.NewFromJSON(responseBody)
+}
+
+func (c cbClient) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityID string, headers map[string][]string) (types.EntityTemporal, error) {
+	var err error
+
+	ctx, span := tracer.Start(ctx, "retrieve-entity-temporal",
+		trace.WithAttributes(attribute.String(TraceAttributeNGSILDTenant, c.tenant)),
+		trace.WithAttributes(attribute.String(TraceAttributeEntityID, entityID)),
+	)
+	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+	response, responseBody, err := c.callContextSource(
+		ctx, http.MethodGet, c.baseURL+"/ngsi-ld/v1/temporal/entities/"+url.QueryEscape(entityID), nil, headers,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode != http.StatusOK {
+		contentType := response.Header.Get("Content-Type")
+		if response.StatusCode >= http.StatusBadRequest && response.StatusCode <= http.StatusInternalServerError {
+			err = errors.NewErrorFromProblemReport(response.StatusCode, contentType, responseBody)
+			return nil, err
+		}
+
+		err = fmt.Errorf("unexpected response code %d (%w)", response.StatusCode, errors.ErrInternal)
+		return nil, err
+	}
+
+	return entities.NewTemporalFromJSON(responseBody)
 }
 
 func (c cbClient) MergeEntity(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error) {
