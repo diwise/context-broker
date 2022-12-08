@@ -156,7 +156,7 @@ func (c cbClient) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityI
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
 	response, responseBody, err := c.callContextSource(
-		ctx, http.MethodGet, c.baseURL+"/ngsi-ld/v1/temporal/entities/"+url.QueryEscape(entityID), nil, headers,
+		ctx, http.MethodGet, c.baseURL+"/temporal/entities/"+url.QueryEscape(entityID), nil, headers,
 	)
 
 	if err != nil {
