@@ -24,7 +24,7 @@ LABEL "org.opencontainers.image.source" = "https://github.com/diwise/context-bro
 
 COPY --from=builder --chown=1001 /app/cmd/context-broker/context-broker /opt/diwise/
 COPY --chown=1001 assets/config/default-config.yaml /opt/diwise/config/default.yaml
-COPY --chown=1001 assets/jsonldcontexts/*.jsonld /opt/diwise/contexts/.
+COPY --chown=1001 assets/jsonldcontexts/*.jsonld /opt/diwise/contexts/
 
 RUN chown -R 1001 /opt/diwise
 
