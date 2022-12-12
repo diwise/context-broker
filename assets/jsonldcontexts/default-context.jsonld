@@ -12,6 +12,7 @@
       },
       "difficulty": "https://uri.diwise.io/ns/data-models#difficulty",
       "paymentRequired": "https://uri.diwise.io/ns/data-models#paymentRequired",
+      "publicAccess": "https://uri.diwise.io/ns/data-models#publicAccess",
       "0": "https://uri.fiware.org/ns/data-models#0",
       "1": "https://uri.fiware.org/ns/data-models#1",
       "2": "https://uri.fiware.org/ns/data-models#2",
