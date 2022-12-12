@@ -11,6 +11,7 @@
             "@type": "https://uri.etsi.org/ngsi-ld/DateTime"
         },
         "difficulty": "https://uri.diwise.io/ns/data-models#difficulty",
-        "paymentRequired": "https://uri.diwise.io/ns/data-models#paymentRequired"
+        "paymentRequired": "https://uri.diwise.io/ns/data-models#paymentRequired",
+        "publicAccess": "https://uri.diwise.io/ns/data-models#publicAccess"
     }
 }
