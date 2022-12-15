@@ -184,7 +184,7 @@ func UnmarshalP(body map[string]any) (types.Property, error) {
 		}
 		return np, nil
 	case string:
-		return NewTextProperty(typedValue), nil
+		return NewTextProperty(sanitizeString(typedValue)), nil
 	case map[string]any:
 		return unmarshalPropertyObject(typedValue)
 	case []any:
@@ -192,13 +192,32 @@ func UnmarshalP(body map[string]any) (types.Property, error) {
 		for _, v := range typedValue {
 			str, ok := v.(string)
 			if ok {
-				values = append(values, str)
+				values = append(values, sanitizeString(str))
 			}
 		}
 		return NewTextListProperty(values), nil
 	default:
 		return NewTextProperty(fmt.Sprintf("support for type %T not implemented", typedValue)), nil
 	}
+}
+
+func sanitizeString(input string) string {
+	if len(input) >= 6 {
+		for runeIdx, stopIdx := 0, len(input)-6; runeIdx <= stopIdx; runeIdx++ {
+			if input[runeIdx] == '\\' {
+				if input[runeIdx+1] == 'u' {
+					r, err := strconv.ParseInt(input[runeIdx+2:runeIdx+6], 16, 32)
+					if err != nil {
+						continue
+					}
+
+					return input[:runeIdx] + string(rune(r)) + sanitizeString(input[runeIdx+6:])
+				}
+			}
+		}
+	}
+
+	return input
 }
 
 func unmarshalPropertyObject(object map[string]any) (types.Property, error) {
