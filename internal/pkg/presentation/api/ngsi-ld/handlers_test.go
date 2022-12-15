@@ -222,6 +222,7 @@ func TestUpdateEntityAttributesWithPropertyMetadata(t *testing.T) {
 
 	is.Equal(resp.StatusCode, http.StatusNoContent) // should return 204 No Content
 }
+
 func TestRequestDefaultContext(t *testing.T) {
 	is, ts, _ := setupTest(t)
 	defer ts.Close()

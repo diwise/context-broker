@@ -166,6 +166,52 @@ func TestUpdateEntityAttributesWithMetaData(t *testing.T) {
 	is.Equal(s.RequestCount(), 1)
 }
 
+func TestDeleteEntity(t *testing.T) {
+	is := is.New(t)
+
+	s := testutils.NewMockServiceThat(
+		Expects(
+			is,
+			method(http.MethodDelete),
+			path("/ngsi-ld/v1/entities/id"),
+			body(""),
+		),
+		Returns(response.Code(http.StatusNoContent)),
+	)
+	defer s.Close()
+
+	c := NewContextBrokerClient(s.URL())
+
+	_, err := c.DeleteEntity(context.Background(), "id")
+
+	is.NoErr(err)
+	is.Equal(s.RequestCount(), 1)
+}
+
+func TestDeleteEntityNotFound(t *testing.T) {
+	is := is.New(t)
+
+	pr := ngsierrors.NewNotFound("not found", "traceID")
+	b, _ := json.Marshal(pr)
+
+	s := testutils.NewMockServiceThat(
+		Expects(is, anyInput()),
+		Returns(
+			response.ContentType("application/problem+json"),
+			response.Code(http.StatusNotFound),
+			response.Body(b),
+		),
+	)
+	defer s.Close()
+
+	c := NewContextBrokerClient(s.URL())
+
+	_, err := c.DeleteEntity(context.Background(), "id")
+
+	is.True(err != nil)
+	is.True(errors.Is(err, ngsierrors.ErrNotFound))
+}
+
 func testEntity(entityType, entityID string) types.Entity {
 	e, _ := entities.New(entityID, entityType)
 	return e

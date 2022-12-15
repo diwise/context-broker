@@ -2,14 +2,17 @@
     "@context": {
         "diwise": "https://diwise.io/ngsi-ld/",
         "ExerciseTrail": "diwise:ExerciseTrail",
+        "IndoorEnvironmentObserved": "diwise:IndoorEnvironmentObserved",
         "Lifebuoy": "diwise:Lifebuoy",
         "SportsField": "diwise:SportsField",
+        "SportsVenue": "diwise:SportsVenue",
         "dateLastPreparation": {
             "@id": "https://uri.diwise.io/ns/data-models#dateLastPreparation",
             "@type": "https://uri.etsi.org/ngsi-ld/DateTime"
         },
         "difficulty": "https://uri.diwise.io/ns/data-models#difficulty",
-        "paymentRequired": "https://uri.diwise.io/ns/data-models#paymentRequired"
+        "managedBy": "https://uri.diwise.io/ns/data-models#managedBy",
+        "paymentRequired": "https://uri.diwise.io/ns/data-models#paymentRequired",
+        "publicAccess": "https://uri.diwise.io/ns/data-models#publicAccess"
     }
- }
- 
+}

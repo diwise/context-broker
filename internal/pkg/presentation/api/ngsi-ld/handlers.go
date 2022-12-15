@@ -37,6 +37,7 @@ func RegisterHandlers(r chi.Router, policies io.Reader, app cim.ContextInformati
 				"/entities/{entityId}",
 				NewRetrieveEntityHandler(app, authenticator, log),
 			)
+	
 			r.Patch(
 				"/entities/{entityId}",
 				NewMergeEntityHandler(app, authenticator, log),
@@ -53,6 +54,16 @@ func RegisterHandlers(r chi.Router, policies io.Reader, app cim.ContextInformati
 					app, authenticator, log,
 					func(ctx context.Context, entityType, entityID string, logger zerolog.Logger) {},
 				),
+			)
+
+			r.Delete(
+				"/entities/{entityId}",
+				NewDeleteEntityHandler(app, log),
+			)
+
+			r.Get(
+				"/temporal/entities/{entityId}",
+				NewRetrieveTemporalEvolutionOfAnEntityHandler(app, log),
 			)
 
 			r.Get(

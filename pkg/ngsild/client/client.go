@@ -23,17 +23,17 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+//go:generate moq -rm -out ../../test/contextbrokerclient_mock.go . ContextBrokerClient
+
 type ContextBrokerClient interface {
 	CreateEntity(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error)
 	QueryEntities(ctx context.Context, entityTypes, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error)
 	RetrieveEntity(ctx context.Context, entityID string, headers map[string][]string) (types.Entity, error)
+	RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityID string, headers map[string][]string) (types.EntityTemporal, error)
 	MergeEntity(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error)
 	UpdateEntityAttributes(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error)
+	DeleteEntity(ctx context.Context, entityID string) (*ngsild.DeleteEntityResult, error)
 }
-
-const (
-	DefaultNGSITenant string = ""
-)
 
 func Debug(enabled string) func(*cbClient) {
 	return func(c *cbClient) {
@@ -50,7 +50,7 @@ func Tenant(tenant string) func(*cbClient) {
 func NewContextBrokerClient(broker string, options ...func(*cbClient)) ContextBrokerClient {
 	c := &cbClient{
 		baseURL: broker,
-		tenant:  DefaultNGSITenant,
+		tenant:  entities.DefaultNGSITenant,
 		debug:   false,
 	}
 
@@ -147,6 +147,37 @@ func (c cbClient) RetrieveEntity(ctx context.Context, entityID string, headers m
 	}
 
 	return entities.NewFromJSON(responseBody)
+}
+
+func (c cbClient) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityID string, headers map[string][]string) (types.EntityTemporal, error) {
+	var err error
+
+	ctx, span := tracer.Start(ctx, "retrieve-entity-temporal",
+		trace.WithAttributes(attribute.String(TraceAttributeNGSILDTenant, c.tenant)),
+		trace.WithAttributes(attribute.String(TraceAttributeEntityID, entityID)),
+	)
+	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+	response, responseBody, err := c.callContextSource(
+		ctx, http.MethodGet, c.baseURL+"/temporal/entities/"+url.QueryEscape(entityID), nil, headers,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode != http.StatusOK {
+		contentType := response.Header.Get("Content-Type")
+		if response.StatusCode >= http.StatusBadRequest && response.StatusCode <= http.StatusInternalServerError {
+			err = errors.NewErrorFromProblemReport(response.StatusCode, contentType, responseBody)
+			return nil, err
+		}
+
+		err = fmt.Errorf("unexpected response code %d (%w)", response.StatusCode, errors.ErrInternal)
+		return nil, err
+	}
+
+	return entities.NewTemporalFromJSON(responseBody)
 }
 
 func (c cbClient) MergeEntity(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error) {
@@ -259,6 +290,35 @@ func (c cbClient) QueryEntities(ctx context.Context, entityTypes, entityAttribut
 	return qer, nil
 }
 
+func (c cbClient) DeleteEntity(ctx context.Context, entityID string) (*ngsild.DeleteEntityResult, error){
+	var err error
+
+	ctx, span := tracer.Start(ctx, "delete-entity",
+		trace.WithAttributes(attribute.String(TraceAttributeNGSILDTenant, c.tenant)),
+		trace.WithAttributes(attribute.String(TraceAttributeEntityID, entityID)),
+	)
+	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+	response, responseBody, err := c.callContextSource(
+		ctx, http.MethodDelete, c.baseURL+"/ngsi-ld/v1/entities/"+url.QueryEscape(entityID), nil, nil,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode != http.StatusNoContent {
+		contentType := response.Header.Get("Content-Type")
+		if response.StatusCode >= http.StatusBadRequest && response.StatusCode <= http.StatusInternalServerError {
+			return nil, errors.NewErrorFromProblemReport(response.StatusCode, contentType, responseBody)
+		}
+
+		return nil, fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", response.StatusCode, contentType, string(responseBody))
+	}
+
+	return ngsild.NewDeleteEntityResult(), nil
+}
+
 func (c cbClient) callContextSource(ctx context.Context, method, endpoint string, body io.Reader, headers map[string][]string) (*http.Response, []byte, error) {
 	httpClient := http.Client{
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
@@ -269,7 +329,7 @@ func (c cbClient) callContextSource(ctx context.Context, method, endpoint string
 		return nil, nil, fmt.Errorf("failed to create request: %s (%w)", err.Error(), errors.ErrInternal)
 	}
 
-	if c.tenant != DefaultNGSITenant {
+	if c.tenant != entities.DefaultNGSITenant {
 		req.Header.Add("NGSILD-Tenant", c.tenant)
 	}
 

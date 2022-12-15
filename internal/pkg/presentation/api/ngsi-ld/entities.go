@@ -453,6 +453,38 @@ func NewUpdateEntityAttributesHandler(
 	})
 }
 
+func NewDeleteEntityHandler(contextInformationManager cim.EntityDeleter, logger zerolog.Logger) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var err error
+
+		ctx := r.Context()
+		tenant := GetTenantFromContext(ctx)
+		entityID, _ := url.QueryUnescape(chi.URLParam(r, "entityId"))
+
+		ctx, span := tracer.Start(ctx, "delete-entity",
+			trace.WithAttributes(
+				attribute.String(TraceAttributeNGSILDTenant, tenant),
+				attribute.String(TraceAttributeEntityID, entityID),
+			),
+		)
+		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+
+		_, err = contextInformationManager.DeleteEntity(ctx, tenant, entityID)
+
+		if err != nil {
+			log.Error().Err(err).Str("entityID", entityID).Str("tenant", tenant).Msg("failed to delete entity")
+			mapCIMToNGSILDError(w, err, traceID)
+			return
+		}
+
+		log.Info().Str("entityID", entityID).Str("tenant", tenant).Msg("entity deleted")
+
+		w.WriteHeader(http.StatusNoContent)
+	})
+}
+
 func extractHeaders(r *http.Request, headers ...string) map[string][]string {
 	extractedHeaders := map[string][]string{}
 

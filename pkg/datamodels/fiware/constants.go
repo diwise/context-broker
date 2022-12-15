@@ -27,6 +27,10 @@ const (
 	GreenspaceRecordTypeName string = "GreenspaceRecord"
 	//GreenspaceRecordIDPrefix ...
 	GreenspaceRecordIDPrefix string = urnPrefix + GreenspaceRecordTypeName + ":"
+	//IndoorEnvironmentObservedTypeName is a type name constant for IndoorEnvironmentObserved
+	IndoorEnvironmentObservedTypeName string = "IndoorEnvironmentObserved"
+	//IndoorEnvironmentObservedIDPrefix contains the mandatory prefix for IndoorEnvironmentObserved ID:s
+	IndoorEnvironmentObservedIDPrefix string = urnPrefix + IndoorEnvironmentObservedTypeName + ":"
 	//Open311ServiceRequestTypeName is a type name constant for Open311ServiceRequest
 	Open311ServiceRequestTypeName string = "Open311ServiceRequest"
 	//Open311ServiceRequestIDPrefix ...
