@@ -410,8 +410,6 @@ func NewDeleteEntityHandler(contextInformationManager cim.EntityDeleter, logger 
 		tenant := GetTenantFromContext(ctx)
 		entityID, _ := url.QueryUnescape(chi.URLParam(r, "entityId"))
 
-		propagatedHeaders := extractHeaders(r, "Content-Type", "Link")
-
 		ctx, span := tracer.Start(ctx, "delete-entity",
 			trace.WithAttributes(
 				attribute.String(TraceAttributeNGSILDTenant, tenant),
@@ -422,7 +420,7 @@ func NewDeleteEntityHandler(contextInformationManager cim.EntityDeleter, logger 
 
 		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
-		_, err = contextInformationManager.DeleteEntity(ctx, tenant, entityID, propagatedHeaders)
+		_, err = contextInformationManager.DeleteEntity(ctx, tenant, entityID)
 
 		if err != nil {
 			log.Error().Err(err).Str("entityID", entityID).Str("tenant", tenant).Msg("failed to delete entity")

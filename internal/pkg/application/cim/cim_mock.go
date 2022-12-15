@@ -23,7 +23,7 @@ var _ ContextInformationManager = &ContextInformationManagerMock{}
 //			CreateEntityFunc: func(ctx context.Context, tenant string, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
 //				panic("mock out the CreateEntity method")
 //			},
-//			DeleteEntityFunc: func(ctx context.Context, tenant string, entityID string, headers map[string][]string) (*ngsild.DeleteEntityResult, error) {
+//			DeleteEntityFunc: func(ctx context.Context, tenant string, entityID string) (*ngsild.DeleteEntityResult, error) {
 //				panic("mock out the DeleteEntity method")
 //			},
 //			MergeEntityFunc: func(ctx context.Context, tenant string, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error) {
@@ -58,7 +58,7 @@ type ContextInformationManagerMock struct {
 	CreateEntityFunc func(ctx context.Context, tenant string, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error)
 
 	// DeleteEntityFunc mocks the DeleteEntity method.
-	DeleteEntityFunc func(ctx context.Context, tenant string, entityID string, headers map[string][]string) (*ngsild.DeleteEntityResult, error)
+	DeleteEntityFunc func(ctx context.Context, tenant string, entityID string) (*ngsild.DeleteEntityResult, error)
 
 	// MergeEntityFunc mocks the MergeEntity method.
 	MergeEntityFunc func(ctx context.Context, tenant string, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error)
@@ -102,8 +102,6 @@ type ContextInformationManagerMock struct {
 			Tenant string
 			// EntityID is the entityID argument value.
 			EntityID string
-			// Headers is the headers argument value.
-			Headers map[string][]string
 		}
 		// MergeEntity holds details about calls to the MergeEntity method.
 		MergeEntity []struct {
@@ -231,7 +229,7 @@ func (mock *ContextInformationManagerMock) CreateEntityCalls() []struct {
 }
 
 // DeleteEntity calls DeleteEntityFunc.
-func (mock *ContextInformationManagerMock) DeleteEntity(ctx context.Context, tenant string, entityID string, headers map[string][]string) (*ngsild.DeleteEntityResult, error) {
+func (mock *ContextInformationManagerMock) DeleteEntity(ctx context.Context, tenant string, entityID string) (*ngsild.DeleteEntityResult, error) {
 	if mock.DeleteEntityFunc == nil {
 		panic("ContextInformationManagerMock.DeleteEntityFunc: method is nil but ContextInformationManager.DeleteEntity was just called")
 	}
@@ -239,17 +237,15 @@ func (mock *ContextInformationManagerMock) DeleteEntity(ctx context.Context, ten
 		Ctx      context.Context
 		Tenant   string
 		EntityID string
-		Headers  map[string][]string
 	}{
 		Ctx:      ctx,
 		Tenant:   tenant,
 		EntityID: entityID,
-		Headers:  headers,
 	}
 	mock.lockDeleteEntity.Lock()
 	mock.calls.DeleteEntity = append(mock.calls.DeleteEntity, callInfo)
 	mock.lockDeleteEntity.Unlock()
-	return mock.DeleteEntityFunc(ctx, tenant, entityID, headers)
+	return mock.DeleteEntityFunc(ctx, tenant, entityID)
 }
 
 // DeleteEntityCalls gets all the calls that were made to DeleteEntity.
@@ -260,13 +256,11 @@ func (mock *ContextInformationManagerMock) DeleteEntityCalls() []struct {
 	Ctx      context.Context
 	Tenant   string
 	EntityID string
-	Headers  map[string][]string
 } {
 	var calls []struct {
 		Ctx      context.Context
 		Tenant   string
 		EntityID string
-		Headers  map[string][]string
 	}
 	mock.lockDeleteEntity.RLock()
 	calls = mock.calls.DeleteEntity

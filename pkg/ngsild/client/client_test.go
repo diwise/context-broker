@@ -182,7 +182,7 @@ func TestDeleteEntity(t *testing.T) {
 
 	c := NewContextBrokerClient(s.URL())
 
-	_, err := c.DeleteEntity(context.Background(), "id", nil)
+	_, err := c.DeleteEntity(context.Background(), "id")
 
 	is.NoErr(err)
 	is.Equal(s.RequestCount(), 1)	

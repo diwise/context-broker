@@ -280,7 +280,7 @@ func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant,
 	return nil, errors.NewNotFoundError(fmt.Sprintf("no context source found that could update attributes for entity %s", entityID))
 }
 
-func (app *contextBrokerApp) DeleteEntity(ctx context.Context, tenant, entityID string, headers map[string][]string) (*ngsild.DeleteEntityResult, error) {
+func (app *contextBrokerApp) DeleteEntity(ctx context.Context, tenant, entityID string) (*ngsild.DeleteEntityResult, error) {
 	sources, ok := app.tenants[tenant]
 	if !ok {
 		return nil, errors.NewUnknownTenantError(tenant)
@@ -299,12 +299,7 @@ func (app *contextBrokerApp) DeleteEntity(ctx context.Context, tenant, entityID 
 				}
 
 				cbClient := client.NewContextBrokerClient(src.Endpoint, client.Debug(app.debugClient))
-				result, err := cbClient.DeleteEntity(ctx, entityID, headers)
-				if err != nil {
-					return nil, err
-				}
-
-				return result, nil
+				return cbClient.DeleteEntity(ctx, entityID)
 			}
 		}
 	}

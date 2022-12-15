@@ -32,7 +32,7 @@ type EntityTemporalRetriever interface {
 }
 
 type EntityDeleter interface {
-	DeleteEntity(ctx context.Context, tenant, entityID string, headers map[string][]string) (*ngsild.DeleteEntityResult, error)
+	DeleteEntity(ctx context.Context, tenant, entityID string) (*ngsild.DeleteEntityResult, error)
 }
 
 //go:generate moq -rm -out cim_mock.go . ContextInformationManager

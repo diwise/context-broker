@@ -24,7 +24,7 @@ var _ ContextBrokerClient = &ContextBrokerClientMock{}
 //			CreateEntityFunc: func(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
 //				panic("mock out the CreateEntity method")
 //			},
-//			DeleteEntityFunc: func(ctx context.Context, entityID string, headers map[string][]string) (*ngsild.DeleteEntityResult, error) {
+//			DeleteEntityFunc: func(ctx context.Context, entityID string) (*ngsild.DeleteEntityResult, error) {
 //				panic("mock out the DeleteEntity method")
 //			},
 //			MergeEntityFunc: func(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error) {
@@ -53,7 +53,7 @@ type ContextBrokerClientMock struct {
 	CreateEntityFunc func(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error)
 
 	// DeleteEntityFunc mocks the DeleteEntity method.
-	DeleteEntityFunc func(ctx context.Context, entityID string, headers map[string][]string) (*ngsild.DeleteEntityResult, error)
+	DeleteEntityFunc func(ctx context.Context, entityID string) (*ngsild.DeleteEntityResult, error)
 
 	// MergeEntityFunc mocks the MergeEntity method.
 	MergeEntityFunc func(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error)
@@ -87,8 +87,6 @@ type ContextBrokerClientMock struct {
 			Ctx context.Context
 			// EntityID is the entityID argument value.
 			EntityID string
-			// Headers is the headers argument value.
-			Headers map[string][]string
 		}
 		// MergeEntity holds details about calls to the MergeEntity method.
 		MergeEntity []struct {
@@ -194,23 +192,21 @@ func (mock *ContextBrokerClientMock) CreateEntityCalls() []struct {
 }
 
 // DeleteEntity calls DeleteEntityFunc.
-func (mock *ContextBrokerClientMock) DeleteEntity(ctx context.Context, entityID string, headers map[string][]string) (*ngsild.DeleteEntityResult, error) {
+func (mock *ContextBrokerClientMock) DeleteEntity(ctx context.Context, entityID string) (*ngsild.DeleteEntityResult, error) {
 	if mock.DeleteEntityFunc == nil {
 		panic("ContextBrokerClientMock.DeleteEntityFunc: method is nil but ContextBrokerClient.DeleteEntity was just called")
 	}
 	callInfo := struct {
 		Ctx      context.Context
 		EntityID string
-		Headers  map[string][]string
 	}{
 		Ctx:      ctx,
 		EntityID: entityID,
-		Headers:  headers,
 	}
 	mock.lockDeleteEntity.Lock()
 	mock.calls.DeleteEntity = append(mock.calls.DeleteEntity, callInfo)
 	mock.lockDeleteEntity.Unlock()
-	return mock.DeleteEntityFunc(ctx, entityID, headers)
+	return mock.DeleteEntityFunc(ctx, entityID)
 }
 
 // DeleteEntityCalls gets all the calls that were made to DeleteEntity.
@@ -220,12 +216,10 @@ func (mock *ContextBrokerClientMock) DeleteEntity(ctx context.Context, entityID 
 func (mock *ContextBrokerClientMock) DeleteEntityCalls() []struct {
 	Ctx      context.Context
 	EntityID string
-	Headers  map[string][]string
 } {
 	var calls []struct {
 		Ctx      context.Context
 		EntityID string
-		Headers  map[string][]string
 	}
 	mock.lockDeleteEntity.RLock()
 	calls = mock.calls.DeleteEntity

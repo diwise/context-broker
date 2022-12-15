@@ -32,7 +32,7 @@ type ContextBrokerClient interface {
 	RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityID string, headers map[string][]string) (types.EntityTemporal, error)
 	MergeEntity(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error)
 	UpdateEntityAttributes(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error)
-	DeleteEntity(ctx context.Context, entityID string, headers map[string][]string) (*ngsild.DeleteEntityResult, error)
+	DeleteEntity(ctx context.Context, entityID string) (*ngsild.DeleteEntityResult, error)
 }
 
 func Debug(enabled string) func(*cbClient) {
@@ -290,7 +290,7 @@ func (c cbClient) QueryEntities(ctx context.Context, entityTypes, entityAttribut
 	return qer, nil
 }
 
-func (c cbClient) DeleteEntity(ctx context.Context, entityID string, headers map[string][]string) (*ngsild.DeleteEntityResult, error){
+func (c cbClient) DeleteEntity(ctx context.Context, entityID string) (*ngsild.DeleteEntityResult, error){
 	var err error
 
 	ctx, span := tracer.Start(ctx, "delete-entity",
@@ -300,14 +300,14 @@ func (c cbClient) DeleteEntity(ctx context.Context, entityID string, headers map
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
 	response, responseBody, err := c.callContextSource(
-		ctx, http.MethodDelete, c.baseURL+"/ngsi-ld/v1/entities/"+url.QueryEscape(entityID), nil, headers,
+		ctx, http.MethodDelete, c.baseURL+"/ngsi-ld/v1/entities/"+url.QueryEscape(entityID), nil, nil,
 	)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if response.StatusCode != http.StatusNoContent && response.StatusCode != http.StatusMultiStatus {
+	if response.StatusCode != http.StatusNoContent {
 		contentType := response.Header.Get("Content-Type")
 		if response.StatusCode >= http.StatusBadRequest && response.StatusCode <= http.StatusInternalServerError {
 			return nil, errors.NewErrorFromProblemReport(response.StatusCode, contentType, responseBody)
