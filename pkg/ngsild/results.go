@@ -68,3 +68,11 @@ func NewUpdateEntityAttributesResult(body []byte) (*UpdateEntityAttributesResult
 	}
 	return uear, nil
 }
+
+type DeleteEntityResult struct {	
+}
+
+func NewDeleteEntityResult() *DeleteEntityResult {
+	del := &DeleteEntityResult{}
+	return del
+}

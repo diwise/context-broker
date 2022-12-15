@@ -30,6 +30,7 @@ func RegisterHandlers(r chi.Router, app cim.ContextInformationManager, log zerol
 				"/entities/{entityId}",
 				NewRetrieveEntityHandler(app, log),
 			)
+	
 			r.Patch(
 				"/entities/{entityId}",
 				NewMergeEntityHandler(app, log),
@@ -46,6 +47,11 @@ func RegisterHandlers(r chi.Router, app cim.ContextInformationManager, log zerol
 					app, log,
 					func(ctx context.Context, entityType, entityID string, logger zerolog.Logger) {},
 				),
+			)
+
+			r.Delete(
+				"/entities/{entityId}",
+				NewDeleteEntityHandler(app, log),
 			)
 
 			r.Get(
