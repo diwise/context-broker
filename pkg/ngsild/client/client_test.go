@@ -166,6 +166,28 @@ func TestUpdateEntityAttributesWithMetaData(t *testing.T) {
 	is.Equal(s.RequestCount(), 1)
 }
 
+func TestDeleteEntity(t *testing.T) {
+	is := is.New(t)
+
+	s := testutils.NewMockServiceThat(
+		Expects(
+			is,
+			method(http.MethodDelete),
+			path("/ngsi-ld/v1/entities/id"),
+			body(""),
+		),
+		Returns(response.Code(http.StatusNoContent)),
+	)
+	defer s.Close()
+
+	c := NewContextBrokerClient(s.URL())
+
+	_, err := c.DeleteEntity(context.Background(), "id", nil)
+
+	is.NoErr(err)
+	is.Equal(s.RequestCount(), 1)	
+}
+
 func testEntity(entityType, entityID string) types.Entity {
 	e, _ := entities.New(entityID, entityType)
 	return e
