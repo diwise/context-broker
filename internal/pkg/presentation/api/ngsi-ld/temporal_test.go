@@ -17,7 +17,7 @@ func TestRetrieveTemporalEvolutionOfAnEntity(t *testing.T) {
 		return entities.NewTemporalFromJSON([]byte(indentedTemporalEvolutionOfEntity))
 	}
 
-	resp, respBody := newGetRequest(is, ts, "application/ld+json", "/ngsi-ld/v1/temporal/entities/someid", nil)
+	resp, respBody := testRequest(is, ts, http.MethodGet, acceptJSONLD, "/ngsi-ld/v1/temporal/entities/someid", nil)
 
 	is.Equal(resp.StatusCode, http.StatusOK)
 	is.Equal(respBody, temporalEvolutionOfEntity)
