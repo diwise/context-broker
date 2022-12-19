@@ -10,6 +10,7 @@ import (
 	"github.com/diwise/context-broker/internal/pkg/infrastructure/router"
 	ngsild "github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld"
 	"github.com/diwise/service-chassis/pkg/infrastructure/buildinfo"
+	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 )
 
@@ -55,10 +56,7 @@ func main() {
 
 	ngsild.RegisterHandlers(r, policies, app, logger)
 
-	port := os.Getenv("SERVICE_PORT")
-	if port == "" {
-		port = "8080"
-	}
+	port := env.GetVariableOrDefault(logger, "SERVICE_PORT", "8080")
 
 	logger.Info().Str("port", port).Msg("starting to listen for connections")
 
