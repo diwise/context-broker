@@ -7,7 +7,9 @@ package example.authz
 default allow := false
 
 allow = response {
-	response := {
-		"ok": true
-	}
+    input.method == "GET"
+
+    response := {
+        "ok": true
+    }
 }

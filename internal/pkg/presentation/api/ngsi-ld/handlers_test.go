@@ -88,6 +88,15 @@ func TestCreateEntityCanHandleInternalError(t *testing.T) {
 	is.Equal(resp.StatusCode, http.StatusInternalServerError) // Check status code
 }
 
+func TestDeleteEntityWithoutTokenReturns401(t *testing.T) {
+	is, ts, _ := setupTest(t)
+	defer ts.Close()
+
+	resp, _ := testRequest(is, ts, http.MethodDelete, acceptJSON, "/ngsi-ld/v1/entities/id-of-entity-to-be-deleted", nil)
+
+	is.Equal(resp.StatusCode, http.StatusUnauthorized)
+}
+
 func TestQueryEntitiesWithNoTypesOrAttrsReturnsBadRequest(t *testing.T) {
 	is, ts, _ := setupTest(t)
 	defer ts.Close()
@@ -303,8 +312,9 @@ package example.authz
 default allow := false
 
 allow = response {
-	response := {
-		"ok": true
-	}
+    not input.method == "DELETE"
+
+    response := {
+    }
 }
 `
