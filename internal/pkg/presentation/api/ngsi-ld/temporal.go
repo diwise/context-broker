@@ -6,6 +6,8 @@ import (
 	"net/url"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
+	"github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/auth"
+	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
@@ -17,6 +19,7 @@ import (
 
 func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 	contextInformationManager cim.EntityTemporalRetriever,
+	authenticator auth.Enticator,
 	logger zerolog.Logger) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +44,18 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 			contentType = "application/ld+json"
 		}
 
-		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(
+			span,
+			logger.With().Str("entityID", entityID).Str("tenant", tenant).Logger(),
+			ctx)
+
+		err = authenticator.CheckAccess(ctx, r, tenant, []string{})
+		if err != nil {
+			log.Warn().Err(err).Msg("access not granted")
+			messageToSendToNonAuthenticatedClients := "not found"
+			ngsierrors.ReportNotFoundError(w, messageToSendToNonAuthenticatedClients, traceID)
+			return
+		}
 
 		var entityTemporal types.EntityTemporal
 		entityTemporal, err = contextInformationManager.RetrieveTemporalEvolutionOfEntity(ctx, tenant, entityID, propagatedHeaders)
