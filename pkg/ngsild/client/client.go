@@ -159,7 +159,7 @@ func (c cbClient) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityI
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
 	response, responseBody, err := c.callContextSource(
-		ctx, http.MethodGet, c.baseURL+"/temporal/entities/"+url.QueryEscape(entityID), nil, headers,
+		ctx, http.MethodGet, c.baseURL+"/ngsi-ld/v1/temporal/entities/"+url.QueryEscape(entityID), nil, headers,
 	)
 
 	if err != nil {
@@ -290,7 +290,7 @@ func (c cbClient) QueryEntities(ctx context.Context, entityTypes, entityAttribut
 	return qer, nil
 }
 
-func (c cbClient) DeleteEntity(ctx context.Context, entityID string) (*ngsild.DeleteEntityResult, error){
+func (c cbClient) DeleteEntity(ctx context.Context, entityID string) (*ngsild.DeleteEntityResult, error) {
 	var err error
 
 	ctx, span := tracer.Start(ctx, "delete-entity",
