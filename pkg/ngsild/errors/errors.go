@@ -69,7 +69,7 @@ func NewErrorFromProblemReport(code int, contentType string, body []byte) error 
 
 	err := json.Unmarshal(body, report)
 	if err != nil {
-		return fmt.Errorf("failed to process problem report from context source: %s", err.Error())
+		return fmt.Errorf("expected problem report, but got response %d with body \"%s\" of type %s", code, string(body), contentType)
 	}
 
 	if code == http.StatusNotFound || report.Type == "https://uri.etsi.org/ngsi-ld/errors/ResourceNotFound" {
