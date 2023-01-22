@@ -166,7 +166,7 @@ func (c cbClient) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityI
 		return nil, err
 	}
 
-	if response.StatusCode != http.StatusOK {
+	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusPartialContent {
 		contentType := response.Header.Get("Content-Type")
 		if response.StatusCode >= http.StatusBadRequest && response.StatusCode <= http.StatusInternalServerError {
 			err = errors.NewErrorFromProblemReport(response.StatusCode, contentType, responseBody)
@@ -175,6 +175,11 @@ func (c cbClient) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityI
 
 		err = fmt.Errorf("unexpected response code %d (%w)", response.StatusCode, errors.ErrInternal)
 		return nil, err
+	}
+
+	if response.StatusCode == http.StatusPartialContent {
+		logger := logging.GetFromContext(ctx)
+		logger.Info().Str("body", string(responseBody)).Msg("creating temporal response from partial content")
 	}
 
 	return entities.NewTemporalFromJSON(responseBody)
@@ -350,12 +355,20 @@ func (c cbClient) callContextSource(ctx context.Context, method, endpoint string
 		return nil, nil, fmt.Errorf("failed to read response body: %s (%w)", err.Error(), errors.ErrBadResponse)
 	}
 
-	if c.debug && resp.StatusCode >= http.StatusBadRequest && resp.StatusCode != http.StatusUnauthorized && resp.StatusCode != http.StatusNotFound {
-		reqbytes, _ := httputil.DumpRequest(req, false)
-		respbytes, _ := httputil.DumpResponse(resp, false)
+	if c.debug {
+		if resp.StatusCode == http.StatusPartialContent || resp.StatusCode >= http.StatusBadRequest {
+			if resp.StatusCode != http.StatusUnauthorized && resp.StatusCode != http.StatusNotFound {
+				reqbytes, _ := httputil.DumpRequest(req, false)
+				respbytes, _ := httputil.DumpResponse(resp, false)
 
-		log := logging.GetFromContext(ctx)
-		log.Error().Str("request", string(reqbytes)).Str("response", string(respbytes)).Msg("request failed")
+				log := logging.GetFromContext(ctx)
+				if resp.StatusCode >= http.StatusBadRequest {
+					log.Error().Str("request", string(reqbytes)).Str("response", string(respbytes)).Msg("request failed")
+				} else {
+					log.Warn().Str("request", string(reqbytes)).Str("response", string(respbytes)).Msg("unexpected response")
+				}
+			}
+		}
 	}
 
 	return resp, respBody, nil
