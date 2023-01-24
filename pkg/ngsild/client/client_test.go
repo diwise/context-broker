@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"testing"
+	"time"
 
 	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
@@ -212,7 +214,105 @@ func TestDeleteEntityNotFound(t *testing.T) {
 	is.True(errors.Is(err, ngsierrors.ErrNotFound))
 }
 
+func TestRetrieveTemporalEvolutionOfAnEntity(t *testing.T) {
+	is := is.New(t)
+
+	timeStr := "2023-01-22T11:59:43Z"
+
+	s := testutils.NewMockServiceThat(
+		Expects(
+			is,
+			expects.RequestPath("/ngsi-ld/v1/temporal/entities/id"),
+			QueryParamEquals("timerel", "after"),
+			QueryParamEquals("timeAt", timeStr),
+		),
+		Returns(
+			response.ContentType("application/ld+json"),
+			response.Code(http.StatusOK),
+			response.Body([]byte(temporalEntityResponse)),
+		),
+	)
+	defer s.Close()
+
+	headers := map[string][]string{"Accept": {"application/ld+json"}}
+	timeAt, _ := time.Parse(time.RFC3339, timeStr)
+
+	c := NewContextBrokerClient(s.URL())
+	_, err := c.RetrieveTemporalEvolutionOfEntity(context.Background(), "id", headers, After(timeAt))
+
+	is.NoErr(err)
+}
+
+func TestRetrieveAggregatedTemporalEvolutionOfAnEntity(t *testing.T) {
+	is := is.New(t)
+
+	s := testutils.NewMockServiceThat(
+		Expects(
+			is,
+			expects.RequestPath("/ngsi-ld/v1/temporal/entities/id"),
+			QueryParamContains("aggrMethods", "max"),
+			QueryParamEquals("aggrPeriodDuration", "P1D"),
+			QueryParamEquals("options", "aggregatedValues"),
+		),
+		Returns(
+			response.ContentType("application/ld+json"),
+			response.Code(http.StatusOK),
+			response.Body([]byte(temporalEntityResponse)),
+		),
+	)
+	defer s.Close()
+
+	headers := map[string][]string{"Accept": {"application/ld+json"}}
+
+	c := NewContextBrokerClient(s.URL())
+	_, err := c.RetrieveTemporalEvolutionOfEntity(context.Background(), "id", headers,
+		Aggregation(
+			[]AggregationMethod{AggregatedMax, AggregatedMin},
+			ByDay(),
+		))
+
+	is.NoErr(err)
+}
+
 func testEntity(entityType, entityID string) types.Entity {
 	e, _ := entities.New(entityID, entityType)
 	return e
+}
+
+const temporalEntityResponse string = `{
+	"id":"urn:ngsi-ld:Vehicle:B9211", "type":"Vehicle",
+"speed":[
+{
+"type":"Property",
+"value":120, "observedAt":"2018-08-01T12:03:00Z"
+}, {
+"type":"Property",
+"value":80, "observedAt":"2018-08-01T12:05:00Z"
+}, {
+"type":"Property",
+"value":100, "observedAt":"2018-08-01T12:07:00Z"
+} ],
+"@context":[
+"http://example.org/ngsi-ld/latest/vehicle.jsonld", "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context-v1.5.jsonld"
+] }`
+
+func QueryParamContains(name, value string) func(*is.I, *http.Request) {
+	return func(is *is.I, r *http.Request) {
+		is.True(r.URL.Query().Has(name)) // query param should exist
+
+		for _, v := range strings.Split(r.URL.Query().Get(name), ",") {
+			if v == value {
+				return // it is a match!
+			}
+		}
+
+		is.Fail() // query params did not contain expected value
+	}
+}
+
+func QueryParamEquals(name, value string) func(*is.I, *http.Request) {
+	return func(is *is.I, r *http.Request) {
+		is.True(r.URL.Query().Has(name))         // query param should exist
+		is.Equal(r.URL.Query().Get(name), value) // query param should match
+	}
 }

@@ -10,6 +10,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/diwise/context-broker/pkg/ngsild"
 	"github.com/diwise/context-broker/pkg/ngsild/errors"
@@ -29,11 +30,13 @@ type ContextBrokerClient interface {
 	CreateEntity(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error)
 	QueryEntities(ctx context.Context, entityTypes, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error)
 	RetrieveEntity(ctx context.Context, entityID string, headers map[string][]string) (types.Entity, error)
-	RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityID string, headers map[string][]string) (types.EntityTemporal, error)
+	RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityID string, headers map[string][]string, parameters ...RequestDecoratorFunc) (types.EntityTemporal, error)
 	MergeEntity(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error)
 	UpdateEntityAttributes(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error)
 	DeleteEntity(ctx context.Context, entityID string) (*ngsild.DeleteEntityResult, error)
 }
+
+type RequestDecoratorFunc func([]string) []string
 
 func Debug(enabled string) func(*cbClient) {
 	return func(c *cbClient) {
@@ -149,7 +152,7 @@ func (c cbClient) RetrieveEntity(ctx context.Context, entityID string, headers m
 	return entities.NewFromJSON(responseBody)
 }
 
-func (c cbClient) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityID string, headers map[string][]string) (types.EntityTemporal, error) {
+func (c cbClient) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityID string, headers map[string][]string, parameters ...RequestDecoratorFunc) (types.EntityTemporal, error) {
 	var err error
 
 	ctx, span := tracer.Start(ctx, "retrieve-entity-temporal",
@@ -158,8 +161,18 @@ func (c cbClient) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityI
 	)
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
+	params := make([]string, 0, 5)
+	for _, rdf := range parameters {
+		params = rdf(params)
+	}
+
+	urlparams := ""
+	if len(params) > 0 {
+		urlparams = "?" + strings.Join(params, "&")
+	}
+
 	response, responseBody, err := c.callContextSource(
-		ctx, http.MethodGet, c.baseURL+"/ngsi-ld/v1/temporal/entities/"+url.QueryEscape(entityID), nil, headers,
+		ctx, http.MethodGet, c.baseURL+"/ngsi-ld/v1/temporal/entities/"+url.QueryEscape(entityID)+urlparams, nil, headers,
 	)
 
 	if err != nil {
@@ -175,11 +188,6 @@ func (c cbClient) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityI
 
 		err = fmt.Errorf("unexpected response code %d (%w)", response.StatusCode, errors.ErrInternal)
 		return nil, err
-	}
-
-	if response.StatusCode == http.StatusPartialContent {
-		logger := logging.GetFromContext(ctx)
-		logger.Info().Str("body", string(responseBody)).Msg("creating temporal response from partial content")
 	}
 
 	return entities.NewTemporalFromJSON(responseBody)

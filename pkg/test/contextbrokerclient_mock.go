@@ -36,7 +36,7 @@ var _ ContextBrokerClient = &ContextBrokerClientMock{}
 //			RetrieveEntityFunc: func(ctx context.Context, entityID string, headers map[string][]string) (types.Entity, error) {
 //				panic("mock out the RetrieveEntity method")
 //			},
-//			RetrieveTemporalEvolutionOfEntityFunc: func(ctx context.Context, entityID string, headers map[string][]string) (types.EntityTemporal, error) {
+//			RetrieveTemporalEvolutionOfEntityFunc: func(ctx context.Context, entityID string, headers map[string][]string, parameters ...RequestDecoratorFunc) (types.EntityTemporal, error) {
 //				panic("mock out the RetrieveTemporalEvolutionOfEntity method")
 //			},
 //			UpdateEntityAttributesFunc: func(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
@@ -65,7 +65,7 @@ type ContextBrokerClientMock struct {
 	RetrieveEntityFunc func(ctx context.Context, entityID string, headers map[string][]string) (types.Entity, error)
 
 	// RetrieveTemporalEvolutionOfEntityFunc mocks the RetrieveTemporalEvolutionOfEntity method.
-	RetrieveTemporalEvolutionOfEntityFunc func(ctx context.Context, entityID string, headers map[string][]string) (types.EntityTemporal, error)
+	RetrieveTemporalEvolutionOfEntityFunc func(ctx context.Context, entityID string, headers map[string][]string, parameters ...RequestDecoratorFunc) (types.EntityTemporal, error)
 
 	// UpdateEntityAttributesFunc mocks the UpdateEntityAttributes method.
 	UpdateEntityAttributesFunc func(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error)
@@ -129,6 +129,8 @@ type ContextBrokerClientMock struct {
 			EntityID string
 			// Headers is the headers argument value.
 			Headers map[string][]string
+			// Parameters is the parameters argument value.
+			Parameters []RequestDecoratorFunc
 		}
 		// UpdateEntityAttributes holds details about calls to the UpdateEntityAttributes method.
 		UpdateEntityAttributes []struct {
@@ -360,23 +362,25 @@ func (mock *ContextBrokerClientMock) RetrieveEntityCalls() []struct {
 }
 
 // RetrieveTemporalEvolutionOfEntity calls RetrieveTemporalEvolutionOfEntityFunc.
-func (mock *ContextBrokerClientMock) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityID string, headers map[string][]string) (types.EntityTemporal, error) {
+func (mock *ContextBrokerClientMock) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityID string, headers map[string][]string, parameters ...RequestDecoratorFunc) (types.EntityTemporal, error) {
 	if mock.RetrieveTemporalEvolutionOfEntityFunc == nil {
 		panic("ContextBrokerClientMock.RetrieveTemporalEvolutionOfEntityFunc: method is nil but ContextBrokerClient.RetrieveTemporalEvolutionOfEntity was just called")
 	}
 	callInfo := struct {
-		Ctx      context.Context
-		EntityID string
-		Headers  map[string][]string
+		Ctx        context.Context
+		EntityID   string
+		Headers    map[string][]string
+		Parameters []RequestDecoratorFunc
 	}{
-		Ctx:      ctx,
-		EntityID: entityID,
-		Headers:  headers,
+		Ctx:        ctx,
+		EntityID:   entityID,
+		Headers:    headers,
+		Parameters: parameters,
 	}
 	mock.lockRetrieveTemporalEvolutionOfEntity.Lock()
 	mock.calls.RetrieveTemporalEvolutionOfEntity = append(mock.calls.RetrieveTemporalEvolutionOfEntity, callInfo)
 	mock.lockRetrieveTemporalEvolutionOfEntity.Unlock()
-	return mock.RetrieveTemporalEvolutionOfEntityFunc(ctx, entityID, headers)
+	return mock.RetrieveTemporalEvolutionOfEntityFunc(ctx, entityID, headers, parameters...)
 }
 
 // RetrieveTemporalEvolutionOfEntityCalls gets all the calls that were made to RetrieveTemporalEvolutionOfEntity.
@@ -384,14 +388,16 @@ func (mock *ContextBrokerClientMock) RetrieveTemporalEvolutionOfEntity(ctx conte
 //
 //	len(mockedContextBrokerClient.RetrieveTemporalEvolutionOfEntityCalls())
 func (mock *ContextBrokerClientMock) RetrieveTemporalEvolutionOfEntityCalls() []struct {
-	Ctx      context.Context
-	EntityID string
-	Headers  map[string][]string
+	Ctx        context.Context
+	EntityID   string
+	Headers    map[string][]string
+	Parameters []RequestDecoratorFunc
 } {
 	var calls []struct {
-		Ctx      context.Context
-		EntityID string
-		Headers  map[string][]string
+		Ctx        context.Context
+		EntityID   string
+		Headers    map[string][]string
+		Parameters []RequestDecoratorFunc
 	}
 	mock.lockRetrieveTemporalEvolutionOfEntity.RLock()
 	calls = mock.calls.RetrieveTemporalEvolutionOfEntity
