@@ -66,6 +66,12 @@ var configFile string = `
 tenants:
   - id: default
     name: Kommunen
+    notifications:      
+      - endpoint: http://endpoint-01/v2/notify
+        entities:
+        - idPattern: ^urn:ngsi-ld:Device:.+
+          type: Device
+      - endpoint: http://endpoint-02/v2/notify	
     contextSources:
     - endpoint: http://lolcathost:1234
       temporal:

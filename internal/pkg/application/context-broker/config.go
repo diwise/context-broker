@@ -34,6 +34,11 @@ func (cs *ContextSourceConfig) TemporalEndpoint() string {
 	return cs.Endpoint
 }
 
+type Notification struct {
+	Endpoint string       `yaml:"endpoint"`
+	Entities []EntityInfo `yaml:"entities"`
+}
+
 type TemporalInfo struct {
 	Enabled  bool   `yaml:"enabled"`
 	Endpoint string `yaml:"endpoint"`
@@ -43,6 +48,7 @@ type Tenant struct {
 	ID             string                `yaml:"id"`
 	Name           string                `yaml:"name"`
 	ContextSources []ContextSourceConfig `yaml:"contextSources"`
+	Notifications  []Notification        `yaml:"notifications"`
 }
 
 type Config struct {
