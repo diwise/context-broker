@@ -103,12 +103,12 @@ func (n *notifier) EntityCreated(ctx context.Context, e types.Entity, tenant str
 								continue
 							}
 
-							go func(notCfg config.Notification) {
-								err = postNotification(ctx, e, notCfg.Endpoint)
+							go func(endpoint string) {
+								err = postNotification(ctx, e, endpoint)
 								if err != nil {
 									logger.Error().Err(err).Msg("failed to post notification")
 								}
-							}(not)
+							}(not.Endpoint)
 						}
 					}
 				}
@@ -148,12 +148,12 @@ func (n *notifier) EntityUpdated(ctx context.Context, e types.Entity, tenant str
 								continue
 							}
 
-							go func(notCfg config.Notification) {
-								err = postNotification(ctx, e, notCfg.Endpoint)
+							go func(endpoint string) {
+								err = postNotification(ctx, e, endpoint)
 								if err != nil {
 									logger.Error().Err(err).Msg("failed to post notification")
 								}
-							}(not)
+							}(not.Endpoint)
 						}
 					}
 				}
