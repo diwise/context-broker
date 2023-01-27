@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/diwise/context-broker/internal/pkg/application/config"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	. "github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 	testutils "github.com/diwise/service-chassis/pkg/test/http"
@@ -36,14 +37,32 @@ func TestSingleNotificationOnCreate(t *testing.T) {
 	defer s.Close()
 
 	ctx := context.Background()
-	n, _ := NewNotifier(ctx, s.URL())
+	cfg := config.Config{
+		Tenants: []config.Tenant{
+			{
+				ID: "default",
+				Notifications: []config.Notification{
+					{
+						Endpoint: s.URL(),
+						Entities: []config.EntityInfo{
+							{
+								Type: "Lifebuoy",
+								IDPattern: "^urn:ngsi-ld:Lifebuoy:.+",
+							},
+						},
+					},					
+				},
+			},
+		},
+	}
+	n, _ := NewNotifier(ctx, cfg)
 
 	n.Start()
 
 	e, err := entities.New(entityID, "Lifebuoy", Status("off"))
 	is.NoErr(err)
 
-	n.EntityCreated(ctx, e)
+	n.EntityCreated(ctx, e, "default")
 
 	n.Stop()
 

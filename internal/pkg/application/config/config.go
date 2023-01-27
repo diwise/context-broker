@@ -1,4 +1,4 @@
-package contextbroker
+package config
 
 import (
 	"io"

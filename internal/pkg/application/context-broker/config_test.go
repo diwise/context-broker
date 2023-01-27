@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	cfg "github.com/diwise/context-broker/internal/pkg/application/config"
 	"github.com/matryer/is"
 )
 
@@ -53,10 +54,10 @@ func TestLoadRegistrationInfo(t *testing.T) {
 	is.Equal(reginfo.Entities[1].Type, "DeviceModel")
 }
 
-func setupConfigTest(t *testing.T) (*is.I, *Config) {
+func setupConfigTest(t *testing.T) (*is.I, *cfg.Config) {
 	is := is.New(t)
 	cfgData := bytes.NewBuffer([]byte(configFile))
-	config, err := LoadConfiguration(cfgData)
+	config, err := cfg.LoadConfiguration(cfgData)
 	is.NoErr(err)
 
 	return is, config
