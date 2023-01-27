@@ -46,11 +46,11 @@ func TestSingleNotificationOnCreate(t *testing.T) {
 						Endpoint: s.URL(),
 						Entities: []config.EntityInfo{
 							{
-								Type: "Lifebuoy",
+								Type:      "Lifebuoy",
 								IDPattern: "^urn:ngsi-ld:Lifebuoy:.+",
 							},
 						},
-					},					
+					},
 				},
 			},
 		},

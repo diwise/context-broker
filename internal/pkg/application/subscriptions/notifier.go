@@ -93,20 +93,22 @@ func (n *notifier) EntityCreated(ctx context.Context, e types.Entity, tenant str
 							if ent.Type != e.Type() {
 								continue
 							}
-			
+
 							regexpForID, err := regexp.CompilePOSIX(ent.IDPattern)
 							if err != nil {
 								continue
 							}
-			
+
 							if !regexpForID.MatchString(e.ID()) {
 								continue
 							}
 
-							err = postNotification(ctx, e, not.Endpoint)
-							if err != nil {
-								logger.Error().Err(err).Msg("failed to post notification")
-							}							
+							go func(notCfg config.Notification) {
+								err = postNotification(ctx, e, notCfg.Endpoint)
+								if err != nil {
+									logger.Error().Err(err).Msg("failed to post notification")
+								}
+							}(not)
 						}
 					}
 				}
@@ -136,20 +138,22 @@ func (n *notifier) EntityUpdated(ctx context.Context, e types.Entity, tenant str
 							if ent.Type != e.Type() {
 								continue
 							}
-			
+
 							regexpForID, err := regexp.CompilePOSIX(ent.IDPattern)
 							if err != nil {
 								continue
 							}
-			
+
 							if !regexpForID.MatchString(e.ID()) {
 								continue
 							}
 
-							err = postNotification(ctx, e, not.Endpoint)
-							if err != nil {
-								logger.Error().Err(err).Msg("failed to post notification")
-							}							
+							go func(notCfg config.Notification) {
+								err = postNotification(ctx, e, notCfg.Endpoint)
+								if err != nil {
+									logger.Error().Err(err).Msg("failed to post notification")
+								}
+							}(not)
 						}
 					}
 				}

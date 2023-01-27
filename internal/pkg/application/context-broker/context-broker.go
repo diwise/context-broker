@@ -24,7 +24,7 @@ type contextBrokerApp struct {
 	debugClient string
 }
 
-func New(ctx context.Context, cfg config.Config) (cim.ContextInformationManager, error) {	
+func New(ctx context.Context, cfg config.Config) (cim.ContextInformationManager, error) {
 	logger := logging.GetFromContext(ctx)
 
 	notifier, _ := subscriptions.NewNotifier(ctx, cfg)

@@ -25,14 +25,14 @@ func TestNewWithEmptyConfig(t *testing.T) {
 func TestNewWithDefaultConfig(t *testing.T) {
 	is := is.New(t)
 
-	_, err := New(context.Background(), withDefaultTestConfig("",""))
+	_, err := New(context.Background(), withDefaultTestConfig("", ""))
 	is.NoErr(err)
 }
 
 func TestThatCreateEntityWithUnknownTenantFails(t *testing.T) {
 	is := is.New(t)
 
-	broker, err := New(context.Background(), withDefaultTestConfig("",""))
+	broker, err := New(context.Background(), withDefaultTestConfig("", ""))
 	is.NoErr(err)
 
 	_, err = broker.CreateEntity(context.Background(), "unknown", testEntity("", ""), nil)
@@ -43,7 +43,7 @@ func TestThatCreateEntityWithUnknownTenantFails(t *testing.T) {
 func TestThatCreateEntityWithUnknownEntityTypeFails(t *testing.T) {
 	is := is.New(t)
 
-	broker, err := New(context.Background(), withDefaultTestConfig("",""))
+	broker, err := New(context.Background(), withDefaultTestConfig("", ""))
 	is.NoErr(err)
 
 	_, err = broker.CreateEntity(context.Background(), "testtenant", testEntity("Unknown", "id"), nil)
@@ -53,7 +53,7 @@ func TestThatCreateEntityWithUnknownEntityTypeFails(t *testing.T) {
 func TestThatCreateEntityWithMismatchingIDFails(t *testing.T) {
 	is := is.New(t)
 
-	broker, err := New(context.Background(), withDefaultTestConfig("",""))
+	broker, err := New(context.Background(), withDefaultTestConfig("", ""))
 	is.NoErr(err)
 
 	_, err = broker.CreateEntity(context.Background(), "testtenant", testEntity("Device", "badid"), nil)
@@ -99,7 +99,7 @@ func TestThatNotificationsAreSent_ThisTestShouldBeBrokenUp(t *testing.T) {
 
 	ns := testutils.NewMockServiceThat(Expects(is, anyInput()), Returns(response.Code(http.StatusOK)))
 	defer ns.Close()
-	
+
 	broker, err := New(context.Background(), withDefaultTestConfig(s.URL(), ns.URL()))
 	is.NoErr(err)
 
@@ -147,7 +147,7 @@ func withDefaultTestConfig(brokerEndpoint, notificationEndpoint string) cfg.Conf
 						Entities: []cfg.EntityInfo{
 							{
 								IDPattern: "^urn:ngsi-ld:Device:.+",
-								Type:      "Device",	
+								Type:      "Device",
 							},
 						},
 					},
