@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/diwise/context-broker/internal/pkg/application/config"
 	contextbroker "github.com/diwise/context-broker/internal/pkg/application/context-broker"
 	"github.com/diwise/context-broker/internal/pkg/infrastructure/router"
 	ngsild "github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld"
@@ -34,7 +35,7 @@ func main() {
 		logger.Fatal().Err(err).Msgf("failed to open the configuration file %s", configFilePath)
 	}
 
-	cfg, err := contextbroker.LoadConfiguration(configfile)
+	cfg, err := config.LoadConfiguration(configfile)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to load configuration")
 	}
