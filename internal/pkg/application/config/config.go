@@ -35,8 +35,7 @@ func (cs *ContextSourceConfig) TemporalEndpoint() string {
 }
 
 type Notification struct {
-	Endpoint string       `yaml:"endpoint"`
-	Entities []EntityInfo `yaml:"entities"`
+	Endpoint string `yaml:"endpoint"`
 }
 
 type TemporalInfo struct {
@@ -55,7 +54,7 @@ type Config struct {
 	Tenants []Tenant `yaml:"tenants"`
 }
 
-func LoadConfiguration(data io.Reader) (*Config, error) {
+func Load(data io.Reader) (*Config, error) {
 
 	buf, err := io.ReadAll(data)
 	if err != nil {

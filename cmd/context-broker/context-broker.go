@@ -30,12 +30,12 @@ func main() {
 	flag.StringVar(&opaFilePath, "policies", "/opt/diwise/config/authz.rego", "An authorization policy file")
 	flag.Parse()
 
-	configfile, err := os.Open(configFilePath)
+	configFile, err := os.Open(configFilePath)
 	if err != nil {
 		logger.Fatal().Err(err).Msgf("failed to open the configuration file %s", configFilePath)
 	}
 
-	cfg, err := config.LoadConfiguration(configfile)
+	cfg, err := config.Load(configFile)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to load configuration")
 	}

@@ -1,10 +1,9 @@
-package contextbroker
+package config
 
 import (
 	"bytes"
 	"testing"
 
-	cfg "github.com/diwise/context-broker/internal/pkg/application/config"
 	"github.com/matryer/is"
 )
 
@@ -54,10 +53,10 @@ func TestLoadRegistrationInfo(t *testing.T) {
 	is.Equal(reginfo.Entities[1].Type, "DeviceModel")
 }
 
-func setupConfigTest(t *testing.T) (*is.I, *cfg.Config) {
+func setupConfigTest(t *testing.T) (*is.I, *Config) {
 	is := is.New(t)
 	cfgData := bytes.NewBuffer([]byte(configFile))
-	config, err := cfg.LoadConfiguration(cfgData)
+	config, err := Load(cfgData)
 	is.NoErr(err)
 
 	return is, config
@@ -69,9 +68,6 @@ tenants:
     name: Kommunen
     notifications:      
       - endpoint: http://endpoint-01/v2/notify
-        entities:
-        - idPattern: ^urn:ngsi-ld:Device:.+
-          type: Device
       - endpoint: http://endpoint-02/v2/notify	
     contextSources:
     - endpoint: http://lolcathost:1234

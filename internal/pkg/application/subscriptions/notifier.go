@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"regexp"
-	"strings"
+	"sync"
+	"time"
 
 	"github.com/diwise/context-broker/internal/pkg/application/config"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
@@ -31,16 +31,28 @@ var tracer = otel.Tracer("context-broker/notifier")
 type action func()
 
 type notifier struct {
-	started bool
-	cfg     config.Config
-	queue   chan action
+	started       bool
+	queue         chan action
+	notifications map[string][]config.Notification
 }
 
 func NewNotifier(ctx context.Context, cfg config.Config) (Notifier, error) {
-	return &notifier{
-		cfg:   cfg,
-		queue: make(chan action, 32),
-	}, nil
+	n := &notifier{
+		queue:         make(chan action, 32),
+		notifications: make(map[string][]config.Notification),
+	}
+
+	for _, tenant := range cfg.Tenants {
+		if len(tenant.Notifications) > 0 {
+			n.notifications[tenant.ID] = tenant.Notifications
+		}
+	}
+
+	if len(n.notifications) == 0 {
+		return nil, nil
+	}
+
+	return n, nil
 }
 
 func (n *notifier) Start() error {
@@ -86,32 +98,22 @@ func (n *notifier) EntityCreated(ctx context.Context, e types.Entity, tenant str
 		n.queue <- func() {
 			defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-			for _, t := range n.cfg.Tenants {
-				if strings.EqualFold(t.ID, tenant) {
-					for _, not := range t.Notifications {
-						for _, ent := range not.Entities {
-							if ent.Type != e.Type() {
-								continue
-							}
+			var wg sync.WaitGroup
+			defer wg.Wait()
 
-							regexpForID, err := regexp.CompilePOSIX(ent.IDPattern)
-							if err != nil {
-								continue
-							}
+			for _, notification := range n.notifications[tenant] {
+				wg.Add(1)
+				go func(endpoint string) {
+					defer wg.Done()
 
-							if !regexpForID.MatchString(e.ID()) {
-								continue
-							}
+					ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+					defer cancel()
 
-							go func(endpoint string) {
-								err = postNotification(ctx, e, endpoint)
-								if err != nil {
-									logger.Error().Err(err).Msg("failed to post notification")
-								}
-							}(not.Endpoint)
-						}
+					err = postNotification(ctx, e, endpoint)
+					if err != nil {
+						logger.Error().Err(err).Msg("failed to post notification")
 					}
-				}
+				}(notification.Endpoint)
 			}
 		}
 	}
@@ -131,32 +133,22 @@ func (n *notifier) EntityUpdated(ctx context.Context, e types.Entity, tenant str
 		n.queue <- func() {
 			defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-			for _, t := range n.cfg.Tenants {
-				if strings.EqualFold(t.ID, tenant) {
-					for _, not := range t.Notifications {
-						for _, ent := range not.Entities {
-							if ent.Type != e.Type() {
-								continue
-							}
+			var wg sync.WaitGroup
+			defer wg.Wait()
 
-							regexpForID, err := regexp.CompilePOSIX(ent.IDPattern)
-							if err != nil {
-								continue
-							}
+			for _, notification := range n.notifications[tenant] {
+				wg.Add(1)
+				go func(endpoint string) {
+					defer wg.Done()
 
-							if !regexpForID.MatchString(e.ID()) {
-								continue
-							}
+					ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+					defer cancel()
 
-							go func(endpoint string) {
-								err = postNotification(ctx, e, endpoint)
-								if err != nil {
-									logger.Error().Err(err).Msg("failed to post notification")
-								}
-							}(not.Endpoint)
-						}
+					err = postNotification(ctx, e, endpoint)
+					if err != nil {
+						logger.Error().Err(err).Msg("failed to post notification")
 					}
-				}
+				}(notification.Endpoint)
 			}
 		}
 	}

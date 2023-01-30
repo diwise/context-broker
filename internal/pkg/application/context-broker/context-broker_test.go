@@ -144,12 +144,6 @@ func withDefaultTestConfig(brokerEndpoint, notificationEndpoint string) cfg.Conf
 				Notifications: []cfg.Notification{
 					{
 						Endpoint: notificationEndpoint,
-						Entities: []cfg.EntityInfo{
-							{
-								IDPattern: "^urn:ngsi-ld:Device:.+",
-								Type:      "Device",
-							},
-						},
 					},
 				},
 			},
