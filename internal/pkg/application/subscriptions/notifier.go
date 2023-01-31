@@ -6,7 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
+	"time"
 
+	"github.com/diwise/context-broker/internal/pkg/application/config"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/diwise/context-broker/pkg/ngsild/types/subscriptions"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
@@ -19,8 +22,8 @@ type Notifier interface {
 	Start() error
 	Stop() error
 
-	EntityCreated(ctx context.Context, e types.Entity)
-	EntityUpdated(ctx context.Context, e types.Entity)
+	EntityCreated(ctx context.Context, e types.Entity, tenant string)
+	EntityUpdated(ctx context.Context, e types.Entity, tenant string)
 }
 
 var tracer = otel.Tracer("context-broker/notifier")
@@ -28,17 +31,28 @@ var tracer = otel.Tracer("context-broker/notifier")
 type action func()
 
 type notifier struct {
-	started  bool
-	endpoint string
-
-	queue chan action
+	started       bool
+	queue         chan action
+	notifications map[string][]config.Notification
 }
 
-func NewNotifier(ctx context.Context, endpoint string) (Notifier, error) {
-	return &notifier{
-		endpoint: endpoint,
-		queue:    make(chan action, 32),
-	}, nil
+func NewNotifier(ctx context.Context, cfg config.Config) (Notifier, error) {
+	n := &notifier{
+		queue:         make(chan action, 32),
+		notifications: make(map[string][]config.Notification),
+	}
+
+	for _, tenant := range cfg.Tenants {
+		if len(tenant.Notifications) > 0 {
+			n.notifications[tenant.ID] = tenant.Notifications
+		}
+	}
+
+	if len(n.notifications) == 0 {
+		return nil, nil
+	}
+
+	return n, nil
 }
 
 func (n *notifier) Start() error {
@@ -70,7 +84,7 @@ func (n *notifier) Stop() error {
 	return nil
 }
 
-func (n *notifier) EntityCreated(ctx context.Context, e types.Entity) {
+func (n *notifier) EntityCreated(ctx context.Context, e types.Entity, tenant string) {
 	if n.started {
 		var err error
 
@@ -84,15 +98,28 @@ func (n *notifier) EntityCreated(ctx context.Context, e types.Entity) {
 		n.queue <- func() {
 			defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-			err = postNotification(ctx, e, n.endpoint)
-			if err != nil {
-				logger.Error().Err(err).Msg("failed to post notification")
+			var wg sync.WaitGroup
+			defer wg.Wait()
+
+			for _, notification := range n.notifications[tenant] {
+				wg.Add(1)
+				go func(endpoint string) {
+					defer wg.Done()
+
+					ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+					defer cancel()
+
+					err = postNotification(ctx, e, endpoint)
+					if err != nil {
+						logger.Error().Err(err).Msg("failed to post notification")
+					}
+				}(notification.Endpoint)
 			}
 		}
 	}
 }
 
-func (n *notifier) EntityUpdated(ctx context.Context, e types.Entity) {
+func (n *notifier) EntityUpdated(ctx context.Context, e types.Entity, tenant string) {
 	if n.started {
 		var err error
 
@@ -106,9 +133,22 @@ func (n *notifier) EntityUpdated(ctx context.Context, e types.Entity) {
 		n.queue <- func() {
 			defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-			err = postNotification(ctx, e, n.endpoint)
-			if err != nil {
-				logger.Error().Err(err).Msg("failed to post notification")
+			var wg sync.WaitGroup
+			defer wg.Wait()
+
+			for _, notification := range n.notifications[tenant] {
+				wg.Add(1)
+				go func(endpoint string) {
+					defer wg.Done()
+
+					ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+					defer cancel()
+
+					err = postNotification(ctx, e, endpoint)
+					if err != nil {
+						logger.Error().Err(err).Msg("failed to post notification")
+					}
+				}(notification.Endpoint)
 			}
 		}
 	}
