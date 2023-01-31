@@ -80,7 +80,7 @@ func TestNotifierShouldBeNilIfNoNotifyEndpoints(t *testing.T) {
 	is.True(n == nil)
 }
 
-func TestNotifierShouldBeNotNilIfNoNotifyEndpoints(t *testing.T) {
+func TestNotifierShouldBeNotNilWhenConfigured(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 	cfg := config.Config{
