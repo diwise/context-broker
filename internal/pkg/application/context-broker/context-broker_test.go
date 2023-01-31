@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"testing"
 
+	cfg "github.com/diwise/context-broker/internal/pkg/application/config"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	testutils "github.com/diwise/service-chassis/pkg/test/http"
@@ -24,14 +25,14 @@ func TestNewWithEmptyConfig(t *testing.T) {
 func TestNewWithDefaultConfig(t *testing.T) {
 	is := is.New(t)
 
-	_, err := New(context.Background(), withDefaultTestConfig(""))
+	_, err := New(context.Background(), withDefaultTestConfig("", ""))
 	is.NoErr(err)
 }
 
 func TestThatCreateEntityWithUnknownTenantFails(t *testing.T) {
 	is := is.New(t)
 
-	broker, err := New(context.Background(), withDefaultTestConfig(""))
+	broker, err := New(context.Background(), withDefaultTestConfig("", ""))
 	is.NoErr(err)
 
 	_, err = broker.CreateEntity(context.Background(), "unknown", testEntity("", ""), nil)
@@ -42,7 +43,7 @@ func TestThatCreateEntityWithUnknownTenantFails(t *testing.T) {
 func TestThatCreateEntityWithUnknownEntityTypeFails(t *testing.T) {
 	is := is.New(t)
 
-	broker, err := New(context.Background(), withDefaultTestConfig(""))
+	broker, err := New(context.Background(), withDefaultTestConfig("", ""))
 	is.NoErr(err)
 
 	_, err = broker.CreateEntity(context.Background(), "testtenant", testEntity("Unknown", "id"), nil)
@@ -52,7 +53,7 @@ func TestThatCreateEntityWithUnknownEntityTypeFails(t *testing.T) {
 func TestThatCreateEntityWithMismatchingIDFails(t *testing.T) {
 	is := is.New(t)
 
-	broker, err := New(context.Background(), withDefaultTestConfig(""))
+	broker, err := New(context.Background(), withDefaultTestConfig("", ""))
 	is.NoErr(err)
 
 	_, err = broker.CreateEntity(context.Background(), "testtenant", testEntity("Device", "badid"), nil)
@@ -76,7 +77,7 @@ func TestThatCreateEntityWithMatchingTypeAndIDWorks(t *testing.T) {
 	)
 	defer s.Close()
 
-	broker, err := New(context.Background(), withDefaultTestConfig(s.URL()))
+	broker, err := New(context.Background(), withDefaultTestConfig(s.URL(), ""))
 	is.NoErr(err)
 
 	_, err = broker.CreateEntity(context.Background(), "testtenant", testEntity("Device", "urn:ngsi-ld:Device:testid"), nil)
@@ -99,9 +100,7 @@ func TestThatNotificationsAreSent_ThisTestShouldBeBrokenUp(t *testing.T) {
 	ns := testutils.NewMockServiceThat(Expects(is, anyInput()), Returns(response.Code(http.StatusOK)))
 	defer ns.Close()
 
-	t.Setenv("NOTIFIER_ENDPOINT", ns.URL())
-
-	broker, err := New(context.Background(), withDefaultTestConfig(s.URL()))
+	broker, err := New(context.Background(), withDefaultTestConfig(s.URL(), ns.URL()))
 	is.NoErr(err)
 
 	broker.Start()
@@ -114,17 +113,17 @@ func TestThatNotificationsAreSent_ThisTestShouldBeBrokenUp(t *testing.T) {
 	is.Equal(ns.RequestCount(), 1)
 }
 
-func withDefaultTestConfig(endpoint string) Config {
-	cfg := Config{
-		Tenants: []Tenant{
+func withDefaultTestConfig(brokerEndpoint, notificationEndpoint string) cfg.Config {
+	cfg := cfg.Config{
+		Tenants: []cfg.Tenant{
 			{
 				ID: "testtenant",
-				ContextSources: []ContextSourceConfig{
+				ContextSources: []cfg.ContextSourceConfig{
 					{
-						Endpoint: endpoint,
-						Information: []RegistrationInfo{
+						Endpoint: brokerEndpoint,
+						Information: []cfg.RegistrationInfo{
 							{
-								Entities: []EntityInfo{
+								Entities: []cfg.EntityInfo{
 									{
 										IDPattern: "^urn:ngsi-ld:Device:.+",
 										Type:      "Device",
@@ -132,7 +131,7 @@ func withDefaultTestConfig(endpoint string) Config {
 								},
 							},
 							{
-								Entities: []EntityInfo{
+								Entities: []cfg.EntityInfo{
 									{
 										IDPattern: "^urn:ngsi-ld:DeviceModel:.+",
 										Type:      "DeviceModel",
@@ -142,6 +141,11 @@ func withDefaultTestConfig(endpoint string) Config {
 						},
 					},
 				},
+				Notifications: []cfg.Notification{
+					{
+						Endpoint: notificationEndpoint,
+					},
+				},
 			},
 		},
 	}
@@ -149,8 +153,8 @@ func withDefaultTestConfig(endpoint string) Config {
 	return cfg
 }
 
-func withEmptyConfig() Config {
-	return Config{}
+func withEmptyConfig() cfg.Config {
+	return cfg.Config{}
 }
 
 func testEntity(entityType, entityID string) types.Entity {

@@ -1,4 +1,4 @@
-package contextbroker
+package config
 
 import (
 	"bytes"
@@ -56,7 +56,7 @@ func TestLoadRegistrationInfo(t *testing.T) {
 func setupConfigTest(t *testing.T) (*is.I, *Config) {
 	is := is.New(t)
 	cfgData := bytes.NewBuffer([]byte(configFile))
-	config, err := LoadConfiguration(cfgData)
+	config, err := Load(cfgData)
 	is.NoErr(err)
 
 	return is, config
@@ -66,6 +66,9 @@ var configFile string = `
 tenants:
   - id: default
     name: Kommunen
+    notifications:      
+      - endpoint: http://endpoint-01/v2/notify
+      - endpoint: http://endpoint-02/v2/notify	
     contextSources:
     - endpoint: http://lolcathost:1234
       temporal:

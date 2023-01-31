@@ -3,10 +3,10 @@ package contextbroker
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
+	"github.com/diwise/context-broker/internal/pkg/application/config"
 	"github.com/diwise/context-broker/internal/pkg/application/subscriptions"
 	"github.com/diwise/context-broker/pkg/ngsild"
 	"github.com/diwise/context-broker/pkg/ngsild/client"
@@ -19,24 +19,18 @@ import (
 )
 
 type contextBrokerApp struct {
-	tenants     map[string][]ContextSourceConfig
+	tenants     map[string][]config.ContextSourceConfig
 	notifier    subscriptions.Notifier
 	debugClient string
 }
 
-func New(ctx context.Context, cfg Config) (cim.ContextInformationManager, error) {
-	var notifier subscriptions.Notifier
-
+func New(ctx context.Context, cfg config.Config) (cim.ContextInformationManager, error) {
 	logger := logging.GetFromContext(ctx)
 
-	// TODO: Support multiple notifiers and separation between tenants
-	notifierEndpoint := os.Getenv("NOTIFIER_ENDPOINT")
-	if notifierEndpoint != "" {
-		notifier, _ = subscriptions.NewNotifier(ctx, notifierEndpoint)
-	}
+	notifier, _ := subscriptions.NewNotifier(ctx, cfg)
 
 	app := &contextBrokerApp{
-		tenants:     make(map[string][]ContextSourceConfig),
+		tenants:     make(map[string][]config.ContextSourceConfig),
 		notifier:    notifier,
 		debugClient: env.GetVariableOrDefault(logger, "CONTEXT_BROKER_CLIENT_DEBUG", "false"),
 	}
@@ -80,7 +74,7 @@ func (app *contextBrokerApp) CreateEntity(ctx context.Context, tenant string, en
 				}
 
 				if app.notifier != nil {
-					app.notifier.EntityCreated(ctx, entity)
+					app.notifier.EntityCreated(ctx, entity, tenant)
 				}
 
 				return result, nil
@@ -218,7 +212,7 @@ func (app *contextBrokerApp) MergeEntity(ctx context.Context, tenant, entityID s
 
 						entity, err := cbClient.RetrieveEntity(ctx, entityID, headers)
 						if err == nil {
-							app.notifier.EntityUpdated(ctx, entity)
+							app.notifier.EntityUpdated(ctx, entity, tenant)
 						}
 					}()
 				}
@@ -267,7 +261,7 @@ func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant,
 
 						entity, err := cbClient.RetrieveEntity(ctx, entityID, headers)
 						if err == nil {
-							app.notifier.EntityUpdated(ctx, entity)
+							app.notifier.EntityUpdated(ctx, entity, tenant)
 						}
 					}()
 				}

@@ -6,8 +6,8 @@ package client
 import (
 	"context"
 	"github.com/diwise/context-broker/pkg/ngsild"
-	"github.com/diwise/context-broker/pkg/ngsild/types"
 	. "github.com/diwise/context-broker/pkg/ngsild/client"
+	"github.com/diwise/context-broker/pkg/ngsild/types"
 	"sync"
 )
 

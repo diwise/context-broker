@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/diwise/context-broker/internal/pkg/application/config"
 	contextbroker "github.com/diwise/context-broker/internal/pkg/application/context-broker"
 	"github.com/diwise/context-broker/internal/pkg/infrastructure/router"
 	ngsild "github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld"
@@ -29,12 +30,12 @@ func main() {
 	flag.StringVar(&opaFilePath, "policies", "/opt/diwise/config/authz.rego", "An authorization policy file")
 	flag.Parse()
 
-	configfile, err := os.Open(configFilePath)
+	configFile, err := os.Open(configFilePath)
 	if err != nil {
 		logger.Fatal().Err(err).Msgf("failed to open the configuration file %s", configFilePath)
 	}
 
-	cfg, err := contextbroker.LoadConfiguration(configfile)
+	cfg, err := config.Load(configFile)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to load configuration")
 	}

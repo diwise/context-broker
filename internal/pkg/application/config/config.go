@@ -1,4 +1,4 @@
-package contextbroker
+package config
 
 import (
 	"io"
@@ -34,6 +34,10 @@ func (cs *ContextSourceConfig) TemporalEndpoint() string {
 	return cs.Endpoint
 }
 
+type Notification struct {
+	Endpoint string `yaml:"endpoint"`
+}
+
 type TemporalInfo struct {
 	Enabled  bool   `yaml:"enabled"`
 	Endpoint string `yaml:"endpoint"`
@@ -43,13 +47,14 @@ type Tenant struct {
 	ID             string                `yaml:"id"`
 	Name           string                `yaml:"name"`
 	ContextSources []ContextSourceConfig `yaml:"contextSources"`
+	Notifications  []Notification        `yaml:"notifications"`
 }
 
 type Config struct {
 	Tenants []Tenant `yaml:"tenants"`
 }
 
-func LoadConfiguration(data io.Reader) (*Config, error) {
+func Load(data io.Reader) (*Config, error) {
 
 	buf, err := io.ReadAll(data)
 	if err != nil {
