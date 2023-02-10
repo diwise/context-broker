@@ -1,4 +1,4 @@
-FROM golang:1.19 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.19 AS builder
 
 
 # Set the Current Working Directory inside the container
@@ -13,7 +13,10 @@ COPY . .
 
 WORKDIR /app/cmd/context-broker
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build
+ARG TARGETARCH
+ARG TARGETOS
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build
+
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal
 WORKDIR /opt/diwise
