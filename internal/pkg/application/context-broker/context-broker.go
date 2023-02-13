@@ -144,7 +144,7 @@ func (app *contextBrokerApp) RetrieveEntity(ctx context.Context, tenant, entityI
 	return nil, errors.NewNotFoundError(fmt.Sprintf("no context source found that could provide entity %s", entityID))
 }
 
-func (app *contextBrokerApp) RetrieveTemporalEvolutionOfEntity(ctx context.Context, tenant, entityID string, headers map[string][]string) (types.EntityTemporal, error) {
+func (app *contextBrokerApp) RetrieveTemporalEvolutionOfEntity(ctx context.Context, tenant, entityID string, params cim.TemporalQueryParams, headers map[string][]string) (types.EntityTemporal, error) {
 	sources, ok := app.tenants[tenant]
 	if !ok {
 		return nil, errors.NewUnknownTenantError(tenant)
@@ -168,7 +168,34 @@ func (app *contextBrokerApp) RetrieveTemporalEvolutionOfEntity(ctx context.Conte
 				}
 
 				cbClient := client.NewContextBrokerClient(src.TemporalEndpoint(), client.Debug(app.debugClient))
-				return cbClient.RetrieveTemporalEvolutionOfEntity(ctx, entityID, headers)
+				queryParams := make([]client.RequestDecoratorFunc, 0, 10)
+
+				attrs, ok := params.Attributes()
+				if ok {
+					queryParams = append(queryParams, client.Attributes(attrs))
+				}
+
+				temprel, ok := params.TemporalRelation()
+				if ok {
+					if temprel == "after" {
+						t, _ := params.TimeAt()
+						queryParams = append(queryParams, client.After(t))
+					} else if temprel == "between" {
+						st, _ := params.TimeAt()
+						et, _ := params.EndTimeAt()
+						queryParams = append(queryParams, client.Between(st, et))
+					} else if temprel == "before" {
+						t, _ := params.TimeAt()
+						queryParams = append(queryParams, client.Before(t))
+					}
+				}
+
+				count, ok := params.LastN()
+				if ok {
+					queryParams = append(queryParams, client.LastN(count))
+				}
+
+				return cbClient.RetrieveTemporalEvolutionOfEntity(ctx, entityID, headers, queryParams...)
 			}
 		}
 	}
