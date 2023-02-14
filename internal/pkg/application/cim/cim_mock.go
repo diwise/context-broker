@@ -32,6 +32,9 @@ var _ ContextInformationManager = &ContextInformationManagerMock{}
 //			QueryEntitiesFunc: func(ctx context.Context, tenant string, entityTypes []string, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error) {
 //				panic("mock out the QueryEntities method")
 //			},
+//			QueryTemporalEvolutionOfEntitiesFunc: func(ctx context.Context, tenant string, entityTypes []string, params TemporalQueryParams, headers map[string][]string) (*ngsild.QueryTemporalEntitiesResult, error) {
+//				panic("mock out the QueryTemporalEvolutionOfEntities method")
+//			},
 //			RetrieveEntityFunc: func(ctx context.Context, tenant string, entityID string, headers map[string][]string) (types.Entity, error) {
 //				panic("mock out the RetrieveEntity method")
 //			},
@@ -65,6 +68,9 @@ type ContextInformationManagerMock struct {
 
 	// QueryEntitiesFunc mocks the QueryEntities method.
 	QueryEntitiesFunc func(ctx context.Context, tenant string, entityTypes []string, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error)
+
+	// QueryTemporalEvolutionOfEntitiesFunc mocks the QueryTemporalEvolutionOfEntities method.
+	QueryTemporalEvolutionOfEntitiesFunc func(ctx context.Context, tenant string, entityTypes []string, params TemporalQueryParams, headers map[string][]string) (*ngsild.QueryTemporalEntitiesResult, error)
 
 	// RetrieveEntityFunc mocks the RetrieveEntity method.
 	RetrieveEntityFunc func(ctx context.Context, tenant string, entityID string, headers map[string][]string) (types.Entity, error)
@@ -131,6 +137,19 @@ type ContextInformationManagerMock struct {
 			// Headers is the headers argument value.
 			Headers map[string][]string
 		}
+		// QueryTemporalEvolutionOfEntities holds details about calls to the QueryTemporalEvolutionOfEntities method.
+		QueryTemporalEvolutionOfEntities []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Tenant is the tenant argument value.
+			Tenant string
+			// EntityTypes is the entityTypes argument value.
+			EntityTypes []string
+			// Params is the params argument value.
+			Params TemporalQueryParams
+			// Headers is the headers argument value.
+			Headers map[string][]string
+		}
 		// RetrieveEntity holds details about calls to the RetrieveEntity method.
 		RetrieveEntity []struct {
 			// Ctx is the ctx argument value.
@@ -179,6 +198,7 @@ type ContextInformationManagerMock struct {
 	lockDeleteEntity                      sync.RWMutex
 	lockMergeEntity                       sync.RWMutex
 	lockQueryEntities                     sync.RWMutex
+	lockQueryTemporalEvolutionOfEntities  sync.RWMutex
 	lockRetrieveEntity                    sync.RWMutex
 	lockRetrieveTemporalEvolutionOfEntity sync.RWMutex
 	lockStart                             sync.RWMutex
@@ -367,6 +387,54 @@ func (mock *ContextInformationManagerMock) QueryEntitiesCalls() []struct {
 	mock.lockQueryEntities.RLock()
 	calls = mock.calls.QueryEntities
 	mock.lockQueryEntities.RUnlock()
+	return calls
+}
+
+// QueryTemporalEvolutionOfEntities calls QueryTemporalEvolutionOfEntitiesFunc.
+func (mock *ContextInformationManagerMock) QueryTemporalEvolutionOfEntities(ctx context.Context, tenant string, entityTypes []string, params TemporalQueryParams, headers map[string][]string) (*ngsild.QueryTemporalEntitiesResult, error) {
+	if mock.QueryTemporalEvolutionOfEntitiesFunc == nil {
+		panic("ContextInformationManagerMock.QueryTemporalEvolutionOfEntitiesFunc: method is nil but ContextInformationManager.QueryTemporalEvolutionOfEntities was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		Tenant      string
+		EntityTypes []string
+		Params      TemporalQueryParams
+		Headers     map[string][]string
+	}{
+		Ctx:         ctx,
+		Tenant:      tenant,
+		EntityTypes: entityTypes,
+		Params:      params,
+		Headers:     headers,
+	}
+	mock.lockQueryTemporalEvolutionOfEntities.Lock()
+	mock.calls.QueryTemporalEvolutionOfEntities = append(mock.calls.QueryTemporalEvolutionOfEntities, callInfo)
+	mock.lockQueryTemporalEvolutionOfEntities.Unlock()
+	return mock.QueryTemporalEvolutionOfEntitiesFunc(ctx, tenant, entityTypes, params, headers)
+}
+
+// QueryTemporalEvolutionOfEntitiesCalls gets all the calls that were made to QueryTemporalEvolutionOfEntities.
+// Check the length with:
+//
+//	len(mockedContextInformationManager.QueryTemporalEvolutionOfEntitiesCalls())
+func (mock *ContextInformationManagerMock) QueryTemporalEvolutionOfEntitiesCalls() []struct {
+	Ctx         context.Context
+	Tenant      string
+	EntityTypes []string
+	Params      TemporalQueryParams
+	Headers     map[string][]string
+} {
+	var calls []struct {
+		Ctx         context.Context
+		Tenant      string
+		EntityTypes []string
+		Params      TemporalQueryParams
+		Headers     map[string][]string
+	}
+	mock.lockQueryTemporalEvolutionOfEntities.RLock()
+	calls = mock.calls.QueryTemporalEvolutionOfEntities
+	mock.lockQueryTemporalEvolutionOfEntities.RUnlock()
 	return calls
 }
 

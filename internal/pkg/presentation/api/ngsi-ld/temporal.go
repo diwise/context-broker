@@ -12,6 +12,7 @@ import (
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
 	"github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/auth"
+	"github.com/diwise/context-broker/pkg/ngsild"
 	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
@@ -21,6 +22,92 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
+
+func NewQueryTemporalEvolutionOfEntitiesHandler(
+	contextInformationManager cim.EntityTemporalQuerier,
+	authenticator auth.Enticator,
+	logger zerolog.Logger) http.HandlerFunc {
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var err error
+
+		ctx := r.Context()
+		tenant := GetTenantFromContext(ctx)
+
+		propagatedHeaders := extractHeaders(r, "Accept", "Link")
+
+		ctx, span := tracer.Start(ctx, "query-temporal-entities",
+			trace.WithAttributes(
+				attribute.String(TraceAttributeNGSILDTenant, tenant),
+			),
+		)
+		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+		entityTypes := []string{}
+		entityTypeNames := r.URL.Query().Get("type")
+		if entityTypeNames != "" {
+			entityTypes = strings.Split(entityTypeNames, ",")
+		}
+
+		contentType := r.Header.Get("Accept")
+		if contentType == "" {
+			contentType = "application/ld+json"
+		}
+
+		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(
+			span,
+			logger.With().Str("tenant", tenant).Logger(),
+			ctx)
+
+		err = authenticator.CheckAccess(ctx, r, tenant, []string{})
+		if err != nil {
+			log.Warn().Err(err).Msg("access not granted")
+			messageToSendToNonAuthenticatedClients := "not found"
+			ngsierrors.ReportNotFoundError(w, messageToSendToNonAuthenticatedClients, traceID)
+			return
+		}
+
+		var params cim.TemporalQueryParams
+		params, err = NewTemporalQueryParamsFromRequest(r)
+
+		if err != nil {
+			log.Error().Err(err).Msg("failed to create rteoe query parameters from request")
+			ngsierrors.ReportNewBadRequestData(w, err.Error(), traceID)
+			return
+		}
+
+		var result *ngsild.QueryTemporalEntitiesResult
+		result, err = contextInformationManager.QueryTemporalEvolutionOfEntities(ctx, tenant, entityTypes, params, propagatedHeaders)
+
+		if err != nil {
+			log.Error().Err(err).Msg("failed to retrieve temporal evolution of entity")
+			mapCIMToNGSILDError(w, err, traceID)
+			return
+		}
+
+		temporals := make([]types.EntityTemporal, 0, 200)
+
+		for e := range result.Found {
+			if e == nil {
+				break
+			}
+
+			temporals = append(temporals, e)
+		}
+
+		responseBody, err := json.Marshal(temporals)
+
+		if err != nil {
+			log.Error().Err(err).Msg("failed to convert or marshal response entity")
+			mapCIMToNGSILDError(w, err, traceID)
+			return
+		}
+
+		w.Header().Add("Content-Type", contentType)
+		w.WriteHeader(http.StatusOK)
+		w.Write(responseBody)
+	})
+}
 
 func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 	contextInformationManager cim.EntityTemporalRetriever,

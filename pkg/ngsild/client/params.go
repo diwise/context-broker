@@ -126,3 +126,9 @@ func LastN(count uint64) RequestDecoratorFunc {
 		return append(params, fmt.Sprintf("lastN=%d", count))
 	}
 }
+
+func Types(typeNames []string) RequestDecoratorFunc {
+	return func(params []string) []string {
+		return append(params, fmt.Sprintf("type=%s", strings.Join(typeNames, ",")))
+	}
+}

@@ -33,6 +33,9 @@ var _ ContextBrokerClient = &ContextBrokerClientMock{}
 //			QueryEntitiesFunc: func(ctx context.Context, entityTypes []string, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error) {
 //				panic("mock out the QueryEntities method")
 //			},
+//			QueryTemporalEvolutionOfEntitiesFunc: func(ctx context.Context, headers map[string][]string, parameters ...RequestDecoratorFunc) (*ngsild.QueryTemporalEntitiesResult, error) {
+//				panic("mock out the QueryTemporalEvolutionOfEntities method")
+//			},
 //			RetrieveEntityFunc: func(ctx context.Context, entityID string, headers map[string][]string) (types.Entity, error) {
 //				panic("mock out the RetrieveEntity method")
 //			},
@@ -60,6 +63,9 @@ type ContextBrokerClientMock struct {
 
 	// QueryEntitiesFunc mocks the QueryEntities method.
 	QueryEntitiesFunc func(ctx context.Context, entityTypes []string, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error)
+
+	// QueryTemporalEvolutionOfEntitiesFunc mocks the QueryTemporalEvolutionOfEntities method.
+	QueryTemporalEvolutionOfEntitiesFunc func(ctx context.Context, headers map[string][]string, parameters ...RequestDecoratorFunc) (*ngsild.QueryTemporalEntitiesResult, error)
 
 	// RetrieveEntityFunc mocks the RetrieveEntity method.
 	RetrieveEntityFunc func(ctx context.Context, entityID string, headers map[string][]string) (types.Entity, error)
@@ -112,6 +118,15 @@ type ContextBrokerClientMock struct {
 			// Headers is the headers argument value.
 			Headers map[string][]string
 		}
+		// QueryTemporalEvolutionOfEntities holds details about calls to the QueryTemporalEvolutionOfEntities method.
+		QueryTemporalEvolutionOfEntities []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Headers is the headers argument value.
+			Headers map[string][]string
+			// Parameters is the parameters argument value.
+			Parameters []RequestDecoratorFunc
+		}
 		// RetrieveEntity holds details about calls to the RetrieveEntity method.
 		RetrieveEntity []struct {
 			// Ctx is the ctx argument value.
@@ -148,6 +163,7 @@ type ContextBrokerClientMock struct {
 	lockDeleteEntity                      sync.RWMutex
 	lockMergeEntity                       sync.RWMutex
 	lockQueryEntities                     sync.RWMutex
+	lockQueryTemporalEvolutionOfEntities  sync.RWMutex
 	lockRetrieveEntity                    sync.RWMutex
 	lockRetrieveTemporalEvolutionOfEntity sync.RWMutex
 	lockUpdateEntityAttributes            sync.RWMutex
@@ -318,6 +334,46 @@ func (mock *ContextBrokerClientMock) QueryEntitiesCalls() []struct {
 	mock.lockQueryEntities.RLock()
 	calls = mock.calls.QueryEntities
 	mock.lockQueryEntities.RUnlock()
+	return calls
+}
+
+// QueryTemporalEvolutionOfEntities calls QueryTemporalEvolutionOfEntitiesFunc.
+func (mock *ContextBrokerClientMock) QueryTemporalEvolutionOfEntities(ctx context.Context, headers map[string][]string, parameters ...RequestDecoratorFunc) (*ngsild.QueryTemporalEntitiesResult, error) {
+	if mock.QueryTemporalEvolutionOfEntitiesFunc == nil {
+		panic("ContextBrokerClientMock.QueryTemporalEvolutionOfEntitiesFunc: method is nil but ContextBrokerClient.QueryTemporalEvolutionOfEntities was just called")
+	}
+	callInfo := struct {
+		Ctx        context.Context
+		Headers    map[string][]string
+		Parameters []RequestDecoratorFunc
+	}{
+		Ctx:        ctx,
+		Headers:    headers,
+		Parameters: parameters,
+	}
+	mock.lockQueryTemporalEvolutionOfEntities.Lock()
+	mock.calls.QueryTemporalEvolutionOfEntities = append(mock.calls.QueryTemporalEvolutionOfEntities, callInfo)
+	mock.lockQueryTemporalEvolutionOfEntities.Unlock()
+	return mock.QueryTemporalEvolutionOfEntitiesFunc(ctx, headers, parameters...)
+}
+
+// QueryTemporalEvolutionOfEntitiesCalls gets all the calls that were made to QueryTemporalEvolutionOfEntities.
+// Check the length with:
+//
+//	len(mockedContextBrokerClient.QueryTemporalEvolutionOfEntitiesCalls())
+func (mock *ContextBrokerClientMock) QueryTemporalEvolutionOfEntitiesCalls() []struct {
+	Ctx        context.Context
+	Headers    map[string][]string
+	Parameters []RequestDecoratorFunc
+} {
+	var calls []struct {
+		Ctx        context.Context
+		Headers    map[string][]string
+		Parameters []RequestDecoratorFunc
+	}
+	mock.lockQueryTemporalEvolutionOfEntities.RLock()
+	calls = mock.calls.QueryTemporalEvolutionOfEntities
+	mock.lockQueryTemporalEvolutionOfEntities.RUnlock()
 	return calls
 }
 

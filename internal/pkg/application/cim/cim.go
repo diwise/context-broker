@@ -36,6 +36,10 @@ type TemporalQueryParams interface {
 	LastN() (uint64, bool)
 }
 
+type EntityTemporalQuerier interface {
+	QueryTemporalEvolutionOfEntities(ctx context.Context, tenant string, entityTypes []string, params TemporalQueryParams, headers map[string][]string) (*ngsild.QueryTemporalEntitiesResult, error)
+}
+
 type EntityTemporalRetriever interface {
 	RetrieveTemporalEvolutionOfEntity(ctx context.Context, tenant, entityID string, params TemporalQueryParams, headers map[string][]string) (types.EntityTemporal, error)
 }
@@ -54,6 +58,7 @@ type ContextInformationManager interface {
 	EntityRetriever
 	EntityDeleter
 
+	EntityTemporalQuerier
 	EntityTemporalRetriever
 
 	Start() error
