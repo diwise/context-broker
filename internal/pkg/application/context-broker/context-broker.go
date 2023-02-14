@@ -177,6 +177,10 @@ func (app *contextBrokerApp) QueryTemporalEvolutionOfEntities(ctx context.Contex
 					continue
 				}
 
+				// TODO: This might be a partial match and require dispatching the
+				// query to more than one context source. This implementation will
+				// only query the first match though, so do not mix ids from different
+				// entity types!
 				if !matchesIDPattern(entityIDs, regexpForID) {
 					continue
 				}
