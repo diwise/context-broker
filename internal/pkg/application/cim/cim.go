@@ -29,6 +29,8 @@ type EntityRetriever interface {
 }
 
 type TemporalQueryParams interface {
+	IDs() ([]string, bool)
+	Types() ([]string, bool)
 	Attributes() ([]string, bool)
 	TemporalRelation() (string, bool)
 	TimeAt() (time.Time, bool)
@@ -37,7 +39,7 @@ type TemporalQueryParams interface {
 }
 
 type EntityTemporalQuerier interface {
-	QueryTemporalEvolutionOfEntities(ctx context.Context, tenant string, entityTypes []string, params TemporalQueryParams, headers map[string][]string) (*ngsild.QueryTemporalEntitiesResult, error)
+	QueryTemporalEvolutionOfEntities(ctx context.Context, tenant string, entityIDs, entityTypes []string, params TemporalQueryParams, headers map[string][]string) (*ngsild.QueryTemporalEntitiesResult, error)
 }
 
 type EntityTemporalRetriever interface {

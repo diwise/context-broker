@@ -144,26 +144,49 @@ func (app *contextBrokerApp) RetrieveEntity(ctx context.Context, tenant, entityI
 	return nil, errors.NewNotFoundError(fmt.Sprintf("no context source found that could provide entity %s", entityID))
 }
 
-func (app *contextBrokerApp) QueryTemporalEvolutionOfEntities(ctx context.Context, tenant string, entityTypes []string, params cim.TemporalQueryParams, headers map[string][]string) (*ngsild.QueryTemporalEntitiesResult, error) {
+func (app *contextBrokerApp) QueryTemporalEvolutionOfEntities(ctx context.Context, tenant string, entityIDs, entityTypes []string, params cim.TemporalQueryParams, headers map[string][]string) (*ngsild.QueryTemporalEntitiesResult, error) {
 	sources, ok := app.tenants[tenant]
 	if !ok {
 		return nil, errors.NewUnknownTenantError(tenant)
+	}
+
+	matchesIDPattern := func(ids []string, reg *regexp.Regexp) bool {
+		for _, id := range ids {
+			if reg.MatchString(id) {
+				return true
+			}
+		}
+
+		return (len(ids) == 0) // true if there were no ids to match, false otherwise
 	}
 
 	for _, src := range sources {
 		for _, reginfo := range src.Information {
 			for _, entityInfo := range reginfo.Entities {
 
+				if !src.Temporal.Enabled {
+					continue
+				}
+
 				if len(entityTypes) > 0 && notInSlice(entityInfo.Type, entityTypes) {
 					continue
 				}
 
-				if !src.Temporal.Enabled {
-					return nil, errors.NewNotFoundError("matching context source does not support temporal evolution")
+				regexpForID, err := regexp.CompilePOSIX(entityInfo.IDPattern)
+				if err != nil {
+					continue
+				}
+
+				if !matchesIDPattern(entityIDs, regexpForID) {
+					continue
 				}
 
 				cbClient := client.NewContextBrokerClient(src.TemporalEndpoint(), client.Debug(app.debugClient))
 				queryParams := make([]client.RequestDecoratorFunc, 0, 10)
+
+				if len(entityIDs) > 0 {
+					queryParams = append(queryParams, client.IDs(entityIDs))
+				}
 
 				if len(entityTypes) > 0 {
 					queryParams = append(queryParams, client.Types(entityTypes))

@@ -43,12 +43,6 @@ func NewQueryTemporalEvolutionOfEntitiesHandler(
 		)
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		entityTypes := []string{}
-		entityTypeNames := r.URL.Query().Get("type")
-		if entityTypeNames != "" {
-			entityTypes = strings.Split(entityTypeNames, ",")
-		}
-
 		contentType := r.Header.Get("Accept")
 		if contentType == "" {
 			contentType = "application/ld+json"
@@ -76,8 +70,11 @@ func NewQueryTemporalEvolutionOfEntitiesHandler(
 			return
 		}
 
+		entityIDs, _ := params.IDs()
+		entityTypes, _ := params.Types()
+
 		var result *ngsild.QueryTemporalEntitiesResult
-		result, err = contextInformationManager.QueryTemporalEvolutionOfEntities(ctx, tenant, entityTypes, params, propagatedHeaders)
+		result, err = contextInformationManager.QueryTemporalEvolutionOfEntities(ctx, tenant, entityIDs, entityTypes, params, propagatedHeaders)
 
 		if err != nil {
 			log.Error().Err(err).Msg("failed to retrieve temporal evolution of entity")
@@ -183,6 +180,9 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 
 func NewTemporalQueryParamsFromRequest(r *http.Request) (cim.TemporalQueryParams, error) {
 	qp := &queryParams{
+		ids:          []string{},
+		types:        []string{},
+		attributes:   []string{},
 		timeProperty: "observedAt",
 	}
 	var err error
@@ -223,6 +223,16 @@ func NewTemporalQueryParamsFromRequest(r *http.Request) (cim.TemporalQueryParams
 		}
 	}
 
+	ids := r.URL.Query().Get("id")
+	if ids != "" {
+		qp.ids = strings.Split(ids, ",")
+	}
+
+	types := r.URL.Query().Get("type")
+	if types != "" {
+		qp.types = strings.Split(types, ",")
+	}
+
 	attributes := r.URL.Query().Get("attributes")
 	if attributes != "" {
 		qp.attributes = strings.Split(attributes, ",")
@@ -259,6 +269,8 @@ func NewTemporalQueryParamsFromRequest(r *http.Request) (cim.TemporalQueryParams
 }
 
 type queryParams struct {
+	ids              []string
+	types            []string
 	attributes       []string
 	timeProperty     string
 	temporalRelation string
@@ -268,6 +280,14 @@ type queryParams struct {
 
 	aggregationMethods        []string
 	aggregationperiodDuration string
+}
+
+func (qp *queryParams) IDs() ([]string, bool) {
+	return qp.ids, (len(qp.ids) > 0)
+}
+
+func (qp *queryParams) Types() ([]string, bool) {
+	return qp.types, (len(qp.types) > 0)
 }
 
 func (qp *queryParams) Attributes() ([]string, bool) {

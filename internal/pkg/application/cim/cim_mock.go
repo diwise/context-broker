@@ -32,7 +32,7 @@ var _ ContextInformationManager = &ContextInformationManagerMock{}
 //			QueryEntitiesFunc: func(ctx context.Context, tenant string, entityTypes []string, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error) {
 //				panic("mock out the QueryEntities method")
 //			},
-//			QueryTemporalEvolutionOfEntitiesFunc: func(ctx context.Context, tenant string, entityTypes []string, params TemporalQueryParams, headers map[string][]string) (*ngsild.QueryTemporalEntitiesResult, error) {
+//			QueryTemporalEvolutionOfEntitiesFunc: func(ctx context.Context, tenant string, entityIDs []string, entityTypes []string, params TemporalQueryParams, headers map[string][]string) (*ngsild.QueryTemporalEntitiesResult, error) {
 //				panic("mock out the QueryTemporalEvolutionOfEntities method")
 //			},
 //			RetrieveEntityFunc: func(ctx context.Context, tenant string, entityID string, headers map[string][]string) (types.Entity, error) {
@@ -70,7 +70,7 @@ type ContextInformationManagerMock struct {
 	QueryEntitiesFunc func(ctx context.Context, tenant string, entityTypes []string, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error)
 
 	// QueryTemporalEvolutionOfEntitiesFunc mocks the QueryTemporalEvolutionOfEntities method.
-	QueryTemporalEvolutionOfEntitiesFunc func(ctx context.Context, tenant string, entityTypes []string, params TemporalQueryParams, headers map[string][]string) (*ngsild.QueryTemporalEntitiesResult, error)
+	QueryTemporalEvolutionOfEntitiesFunc func(ctx context.Context, tenant string, entityIDs []string, entityTypes []string, params TemporalQueryParams, headers map[string][]string) (*ngsild.QueryTemporalEntitiesResult, error)
 
 	// RetrieveEntityFunc mocks the RetrieveEntity method.
 	RetrieveEntityFunc func(ctx context.Context, tenant string, entityID string, headers map[string][]string) (types.Entity, error)
@@ -143,6 +143,8 @@ type ContextInformationManagerMock struct {
 			Ctx context.Context
 			// Tenant is the tenant argument value.
 			Tenant string
+			// EntityIDs is the entityIDs argument value.
+			EntityIDs []string
 			// EntityTypes is the entityTypes argument value.
 			EntityTypes []string
 			// Params is the params argument value.
@@ -391,19 +393,21 @@ func (mock *ContextInformationManagerMock) QueryEntitiesCalls() []struct {
 }
 
 // QueryTemporalEvolutionOfEntities calls QueryTemporalEvolutionOfEntitiesFunc.
-func (mock *ContextInformationManagerMock) QueryTemporalEvolutionOfEntities(ctx context.Context, tenant string, entityTypes []string, params TemporalQueryParams, headers map[string][]string) (*ngsild.QueryTemporalEntitiesResult, error) {
+func (mock *ContextInformationManagerMock) QueryTemporalEvolutionOfEntities(ctx context.Context, tenant string, entityIDs []string, entityTypes []string, params TemporalQueryParams, headers map[string][]string) (*ngsild.QueryTemporalEntitiesResult, error) {
 	if mock.QueryTemporalEvolutionOfEntitiesFunc == nil {
 		panic("ContextInformationManagerMock.QueryTemporalEvolutionOfEntitiesFunc: method is nil but ContextInformationManager.QueryTemporalEvolutionOfEntities was just called")
 	}
 	callInfo := struct {
 		Ctx         context.Context
 		Tenant      string
+		EntityIDs   []string
 		EntityTypes []string
 		Params      TemporalQueryParams
 		Headers     map[string][]string
 	}{
 		Ctx:         ctx,
 		Tenant:      tenant,
+		EntityIDs:   entityIDs,
 		EntityTypes: entityTypes,
 		Params:      params,
 		Headers:     headers,
@@ -411,7 +415,7 @@ func (mock *ContextInformationManagerMock) QueryTemporalEvolutionOfEntities(ctx 
 	mock.lockQueryTemporalEvolutionOfEntities.Lock()
 	mock.calls.QueryTemporalEvolutionOfEntities = append(mock.calls.QueryTemporalEvolutionOfEntities, callInfo)
 	mock.lockQueryTemporalEvolutionOfEntities.Unlock()
-	return mock.QueryTemporalEvolutionOfEntitiesFunc(ctx, tenant, entityTypes, params, headers)
+	return mock.QueryTemporalEvolutionOfEntitiesFunc(ctx, tenant, entityIDs, entityTypes, params, headers)
 }
 
 // QueryTemporalEvolutionOfEntitiesCalls gets all the calls that were made to QueryTemporalEvolutionOfEntities.
@@ -421,6 +425,7 @@ func (mock *ContextInformationManagerMock) QueryTemporalEvolutionOfEntities(ctx 
 func (mock *ContextInformationManagerMock) QueryTemporalEvolutionOfEntitiesCalls() []struct {
 	Ctx         context.Context
 	Tenant      string
+	EntityIDs   []string
 	EntityTypes []string
 	Params      TemporalQueryParams
 	Headers     map[string][]string
@@ -428,6 +433,7 @@ func (mock *ContextInformationManagerMock) QueryTemporalEvolutionOfEntitiesCalls
 	var calls []struct {
 		Ctx         context.Context
 		Tenant      string
+		EntityIDs   []string
 		EntityTypes []string
 		Params      TemporalQueryParams
 		Headers     map[string][]string

@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -118,6 +119,15 @@ func Between(timeAt, endTimeAt time.Time) RequestDecoratorFunc {
 				timeAt.UTC().Format(time.RFC3339),
 				endTimeAt.UTC().Format(time.RFC3339),
 			))
+	}
+}
+
+func IDs(ids []string) RequestDecoratorFunc {
+	return func(params []string) []string {
+		for idx, id := range ids {
+			ids[idx] = url.QueryEscape(id)
+		}
+		return append(params, fmt.Sprintf("id=%s", strings.Join(ids, ",")))
 	}
 }
 
