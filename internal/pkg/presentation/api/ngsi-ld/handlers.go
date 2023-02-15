@@ -62,6 +62,11 @@ func RegisterHandlers(r chi.Router, policies io.Reader, app cim.ContextInformati
 			)
 
 			r.Get(
+				"/temporal/entities",
+				NewQueryTemporalEvolutionOfEntitiesHandler(app, authenticator, log),
+			)
+
+			r.Get(
 				"/temporal/entities/{entityId}",
 				NewRetrieveTemporalEvolutionOfAnEntityHandler(app, authenticator, log),
 			)

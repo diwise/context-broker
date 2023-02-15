@@ -19,12 +19,10 @@ import (
 
 var Expects = testutils.Expects
 var Returns = testutils.Returns
-var anyInput = expects.AnyInput
 var method = expects.RequestMethod
 var path = expects.RequestPath
-var body = expects.RequestBody
 
-func TestIntegration(t *testing.T) {
+func TestIntegrateRetriveTemporalEvolutionOfEntity(t *testing.T) {
 	is := is.New(t)
 	ctx := context.Background()
 
@@ -54,6 +52,41 @@ func TestIntegration(t *testing.T) {
 
 	is.Equal(response.StatusCode, http.StatusOK)
 	is.Equal(responseBody, temporalResponseBody)
+}
+
+func TestIntegrateQueryTemporalEvolutionOfEntities(t *testing.T) {
+	is := is.New(t)
+	ctx := context.Background()
+
+	responseBody := "[" + temporalResponseBody + "]"
+
+	ms := testutils.NewMockServiceThat(
+		Expects(
+			is,
+			method(http.MethodGet),
+			path("/ngsi-ld/v1/temporal/entities"),
+			expects.QueryParamEquals("timerel", "between"),
+			expects.QueryParamEquals("timeAt", "2022-01-01T00:00:00Z"),
+			expects.QueryParamEquals("endTimeAt", "2022-02-01T00:00:00Z"),
+		),
+		Returns(
+			response.ContentType("application/ld+json"),
+			response.Code(http.StatusOK),
+			response.Body([]byte(responseBody)),
+		),
+	)
+
+	app, r := initialize(ctx, zerolog.Logger{}, newTestConfig(ms.URL()), newAuthConfig())
+	app.Start()
+	defer app.Stop()
+
+	api := httptest.NewServer(r)
+	defer api.Close()
+
+	response, responseBody := testRequest(api.URL, http.MethodGet, "/ngsi-ld/v1/temporal/entities?timerel=between&timeAt=2022-01-01T00:00:00Z&endTimeAt=2022-02-01T00:00:00Z", nil)
+
+	is.Equal(response.StatusCode, http.StatusOK)
+	is.Equal(responseBody, responseBody)
 }
 
 func testRequest(url, method, path string, body io.Reader) (*http.Response, string) {

@@ -12,6 +12,7 @@ import (
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
 	"github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/auth"
+	"github.com/diwise/context-broker/pkg/ngsild"
 	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
@@ -21,6 +22,89 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
+
+func NewQueryTemporalEvolutionOfEntitiesHandler(
+	contextInformationManager cim.EntityTemporalQuerier,
+	authenticator auth.Enticator,
+	logger zerolog.Logger) http.HandlerFunc {
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var err error
+
+		ctx := r.Context()
+		tenant := GetTenantFromContext(ctx)
+
+		propagatedHeaders := extractHeaders(r, "Accept", "Link")
+
+		ctx, span := tracer.Start(ctx, "query-temporal-entities",
+			trace.WithAttributes(
+				attribute.String(TraceAttributeNGSILDTenant, tenant),
+			),
+		)
+		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+		contentType := r.Header.Get("Accept")
+		if contentType == "" {
+			contentType = "application/ld+json"
+		}
+
+		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(
+			span,
+			logger.With().Str("tenant", tenant).Logger(),
+			ctx)
+
+		err = authenticator.CheckAccess(ctx, r, tenant, []string{})
+		if err != nil {
+			log.Warn().Err(err).Msg("access not granted")
+			messageToSendToNonAuthenticatedClients := "not found"
+			ngsierrors.ReportNotFoundError(w, messageToSendToNonAuthenticatedClients, traceID)
+			return
+		}
+
+		var params cim.TemporalQueryParams
+		params, err = NewTemporalQueryParamsFromRequest(r)
+
+		if err != nil {
+			log.Error().Err(err).Msg("failed to create rteoe query parameters from request")
+			ngsierrors.ReportNewBadRequestData(w, err.Error(), traceID)
+			return
+		}
+
+		entityIDs, _ := params.IDs()
+		entityTypes, _ := params.Types()
+
+		var result *ngsild.QueryTemporalEntitiesResult
+		result, err = contextInformationManager.QueryTemporalEvolutionOfEntities(ctx, tenant, entityIDs, entityTypes, params, propagatedHeaders)
+
+		if err != nil {
+			log.Error().Err(err).Msg("failed to retrieve temporal evolution of entity")
+			mapCIMToNGSILDError(w, err, traceID)
+			return
+		}
+
+		temporals := make([]types.EntityTemporal, 0, 200)
+
+		for e := range result.Found {
+			if e == nil {
+				break
+			}
+
+			temporals = append(temporals, e)
+		}
+
+		responseBody, err := json.Marshal(temporals)
+
+		if err != nil {
+			log.Error().Err(err).Msg("failed to convert or marshal response entity")
+			mapCIMToNGSILDError(w, err, traceID)
+			return
+		}
+
+		w.Header().Add("Content-Type", contentType)
+		w.WriteHeader(http.StatusOK)
+		w.Write(responseBody)
+	})
+}
 
 func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 	contextInformationManager cim.EntityTemporalRetriever,
@@ -96,6 +180,9 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 
 func NewTemporalQueryParamsFromRequest(r *http.Request) (cim.TemporalQueryParams, error) {
 	qp := &queryParams{
+		ids:          []string{},
+		types:        []string{},
+		attributes:   []string{},
 		timeProperty: "observedAt",
 	}
 	var err error
@@ -136,6 +223,16 @@ func NewTemporalQueryParamsFromRequest(r *http.Request) (cim.TemporalQueryParams
 		}
 	}
 
+	ids := r.URL.Query().Get("id")
+	if ids != "" {
+		qp.ids = strings.Split(ids, ",")
+	}
+
+	types := r.URL.Query().Get("type")
+	if types != "" {
+		qp.types = strings.Split(types, ",")
+	}
+
 	attributes := r.URL.Query().Get("attributes")
 	if attributes != "" {
 		qp.attributes = strings.Split(attributes, ",")
@@ -172,6 +269,8 @@ func NewTemporalQueryParamsFromRequest(r *http.Request) (cim.TemporalQueryParams
 }
 
 type queryParams struct {
+	ids              []string
+	types            []string
 	attributes       []string
 	timeProperty     string
 	temporalRelation string
@@ -181,6 +280,14 @@ type queryParams struct {
 
 	aggregationMethods        []string
 	aggregationperiodDuration string
+}
+
+func (qp *queryParams) IDs() ([]string, bool) {
+	return qp.ids, (len(qp.ids) > 0)
+}
+
+func (qp *queryParams) Types() ([]string, bool) {
+	return qp.types, (len(qp.types) > 0)
 }
 
 func (qp *queryParams) Attributes() ([]string, bool) {

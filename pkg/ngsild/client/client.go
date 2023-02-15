@@ -30,6 +30,7 @@ type ContextBrokerClient interface {
 	CreateEntity(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error)
 	QueryEntities(ctx context.Context, entityTypes, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error)
 	RetrieveEntity(ctx context.Context, entityID string, headers map[string][]string) (types.Entity, error)
+	QueryTemporalEvolutionOfEntities(ctx context.Context, headers map[string][]string, parameters ...RequestDecoratorFunc) (*ngsild.QueryTemporalEntitiesResult, error)
 	RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityID string, headers map[string][]string, parameters ...RequestDecoratorFunc) (types.EntityTemporal, error)
 	MergeEntity(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error)
 	UpdateEntityAttributes(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error)
@@ -150,6 +151,69 @@ func (c cbClient) RetrieveEntity(ctx context.Context, entityID string, headers m
 	}
 
 	return entities.NewFromJSON(responseBody)
+}
+
+func (c cbClient) QueryTemporalEvolutionOfEntities(ctx context.Context, headers map[string][]string, parameters ...RequestDecoratorFunc) (*ngsild.QueryTemporalEntitiesResult, error) {
+	var err error
+
+	ctx, span := tracer.Start(ctx, "query-temporal-entities",
+		trace.WithAttributes(attribute.String(TraceAttributeNGSILDTenant, c.tenant)),
+	)
+	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+	params := make([]string, 0, 5)
+	for _, rdf := range parameters {
+		params = rdf(params)
+	}
+
+	urlparams := ""
+	if len(params) > 0 {
+		urlparams = "?" + strings.Join(params, "&")
+	}
+
+	response, responseBody, err := c.callContextSource(
+		ctx, http.MethodGet, c.baseURL+"/ngsi-ld/v1/temporal/entities"+urlparams, nil, headers,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusPartialContent {
+		contentType := response.Header.Get("Content-Type")
+		if response.StatusCode >= http.StatusBadRequest && response.StatusCode <= http.StatusInternalServerError {
+			err = errors.NewErrorFromProblemReport(response.StatusCode, contentType, responseBody)
+			return nil, err
+		}
+
+		err = fmt.Errorf("unexpected response code %d (%w)", response.StatusCode, errors.ErrInternal)
+		return nil, err
+	}
+
+	// 	return entities.NewTemporalFromJSON(responseBody)
+	var entities []entities.EntityTemporalImpl
+	err = json.Unmarshal(responseBody, &entities)
+	if err != nil {
+		if c.debug && len(responseBody) < 1000 {
+			err = fmt.Errorf("unmarshaling of %s failed with err %s", string(responseBody), err.Error())
+		}
+
+		return nil, err
+	}
+
+	qer := ngsild.NewQueryTemporalEntitiesResult()
+
+	if totalCount, ok := extractNGSILDResultsCount(response); ok {
+		qer.TotalCount = totalCount
+	}
+
+	go func() {
+		for idx := range entities {
+			qer.Found <- entities[idx]
+		}
+		qer.Found <- nil
+	}()
+	return qer, nil
 }
 
 func (c cbClient) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityID string, headers map[string][]string, parameters ...RequestDecoratorFunc) (types.EntityTemporal, error) {
