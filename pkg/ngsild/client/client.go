@@ -190,7 +190,6 @@ func (c cbClient) QueryTemporalEvolutionOfEntities(ctx context.Context, headers 
 		return nil, err
 	}
 
-	// 	return entities.NewTemporalFromJSON(responseBody)
 	var entities []entities.EntityTemporalImpl
 	err = json.Unmarshal(responseBody, &entities)
 	if err != nil {
