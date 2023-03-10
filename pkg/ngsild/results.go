@@ -33,6 +33,19 @@ func NewQueryEntitiesResult() *QueryEntitiesResult {
 	return qer
 }
 
+type QueryTemporalEntitiesResult struct {
+	Found      chan (types.EntityTemporal)
+	TotalCount int64
+}
+
+func NewQueryTemporalEntitiesResult() *QueryTemporalEntitiesResult {
+	qer := &QueryTemporalEntitiesResult{
+		Found:      make(chan types.EntityTemporal),
+		TotalCount: -1,
+	}
+	return qer
+}
+
 type MergeEntityResult struct {
 }
 

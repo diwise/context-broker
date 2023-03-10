@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -121,8 +122,23 @@ func Between(timeAt, endTimeAt time.Time) RequestDecoratorFunc {
 	}
 }
 
+func IDs(ids []string) RequestDecoratorFunc {
+	return func(params []string) []string {
+		for idx, id := range ids {
+			ids[idx] = url.QueryEscape(id)
+		}
+		return append(params, fmt.Sprintf("id=%s", strings.Join(ids, ",")))
+	}
+}
+
 func LastN(count uint64) RequestDecoratorFunc {
 	return func(params []string) []string {
 		return append(params, fmt.Sprintf("lastN=%d", count))
+	}
+}
+
+func Types(typeNames []string) RequestDecoratorFunc {
+	return func(params []string) []string {
+		return append(params, fmt.Sprintf("type=%s", strings.Join(typeNames, ",")))
 	}
 }
