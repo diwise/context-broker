@@ -314,7 +314,14 @@ func (e *EntityTemporalImpl) UnmarshalJSON(data []byte) error {
 	for k, v := range contents {
 		arr, ok := v.([]any)
 		if !ok {
-			continue
+			// If type assertion fails it may be because the data source encoded a single
+			// item array as an object instead. Add this object to a new slice and continue ...
+			obj, ok := v.(map[string]any)
+			if !ok {
+				continue
+			}
+
+			arr = append([]any{}, obj)
 		}
 
 		if len(arr) == 0 {
