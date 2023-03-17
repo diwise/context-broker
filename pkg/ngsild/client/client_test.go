@@ -243,6 +243,35 @@ func TestRetrieveTemporalEvolutionOfAnEntity(t *testing.T) {
 	is.NoErr(err)
 }
 
+func TestRetrieveTemporalEvolutionOfAnEntityWithSingleValue(t *testing.T) {
+	is := is.New(t)
+
+	timeStr := "2023-01-22T11:59:43Z"
+
+	s := testutils.NewMockServiceThat(
+		Expects(is, expects.AnyInput()),
+		Returns(
+			response.ContentType("application/ld+json"),
+			response.Code(http.StatusOK),
+			response.Body([]byte(temporalEntityResponseWithSingleValue)),
+		),
+	)
+	defer s.Close()
+
+	headers := map[string][]string{"Accept": {"application/ld+json"}}
+	timeAt, _ := time.Parse(time.RFC3339, timeStr)
+
+	c := NewContextBrokerClient(s.URL())
+	et, err := c.RetrieveTemporalEvolutionOfEntity(context.Background(), "id", headers, After(timeAt))
+	is.NoErr(err)
+
+	etBytes, err := json.Marshal(et)
+	is.NoErr(err)
+
+	const expectation string = `{"@context":["http://example.org/ngsi-ld/latest/vehicle.jsonld","https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context-v1.5.jsonld"],"id":"urn:ngsi-ld:Vehicle:B9211","speed":[{"type":"Property","value":120,"observedAt":"2018-08-01T12:03:00Z"}],"type":"Vehicle"}`
+	is.Equal(string(etBytes), expectation)
+}
+
 func TestRetrieveAggregatedTemporalEvolutionOfAnEntity(t *testing.T) {
 	is := is.New(t)
 
@@ -295,6 +324,18 @@ const temporalEntityResponse string = `{
 "@context":[
 "http://example.org/ngsi-ld/latest/vehicle.jsonld", "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context-v1.5.jsonld"
 ] }`
+
+const temporalEntityResponseWithSingleValue string = `{
+	"id":"urn:ngsi-ld:Vehicle:B9211", "type":"Vehicle",
+	"speed":{
+		"type":"Property",
+		"value":120, "observedAt":"2018-08-01T12:03:00Z"
+	},
+	"@context":[
+		"http://example.org/ngsi-ld/latest/vehicle.jsonld",
+		"https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context-v1.5.jsonld"
+	]
+}`
 
 func QueryParamContains(name, value string) func(*is.I, *http.Request) {
 	return func(is *is.I, r *http.Request) {
