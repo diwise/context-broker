@@ -234,8 +234,9 @@ func (c cbClient) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityI
 		urlparams = "?" + strings.Join(params, "&")
 	}
 
+	requestURL := c.baseURL + "/ngsi-ld/v1/temporal/entities/" + url.QueryEscape(entityID) + urlparams
 	response, responseBody, err := c.callContextSource(
-		ctx, http.MethodGet, c.baseURL+"/ngsi-ld/v1/temporal/entities/"+url.QueryEscape(entityID)+urlparams, nil, headers,
+		ctx, http.MethodGet, requestURL, nil, headers,
 	)
 
 	if err != nil {
