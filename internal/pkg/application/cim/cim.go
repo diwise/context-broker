@@ -28,6 +28,10 @@ type EntityRetriever interface {
 	RetrieveEntity(ctx context.Context, tenant, entityID string, headers map[string][]string) (types.Entity, error)
 }
 
+type TypesRetriever interface {
+	RetrieveTypes(ctx context.Context, tenant string, headers map[string][]string) ([]string, error)
+}
+
 type TemporalQueryParams interface {
 	IDs() ([]string, bool)
 	Types() ([]string, bool)
@@ -62,6 +66,8 @@ type ContextInformationManager interface {
 
 	EntityTemporalQuerier
 	EntityTemporalRetriever
+
+	TypesRetriever
 
 	Start() error
 	Stop() error

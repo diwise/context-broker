@@ -41,6 +41,9 @@ var _ ContextInformationManager = &ContextInformationManagerMock{}
 //			RetrieveTemporalEvolutionOfEntityFunc: func(ctx context.Context, tenant string, entityID string, params TemporalQueryParams, headers map[string][]string) (types.EntityTemporal, error) {
 //				panic("mock out the RetrieveTemporalEvolutionOfEntity method")
 //			},
+//			RetrieveTypesFunc: func(ctx context.Context, tenant string, headers map[string][]string) ([]string, error) {
+//				panic("mock out the RetrieveTypes method")
+//			},
 //			StartFunc: func() error {
 //				panic("mock out the Start method")
 //			},
@@ -77,6 +80,9 @@ type ContextInformationManagerMock struct {
 
 	// RetrieveTemporalEvolutionOfEntityFunc mocks the RetrieveTemporalEvolutionOfEntity method.
 	RetrieveTemporalEvolutionOfEntityFunc func(ctx context.Context, tenant string, entityID string, params TemporalQueryParams, headers map[string][]string) (types.EntityTemporal, error)
+
+	// RetrieveTypesFunc mocks the RetrieveTypes method.
+	RetrieveTypesFunc func(ctx context.Context, tenant string, headers map[string][]string) ([]string, error)
 
 	// StartFunc mocks the Start method.
 	StartFunc func() error
@@ -176,6 +182,15 @@ type ContextInformationManagerMock struct {
 			// Headers is the headers argument value.
 			Headers map[string][]string
 		}
+		// RetrieveTypes holds details about calls to the RetrieveTypes method.
+		RetrieveTypes []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Tenant is the tenant argument value.
+			Tenant string
+			// Headers is the headers argument value.
+			Headers map[string][]string
+		}
 		// Start holds details about calls to the Start method.
 		Start []struct {
 		}
@@ -203,6 +218,7 @@ type ContextInformationManagerMock struct {
 	lockQueryTemporalEvolutionOfEntities  sync.RWMutex
 	lockRetrieveEntity                    sync.RWMutex
 	lockRetrieveTemporalEvolutionOfEntity sync.RWMutex
+	lockRetrieveTypes                     sync.RWMutex
 	lockStart                             sync.RWMutex
 	lockStop                              sync.RWMutex
 	lockUpdateEntityAttributes            sync.RWMutex
@@ -533,6 +549,46 @@ func (mock *ContextInformationManagerMock) RetrieveTemporalEvolutionOfEntityCall
 	mock.lockRetrieveTemporalEvolutionOfEntity.RLock()
 	calls = mock.calls.RetrieveTemporalEvolutionOfEntity
 	mock.lockRetrieveTemporalEvolutionOfEntity.RUnlock()
+	return calls
+}
+
+// RetrieveTypes calls RetrieveTypesFunc.
+func (mock *ContextInformationManagerMock) RetrieveTypes(ctx context.Context, tenant string, headers map[string][]string) ([]string, error) {
+	if mock.RetrieveTypesFunc == nil {
+		panic("ContextInformationManagerMock.RetrieveTypesFunc: method is nil but ContextInformationManager.RetrieveTypes was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		Tenant  string
+		Headers map[string][]string
+	}{
+		Ctx:     ctx,
+		Tenant:  tenant,
+		Headers: headers,
+	}
+	mock.lockRetrieveTypes.Lock()
+	mock.calls.RetrieveTypes = append(mock.calls.RetrieveTypes, callInfo)
+	mock.lockRetrieveTypes.Unlock()
+	return mock.RetrieveTypesFunc(ctx, tenant, headers)
+}
+
+// RetrieveTypesCalls gets all the calls that were made to RetrieveTypes.
+// Check the length with:
+//
+//	len(mockedContextInformationManager.RetrieveTypesCalls())
+func (mock *ContextInformationManagerMock) RetrieveTypesCalls() []struct {
+	Ctx     context.Context
+	Tenant  string
+	Headers map[string][]string
+} {
+	var calls []struct {
+		Ctx     context.Context
+		Tenant  string
+		Headers map[string][]string
+	}
+	mock.lockRetrieveTypes.RLock()
+	calls = mock.calls.RetrieveTypes
+	mock.lockRetrieveTypes.RUnlock()
 	return calls
 }
 

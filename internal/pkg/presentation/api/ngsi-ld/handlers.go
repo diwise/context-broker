@@ -72,6 +72,11 @@ func RegisterHandlers(r chi.Router, policies io.Reader, app cim.ContextInformati
 			)
 
 			r.Get(
+				"/types",
+				NewRetrieveAvailableEntityTypesHandler(app, authenticator, log),
+			)
+
+			r.Get(
 				"/jsonldContexts/{contextId}",
 				NewServeContextHandler(log),
 			)

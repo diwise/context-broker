@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"sort"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
 	"github.com/diwise/context-broker/internal/pkg/application/config"
@@ -286,6 +287,33 @@ func (app *contextBrokerApp) RetrieveTemporalEvolutionOfEntity(ctx context.Conte
 	}
 
 	return nil, errors.NewNotFoundError(fmt.Sprintf("no context source found that could provide temporal evolution of entity %s", entityID))
+}
+
+func (app *contextBrokerApp) RetrieveTypes(ctx context.Context, tenant string, headers map[string][]string) ([]string, error) {
+	sources, ok := app.tenants[tenant]
+	if !ok {
+		return nil, errors.NewUnknownTenantError(tenant)
+	}
+
+	availableTypes := map[string]struct{}{}
+
+	for _, src := range sources {
+		for _, reginfo := range src.Information {
+			for _, entityInfo := range reginfo.Entities {
+				availableTypes[entityInfo.Type] = struct{}{}
+			}
+		}
+	}
+
+	typeList := make([]string, 0, len(availableTypes))
+
+	for k := range availableTypes {
+		typeList = append(typeList, k)
+	}
+
+	sort.Strings(typeList)
+
+	return typeList, nil
 }
 
 func (app *contextBrokerApp) MergeEntity(ctx context.Context, tenant, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error) {

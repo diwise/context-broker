@@ -188,6 +188,21 @@ func TestQueryEntitiesAsGeoJSON(t *testing.T) {
 	is.Equal(responseBody, weatherObservedGeoJson)
 }
 
+func TestRetrieveTypes(t *testing.T) {
+	is, ts, app := setupTest(t)
+	defer ts.Close()
+
+	app.RetrieveTypesFunc = func(ctx context.Context, tenant string, headers map[string][]string) ([]string, error) {
+		return []string{"Beach", "Device"}, nil
+	}
+
+	resp, responseBody := testRequest(is, ts, http.MethodGet, acceptJSONLD, "/ngsi-ld/v1/types", nil)
+
+	const expectation string = `{"@context":["https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/default-context.jsonld"],"id":"entity-type-list-default","type":"EntityTypeList","typeList":{"type":"Property","value":["Beach","Device"]}}`
+	is.Equal(resp.StatusCode, http.StatusOK) // Check status code
+	is.Equal(responseBody, expectation)
+}
+
 func TestUpdateEntityAttributes(t *testing.T) {
 	is, ts, app := setupTest(t)
 	defer ts.Close()

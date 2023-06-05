@@ -60,6 +60,18 @@ func TestThatCreateEntityWithMismatchingIDFails(t *testing.T) {
 	is.True(err != nil) // should have returned an error
 }
 
+func TestThatRetrieveTypesWorks(t *testing.T) {
+	is := is.New(t)
+
+	broker, err := New(context.Background(), withDefaultTestConfig("", ""))
+	is.NoErr(err)
+
+	availableTypes, err := broker.RetrieveTypes(context.Background(), "testtenant", nil)
+	is.NoErr(err)
+
+	is.Equal(availableTypes, []string{"Device", "DeviceModel"})
+}
+
 var Expects = testutils.Expects
 var Returns = testutils.Returns
 var anyInput = expects.AnyInput
