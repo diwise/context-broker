@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM golang:1.20 AS builder
+FROM --platform=$BUILDPLATFORM docker.io/golang:1.20 AS builder
 
 
 # Set the Current Working Directory inside the container
@@ -18,7 +18,7 @@ ARG TARGETOS
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build
 
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal
+FROM registry.access.redhat.com/ubi9/ubi-minimal
 WORKDIR /opt/diwise
 
 LABEL "org.opencontainers.image.source" = "https://github.com/diwise/context-broker"
