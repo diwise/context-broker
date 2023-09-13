@@ -14,13 +14,13 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
+var httpClient http.Client = http.Client{
+	Transport: otelhttp.NewTransport(http.DefaultTransport),
+}
+
 func QueryEntities[T any](ctx context.Context, broker, tenant, entityType string, attributes []string, callback func(t T)) (count int, err error) {
 
 	logger := logging.GetFromContext(ctx)
-
-	httpClient := http.Client{
-		Transport: otelhttp.NewTransport(http.DefaultTransport),
-	}
 
 	limit := 50
 	offset := 0
