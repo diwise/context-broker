@@ -52,10 +52,14 @@ func Tenant(tenant string) func(*cbClient) {
 }
 
 func NewContextBrokerClient(broker string, options ...func(*cbClient)) ContextBrokerClient {
+
 	c := &cbClient{
 		baseURL: broker,
 		tenant:  entities.DefaultNGSITenant,
-		debug:   false,
+		httpClient: http.Client{
+			Transport: otelhttp.NewTransport(http.DefaultTransport),
+		},
+		debug: false,
 	}
 
 	for _, option := range options {
@@ -73,9 +77,10 @@ const (
 var tracer = otel.Tracer("context-broker-client")
 
 type cbClient struct {
-	baseURL string
-	tenant  string
-	debug   bool
+	baseURL    string
+	tenant     string
+	debug      bool
+	httpClient http.Client
 }
 
 func (c cbClient) CreateEntity(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
@@ -397,9 +402,6 @@ func (c cbClient) DeleteEntity(ctx context.Context, entityID string) (*ngsild.De
 }
 
 func (c cbClient) callContextSource(ctx context.Context, method, endpoint string, body io.Reader, headers map[string][]string) (*http.Response, []byte, error) {
-	httpClient := http.Client{
-		Transport: otelhttp.NewTransport(http.DefaultTransport),
-	}
 
 	req, err := http.NewRequestWithContext(ctx, method, endpoint, body)
 	if err != nil {
@@ -416,7 +418,7 @@ func (c cbClient) callContextSource(ctx context.Context, method, endpoint string
 		}
 	}
 
-	resp, err := httpClient.Do(req)
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to send request: %s (%w)", err.Error(), errors.ErrRequest)
 	}

@@ -16,7 +16,6 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
-	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 )
 
 type contextBrokerApp struct {
@@ -348,7 +347,7 @@ func (app *contextBrokerApp) MergeEntity(ctx context.Context, tenant, entityID s
 						headers["Accept"] = []string{"application/ld+json"}
 						headers["Link"] = []string{entities.LinkHeader}
 
-						ctx := tracing.ExtractHeaders(context.Background(), tracing.InjectHeaders(ctx))
+						ctx := context.WithoutCancel(ctx)
 
 						entity, err := cbClient.RetrieveEntity(ctx, entityID, headers)
 						if err == nil {
@@ -397,7 +396,7 @@ func (app *contextBrokerApp) UpdateEntityAttributes(ctx context.Context, tenant,
 						headers["Accept"] = []string{"application/ld+json"}
 						headers["Link"] = []string{entities.LinkHeader}
 
-						ctx := tracing.ExtractHeaders(context.Background(), tracing.InjectHeaders(ctx))
+						ctx := context.WithoutCancel(ctx)
 
 						entity, err := cbClient.RetrieveEntity(ctx, entityID, headers)
 						if err == nil {

@@ -90,10 +90,7 @@ func (n *notifier) EntityCreated(ctx context.Context, e types.Entity, tenant str
 
 		logger := logging.GetFromContext(ctx)
 
-		ctx, span := tracer.Start(
-			tracing.ExtractHeaders(context.Background(), tracing.InjectHeaders(ctx)),
-			"post",
-		)
+		ctx, span := tracer.Start(context.WithoutCancel(ctx), "post")
 
 		n.queue <- func() {
 			defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
@@ -125,10 +122,7 @@ func (n *notifier) EntityUpdated(ctx context.Context, e types.Entity, tenant str
 
 		logger := logging.GetFromContext(ctx)
 
-		ctx, span := tracer.Start(
-			tracing.ExtractHeaders(context.Background(), tracing.InjectHeaders(ctx)),
-			"post",
-		)
+		ctx, span := tracer.Start(context.WithoutCancel(ctx), "post")
 
 		n.queue <- func() {
 			defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
@@ -154,15 +148,15 @@ func (n *notifier) EntityUpdated(ctx context.Context, e types.Entity, tenant str
 	}
 }
 
+var httpClient http.Client = http.Client{
+	Transport: otelhttp.NewTransport(http.DefaultTransport),
+}
+
 func postNotification(ctx context.Context, e types.Entity, endpoint string) error {
 	notification := subscriptions.NewNotification(e)
 	body, err := json.MarshalIndent(notification, "", " ")
 	if err != nil {
 		return fmt.Errorf("marshalling error (%w)", err)
-	}
-
-	httpClient := http.Client{
-		Transport: otelhttp.NewTransport(http.DefaultTransport),
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewBuffer(body))
