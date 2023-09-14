@@ -45,10 +45,20 @@ func Debug(enabled string) func(*cbClient) {
 	}
 }
 
+func RequestHeader(key string, value []string) func(*cbClient) {
+	return func(c *cbClient) {
+		c.requestHeaders[http.CanonicalHeaderKey(key)] = value
+	}
+}
+
 func Tenant(tenant string) func(*cbClient) {
 	return func(c *cbClient) {
 		c.tenant = tenant
 	}
+}
+
+func UserAgent(useragent string) func(*cbClient) {
+	return RequestHeader("user-agent", []string{useragent})
 }
 
 func NewContextBrokerClient(broker string, options ...func(*cbClient)) ContextBrokerClient {
@@ -56,10 +66,11 @@ func NewContextBrokerClient(broker string, options ...func(*cbClient)) ContextBr
 	c := &cbClient{
 		baseURL: broker,
 		tenant:  entities.DefaultNGSITenant,
+		debug:   false,
 		httpClient: http.Client{
 			Transport: otelhttp.NewTransport(http.DefaultTransport),
 		},
-		debug: false,
+		requestHeaders: map[string][]string{},
 	}
 
 	for _, option := range options {
@@ -77,10 +88,12 @@ const (
 var tracer = otel.Tracer("context-broker-client")
 
 type cbClient struct {
-	baseURL    string
-	tenant     string
-	debug      bool
-	httpClient http.Client
+	baseURL string
+	tenant  string
+	debug   bool
+
+	httpClient     http.Client
+	requestHeaders map[string][]string
 }
 
 func (c cbClient) CreateEntity(ctx context.Context, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
@@ -410,6 +423,12 @@ func (c cbClient) callContextSource(ctx context.Context, method, endpoint string
 
 	if c.tenant != entities.DefaultNGSITenant {
 		req.Header.Add("NGSILD-Tenant", c.tenant)
+	}
+
+	for header, headerValue := range c.requestHeaders {
+		for _, val := range headerValue {
+			req.Header.Add(header, val)
+		}
 	}
 
 	for header, headerValue := range headers {

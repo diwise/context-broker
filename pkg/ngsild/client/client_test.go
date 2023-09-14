@@ -24,6 +24,7 @@ import (
 var Expects = testutils.Expects
 var Returns = testutils.Returns
 var anyInput = expects.AnyInput
+var header = expects.RequestHeaderContains
 var method = expects.RequestMethod
 var path = expects.RequestPath
 var body = expects.RequestBody
@@ -301,6 +302,29 @@ func TestRetrieveAggregatedTemporalEvolutionOfAnEntity(t *testing.T) {
 		))
 
 	is.NoErr(err)
+}
+
+func TestCustomUserAgent(t *testing.T) {
+	is := is.New(t)
+
+	s := testutils.NewMockServiceThat(
+		Expects(
+			is,
+			header("User-Agent", "test"),
+			method(http.MethodDelete),
+			path("/ngsi-ld/v1/entities/id"),
+			body(""),
+		),
+		Returns(response.Code(http.StatusNoContent)),
+	)
+	defer s.Close()
+
+	c := NewContextBrokerClient(s.URL(), UserAgent("test"))
+
+	_, err := c.DeleteEntity(context.Background(), "id")
+
+	is.NoErr(err)
+	is.Equal(s.RequestCount(), 1)
 }
 
 func testEntity(entityType, entityID string) types.Entity {
