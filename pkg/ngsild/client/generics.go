@@ -72,7 +72,7 @@ func QueryEntities[T any](ctx context.Context, broker, tenant, entityType string
 			reqbytes, _ := httputil.DumpRequest(req, false)
 			respbytes, _ := httputil.DumpResponse(resp, false)
 
-			logger.Error().Str("request", string(reqbytes)).Str("response", string(respbytes)).Msg("request failed")
+			logger.Error("request failed", "request", string(reqbytes), "response", string(respbytes))
 			err = fmt.Errorf("request failed")
 			return
 		}

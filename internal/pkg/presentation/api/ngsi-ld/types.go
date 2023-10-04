@@ -3,6 +3,7 @@ package ngsild
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
@@ -12,7 +13,6 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
-	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -22,7 +22,7 @@ import (
 func NewRetrieveAvailableEntityTypesHandler(
 	contextInformationManager cim.TypesRetriever,
 	authenticator auth.Enticator,
-	logger zerolog.Logger) http.HandlerFunc {
+	logger *slog.Logger) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
@@ -48,7 +48,7 @@ func NewRetrieveAvailableEntityTypesHandler(
 
 		err = authenticator.CheckAccess(ctx, r, tenant, []string{})
 		if err != nil {
-			log.Warn().Err(err).Msg("access not granted")
+			log.Warn("access not granted", "err", err.Error())
 			messageToSendToNonAuthenticatedClients := "not found"
 			ngsierrors.ReportNotFoundError(w, messageToSendToNonAuthenticatedClients, traceID)
 			return
@@ -61,7 +61,7 @@ func NewRetrieveAvailableEntityTypesHandler(
 
 		availableTypes, err := contextInformationManager.RetrieveTypes(ctx, tenant, propagatedHeaders)
 		if err != nil {
-			log.Error().Err(err).Msg("query entities failed")
+			log.Error("query entities failed", "err", err.Error())
 			mapCIMToNGSILDError(w, err, traceID)
 			return
 		}
@@ -75,7 +75,7 @@ func NewRetrieveAvailableEntityTypesHandler(
 		responseBody, err := json.Marshal(response)
 
 		if err != nil {
-			log.Error().Err(err).Msg("retrieve entity types: failed to marshal type list to json")
+			log.Error("retrieve entity types: failed to marshal type list to json", "err", err.Error())
 			mapCIMToNGSILDError(w, err, traceID)
 			return
 		}

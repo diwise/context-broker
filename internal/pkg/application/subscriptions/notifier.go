@@ -108,7 +108,7 @@ func (n *notifier) EntityCreated(ctx context.Context, e types.Entity, tenant str
 
 					err = postNotification(ctx, e, endpoint)
 					if err != nil {
-						logger.Error().Err(err).Msg("failed to post notification")
+						logger.Error("failed to post notification", "err", err.Error())
 					}
 				}(notification.Endpoint)
 			}
@@ -140,7 +140,7 @@ func (n *notifier) EntityUpdated(ctx context.Context, e types.Entity, tenant str
 
 					err = postNotification(ctx, e, endpoint)
 					if err != nil {
-						logger.Error().Err(err).Msg("failed to post notification")
+						logger.Error("failed to post notification", "err", err.Error())
 					}
 				}(notification.Endpoint)
 			}

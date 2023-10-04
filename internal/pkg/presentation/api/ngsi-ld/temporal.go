@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -18,7 +19,6 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/go-chi/chi/v5"
-	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -26,7 +26,7 @@ import (
 func NewQueryTemporalEvolutionOfEntitiesHandler(
 	contextInformationManager cim.EntityTemporalQuerier,
 	authenticator auth.Enticator,
-	logger zerolog.Logger) http.HandlerFunc {
+	logger *slog.Logger) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
@@ -50,12 +50,12 @@ func NewQueryTemporalEvolutionOfEntitiesHandler(
 
 		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(
 			span,
-			logger.With().Str("tenant", tenant).Logger(),
+			logger.With(slog.String("tenant", tenant)),
 			ctx)
 
 		err = authenticator.CheckAccess(ctx, r, tenant, []string{})
 		if err != nil {
-			log.Warn().Err(err).Msg("access not granted")
+			log.Warn("access not granted", "err", err.Error())
 			messageToSendToNonAuthenticatedClients := "not found"
 			ngsierrors.ReportNotFoundError(w, messageToSendToNonAuthenticatedClients, traceID)
 			return
@@ -65,7 +65,7 @@ func NewQueryTemporalEvolutionOfEntitiesHandler(
 		params, err = NewTemporalQueryParamsFromRequest(r)
 
 		if err != nil {
-			log.Error().Err(err).Msg("failed to create rteoe query parameters from request")
+			log.Error("failed to create rteoe query parameters from request", "err", err.Error())
 			ngsierrors.ReportNewBadRequestData(w, err.Error(), traceID)
 			return
 		}
@@ -77,7 +77,7 @@ func NewQueryTemporalEvolutionOfEntitiesHandler(
 		result, err = contextInformationManager.QueryTemporalEvolutionOfEntities(ctx, tenant, entityIDs, entityTypes, params, propagatedHeaders)
 
 		if err != nil {
-			log.Error().Err(err).Msg("failed to retrieve temporal evolution of entity")
+			log.Error("failed to retrieve temporal evolution of entity", "err", err.Error())
 			mapCIMToNGSILDError(w, err, traceID)
 			return
 		}
@@ -95,7 +95,7 @@ func NewQueryTemporalEvolutionOfEntitiesHandler(
 		responseBody, err := json.Marshal(temporals)
 
 		if err != nil {
-			log.Error().Err(err).Msg("failed to convert or marshal response entity")
+			log.Error("failed to convert or marshal response entity", "err", err.Error())
 			mapCIMToNGSILDError(w, err, traceID)
 			return
 		}
@@ -109,7 +109,7 @@ func NewQueryTemporalEvolutionOfEntitiesHandler(
 func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 	contextInformationManager cim.EntityTemporalRetriever,
 	authenticator auth.Enticator,
-	logger zerolog.Logger) http.HandlerFunc {
+	logger *slog.Logger) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
@@ -135,12 +135,12 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 
 		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(
 			span,
-			logger.With().Str("entityID", entityID).Str("tenant", tenant).Logger(),
+			logger.With(slog.String("entityID", entityID), slog.String("tenant", tenant)),
 			ctx)
 
 		err = authenticator.CheckAccess(ctx, r, tenant, []string{})
 		if err != nil {
-			log.Warn().Err(err).Msg("access not granted")
+			log.Warn("access not granted", "err", err.Error())
 			messageToSendToNonAuthenticatedClients := "not found"
 			ngsierrors.ReportNotFoundError(w, messageToSendToNonAuthenticatedClients, traceID)
 			return
@@ -151,7 +151,7 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 
 		params, err = NewTemporalQueryParamsFromRequest(r)
 		if err != nil {
-			log.Error().Err(err).Msg("failed to create rteoe query parameters from request")
+			log.Error("failed to create rteoe query parameters from request", "err", err.Error())
 			ngsierrors.ReportNewBadRequestData(w, err.Error(), traceID)
 			return
 		}
@@ -159,7 +159,7 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 		entityTemporal, err = contextInformationManager.RetrieveTemporalEvolutionOfEntity(ctx, tenant, entityID, params, propagatedHeaders)
 
 		if err != nil {
-			log.Error().Err(err).Msg("failed to retrieve temporal evolution of entity")
+			log.Error("failed to retrieve temporal evolution of entity", "err", err.Error())
 			mapCIMToNGSILDError(w, err, traceID)
 			return
 		}
@@ -167,7 +167,7 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 		responseBody, err := json.Marshal(entityTemporal)
 
 		if err != nil {
-			log.Error().Err(err).Msg("failed to convert or marshal response entity")
+			log.Error("failed to convert or marshal response entity", "err", err.Error())
 			mapCIMToNGSILDError(w, err, traceID)
 			return
 		}

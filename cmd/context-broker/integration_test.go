@@ -14,7 +14,6 @@ import (
 	"github.com/diwise/service-chassis/pkg/test/http/response"
 
 	"github.com/matryer/is"
-	"github.com/rs/zerolog"
 )
 
 var Expects = testutils.Expects
@@ -41,7 +40,7 @@ func TestIntegrateRetriveTemporalEvolutionOfEntity(t *testing.T) {
 		),
 	)
 
-	app, r := initialize(ctx, zerolog.Logger{}, newTestConfig(ms.URL()), newAuthConfig())
+	app, r := initialize(ctx, newTestConfig(ms.URL()), newAuthConfig())
 	app.Start()
 	defer app.Stop()
 
@@ -76,7 +75,7 @@ func TestIntegrateQueryTemporalEvolutionOfEntities(t *testing.T) {
 		),
 	)
 
-	app, r := initialize(ctx, zerolog.Logger{}, newTestConfig(ms.URL()), newAuthConfig())
+	app, r := initialize(ctx, newTestConfig(ms.URL()), newAuthConfig())
 	app.Start()
 	defer app.Stop()
 

@@ -2,31 +2,35 @@ package ngsild
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
 	"github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/auth"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/rs/zerolog"
 )
 
-func RegisterHandlers(r chi.Router, policies io.Reader, app cim.ContextInformationManager, log zerolog.Logger) error {
+func RegisterHandlers(ctx context.Context, r chi.Router, policies io.Reader, app cim.ContextInformationManager) error {
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
+
+	authenticator, err := auth.NewAuthenticator(ctx, policies)
+	if err != nil {
+		return fmt.Errorf("failed to create api authenticator: %w", err)
+	}
 
 	r.Route("/ngsi-ld/v1", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.AllowContentType("application/json", "application/ld+json"))
 			r.Use(NGSIMiddleware())
 
-			authenticator, err := auth.NewAuthenticator(context.Background(), log, policies)
-			if err != nil {
-				log.Fatal().Err(err).Msg("failed to create api authenticator")
-			}
+			log := logging.GetFromContext(ctx)
 
 			r.Get(
 				"/entities",
@@ -52,7 +56,7 @@ func RegisterHandlers(r chi.Router, policies io.Reader, app cim.ContextInformati
 				"/entities",
 				NewCreateEntityHandler(
 					app, authenticator, log,
-					func(ctx context.Context, entityType, entityID string, logger zerolog.Logger) {},
+					func(ctx context.Context, entityType, entityID string, logger *slog.Logger) {},
 				),
 			)
 

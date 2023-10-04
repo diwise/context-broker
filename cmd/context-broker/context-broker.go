@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -15,8 +16,8 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/buildinfo"
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/go-chi/chi/v5"
-	"github.com/rs/zerolog"
 )
 
 const serviceName string = "context-broker"
@@ -36,43 +37,49 @@ func main() {
 
 	configFile, err := os.Open(configFilePath)
 	if err != nil {
-		logger.Fatal().Err(err).Msgf("failed to open the configuration file %s", configFilePath)
+		fatal(ctx, fmt.Sprintf("failed to open the configuration file %s", configFilePath), err)
 	}
 	defer configFile.Close()
 
 	policyFile, err := os.Open(opaFilePath)
 	if err != nil {
-		logger.Fatal().Err(err).Msg("unable to open opa policy file")
+		fatal(ctx, "unable to open opa policy file", err)
 	}
 	defer policyFile.Close()
 
-	app, r := initialize(ctx, logger, configFile, policyFile)
+	app, r := initialize(ctx, configFile, policyFile)
 	app.Start()
 	defer app.Stop()
 
-	port := env.GetVariableOrDefault(logger, "SERVICE_PORT", "8080")
+	port := env.GetVariableOrDefault(ctx, "SERVICE_PORT", "8080")
 
-	logger.Info().Str("port", port).Msg("starting to listen for connections")
+	logger.Info("starting to listen for connections", "port", port)
 
 	err = http.ListenAndServe(":"+port, r)
 	if err != nil {
-		logger.Fatal().Err(err).Msg("failed to listen for connections")
+		fatal(ctx, "failed to listen for connections", err)
 	}
 }
 
-func initialize(ctx context.Context, logger zerolog.Logger, brokerConfig io.Reader, authPolices io.Reader) (cim.ContextInformationManager, *chi.Mux) {
+func initialize(ctx context.Context, brokerConfig io.Reader, authPolices io.Reader) (cim.ContextInformationManager, *chi.Mux) {
 	cfg, err := config.Load(brokerConfig)
 	if err != nil {
-		logger.Fatal().Err(err).Msg("failed to load configuration")
+		fatal(ctx, "failed to load configuration", err)
 	}
 
 	app, err := contextbroker.New(ctx, *cfg)
 	if err != nil {
-		logger.Fatal().Err(err).Msg("failed to configure the context broker")
+		fatal(ctx, "failed to configure the context broker", err)
 	}
 
 	r := router.New(serviceName)
-	ngsild.RegisterHandlers(r, authPolices, app, logger)
+	ngsild.RegisterHandlers(ctx, r, authPolices, app)
 
 	return app, r
+}
+
+func fatal(ctx context.Context, msg string, err error) {
+	logger := logging.GetFromContext(ctx)
+	logger.Error(msg, "err", err.Error())
+	os.Exit(1)
 }

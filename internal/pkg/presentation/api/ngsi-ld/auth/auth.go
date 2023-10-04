@@ -10,7 +10,6 @@ import (
 
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/open-policy-agent/opa/rego"
-	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel"
 )
 
@@ -24,7 +23,7 @@ type enticatorImpl struct {
 	preparedQuery rego.PreparedEvalQuery
 }
 
-func NewAuthenticator(ctx context.Context, logger zerolog.Logger, policies io.Reader) (Enticator, error) {
+func NewAuthenticator(ctx context.Context, policies io.Reader) (Enticator, error) {
 
 	module, err := io.ReadAll(policies)
 	if err != nil {

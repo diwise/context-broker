@@ -133,7 +133,7 @@ func (c cbClient) CreateEntity(ctx context.Context, entity types.Entity, headers
 
 	location := resp.Header.Get("Location")
 	if location == "" {
-		log.Warn().Msg("downstream context source failed to provide a location header with created response")
+		log.Warn("downstream context source failed to provide a location header with created response")
 		location = "/ngsi-ld/v1/entities/" + url.QueryEscape(entityID)
 	}
 
@@ -456,9 +456,9 @@ func (c cbClient) callContextSource(ctx context.Context, method, endpoint string
 
 				log := logging.GetFromContext(ctx)
 				if resp.StatusCode >= http.StatusBadRequest {
-					log.Error().Str("request", string(reqbytes)).Str("response", string(respbytes)).Msg("request failed")
+					log.Error("request failed", "request", string(reqbytes), "response", string(respbytes))
 				} else {
-					log.Warn().Str("request", string(reqbytes)).Str("response", string(respbytes)).Msg("unexpected response")
+					log.Warn("unexpected response", "request", string(reqbytes), "response", string(respbytes))
 				}
 			}
 		}
