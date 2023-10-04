@@ -15,7 +15,6 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
-	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 )
 
 type contextBrokerApp struct {
@@ -25,14 +24,13 @@ type contextBrokerApp struct {
 }
 
 func New(ctx context.Context, cfg config.Config) (cim.ContextInformationManager, error) {
-	logger := logging.GetFromContext(ctx)
 
 	notifier, _ := subscriptions.NewNotifier(ctx, cfg)
 
 	app := &contextBrokerApp{
 		tenants:     make(map[string][]config.ContextSourceConfig),
 		notifier:    notifier,
-		debugClient: env.GetVariableOrDefault(logger, "CONTEXT_BROKER_CLIENT_DEBUG", "false"),
+		debugClient: env.GetVariableOrDefault(ctx, "CONTEXT_BROKER_CLIENT_DEBUG", "false"),
 	}
 
 	for _, tenant := range cfg.Tenants {

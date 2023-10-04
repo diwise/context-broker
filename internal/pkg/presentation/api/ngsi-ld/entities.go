@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -22,7 +23,6 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/go-chi/chi/v5"
-	"github.com/rs/zerolog"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -36,13 +36,13 @@ const (
 	TraceAttributeNGSILDTenant string = "ngsild-tenant"
 )
 
-type CreateEntityCompletionCallback func(ctx context.Context, entityType, entityID string, logger zerolog.Logger)
+type CreateEntityCompletionCallback func(ctx context.Context, entityType, entityID string, logger *slog.Logger)
 
 // NewCreateEntityHandler handles incoming POST requests for NGSI entities
 func NewCreateEntityHandler(
 	contextInformationManager cim.EntityCreator,
 	authenticator auth.Enticator,
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	onsuccess CreateEntityCompletionCallback) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -79,12 +79,12 @@ func NewCreateEntityHandler(
 		entityType := entity.Type()
 
 		// decorate the logger with info about the current tenant and entity id
-		log = log.With().Str("entityID", entityID).Str("tenant", tenant).Logger()
+		log = log.With(slog.String("entityID", entityID), slog.String("tenant", tenant))
 		ctx = logging.NewContextWithLogger(ctx, log)
 
 		err = authenticator.CheckAccess(ctx, r, tenant, []string{entityType})
 		if err != nil {
-			log.Warn().Err(err).Msg("access not granted")
+			log.Warn("access not granted", "err", err.Error())
 			ngsierrors.ReportUnauthorizedRequest(w, "not authorized", traceID)
 			return
 		}
@@ -93,12 +93,12 @@ func NewCreateEntityHandler(
 
 		result, err = contextInformationManager.CreateEntity(ctx, tenant, entity, propagatedHeaders)
 		if err != nil {
-			log.Error().Err(err).Msg("create entity failed")
+			log.Error("create entity failed", "err", err.Error())
 			mapCIMToNGSILDError(w, err, traceID)
 			return
 		}
 
-		log.Info().Msg("entity created")
+		log.Info("entity created")
 
 		onsuccess(ctx, entityType, entityID, log)
 
@@ -111,7 +111,7 @@ func NewCreateEntityHandler(
 func NewQueryEntitiesHandler(
 	contextInformationManager cim.EntityQuerier,
 	authenticator auth.Enticator,
-	logger zerolog.Logger) http.HandlerFunc {
+	logger *slog.Logger) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
@@ -164,7 +164,7 @@ func NewQueryEntitiesHandler(
 
 		err = authenticator.CheckAccess(ctx, r, tenant, entityTypes)
 		if err != nil {
-			log.Warn().Err(err).Msg("access not granted")
+			log.Warn("access not granted", "err", err.Error())
 			messageToSendToNonAuthenticatedClients := "not found"
 			ngsierrors.ReportNotFoundError(w, messageToSendToNonAuthenticatedClients, traceID)
 			return
@@ -172,7 +172,7 @@ func NewQueryEntitiesHandler(
 
 		result, err := contextInformationManager.QueryEntities(ctx, tenant, entityTypes, attributes, r.URL.Path+"?"+r.URL.RawQuery, propagatedHeaders)
 		if err != nil {
-			log.Error().Err(err).Msg("query entities failed")
+			log.Error("query entities failed", "err", err.Error())
 			mapCIMToNGSILDError(w, err, traceID)
 			return
 		}
@@ -230,7 +230,7 @@ func NewQueryEntitiesHandler(
 		}
 
 		if err != nil {
-			log.Error().Err(err).Msg("query entities: failed to marshal entity collection to json")
+			log.Error("query entities: failed to marshal entity collection to json", "err", err.Error())
 			mapCIMToNGSILDError(w, err, traceID)
 			return
 		}
@@ -249,7 +249,7 @@ func NewQueryEntitiesHandler(
 func NewRetrieveEntityHandler(
 	contextInformationManager cim.EntityRetriever,
 	authenticator auth.Enticator,
-	logger zerolog.Logger) http.HandlerFunc {
+	logger *slog.Logger) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
@@ -270,7 +270,7 @@ func NewRetrieveEntityHandler(
 
 		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(
 			span,
-			logger.With().Str("entityID", entityID).Str("tenant", tenant).Logger(),
+			logger.With(slog.String("entityID", entityID), slog.String("tenant", tenant)),
 			ctx)
 
 		options := r.URL.Query().Get("options")
@@ -301,7 +301,7 @@ func NewRetrieveEntityHandler(
 			autherr := authenticator.CheckAccess(ctx, r, tenant, []string{entity.Type()})
 			if autherr != nil {
 				err = autherr
-				log.Warn().Err(err).Msg("access not granted")
+				log.Warn("access not granted", "err", err.Error())
 				messageToSendToNonAuthenticatedClients := "not found"
 				ngsierrors.ReportNotFoundError(w, messageToSendToNonAuthenticatedClients, traceID)
 				return
@@ -309,7 +309,7 @@ func NewRetrieveEntityHandler(
 		}
 
 		if err != nil {
-			log.Error().Err(err).Msg("retrieve entity failed")
+			log.Error("retrieve entity failed", "err", err.Error())
 			mapCIMToNGSILDError(w, err, traceID)
 			return
 		}
@@ -334,7 +334,7 @@ func NewRetrieveEntityHandler(
 		}
 
 		if err != nil {
-			log.Error().Err(err).Msg("failed to convert or marshal response entity")
+			log.Error("failed to convert or marshal response entity", "err", err.Error())
 			mapCIMToNGSILDError(w, err, traceID)
 			return
 		}
@@ -348,7 +348,7 @@ func NewRetrieveEntityHandler(
 func NewMergeEntityHandler(
 	contextInformationManager cim.EntityMerger,
 	authenticator auth.Enticator,
-	logger zerolog.Logger) http.HandlerFunc {
+	logger *slog.Logger) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
@@ -369,7 +369,7 @@ func NewMergeEntityHandler(
 
 		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(
 			span,
-			logger.With().Str("entityID", entityID).Str("tenant", tenant).Logger(),
+			logger.With(slog.String("entityID", entityID), slog.String("tenant", tenant)),
 			ctx)
 
 		var entity ngsitypes.EntityFragment
@@ -383,7 +383,7 @@ func NewMergeEntityHandler(
 
 		err = authenticator.CheckAccess(ctx, r, tenant, []string{})
 		if err != nil {
-			log.Warn().Err(err).Msg("access not granted")
+			log.Warn("access not granted", "err", err.Error())
 			messageToSendToNonAuthenticatedClients := "not found"
 			ngsierrors.ReportNotFoundError(w, messageToSendToNonAuthenticatedClients, traceID)
 			return
@@ -392,12 +392,12 @@ func NewMergeEntityHandler(
 		_, err = contextInformationManager.MergeEntity(ctx, tenant, entityID, entity, propagatedHeaders)
 
 		if err != nil {
-			log.Error().Err(err).Msg("failed to merge entity attributes")
+			log.Error("failed to merge entity attributes", "err", err.Error())
 			mapCIMToNGSILDError(w, err, traceID)
 			return
 		}
 
-		log.Info().Msg("entities merged")
+		log.Info("entities merged")
 
 		w.WriteHeader(http.StatusNoContent)
 	})
@@ -407,7 +407,7 @@ func NewMergeEntityHandler(
 func NewUpdateEntityAttributesHandler(
 	contextInformationManager cim.EntityAttributesUpdater,
 	authenticator auth.Enticator,
-	logger zerolog.Logger) http.HandlerFunc {
+	logger *slog.Logger) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
@@ -428,7 +428,7 @@ func NewUpdateEntityAttributesHandler(
 
 		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(
 			span,
-			logger.With().Str("entityID", entityID).Str("tenant", tenant).Logger(),
+			logger.With(slog.String("entityID", entityID), slog.String("tenant", tenant)),
 			ctx)
 
 		var entity ngsitypes.EntityFragment
@@ -442,7 +442,7 @@ func NewUpdateEntityAttributesHandler(
 
 		err = authenticator.CheckAccess(ctx, r, tenant, []string{})
 		if err != nil {
-			log.Warn().Err(err).Msg("access not granted")
+			log.Warn("access not granted", "err", err.Error())
 			messageToSendToNonAuthenticatedClients := "not found"
 			ngsierrors.ReportNotFoundError(w, messageToSendToNonAuthenticatedClients, traceID)
 			return
@@ -451,12 +451,12 @@ func NewUpdateEntityAttributesHandler(
 		updateResult, err := contextInformationManager.UpdateEntityAttributes(ctx, tenant, entityID, entity, propagatedHeaders)
 
 		if err != nil {
-			log.Error().Err(err).Msg("failed to update entity attributes")
+			log.Error("failed to update entity attributes", "err", err.Error())
 			mapCIMToNGSILDError(w, err, traceID)
 			return
 		}
 
-		log.Info().Msg("entity attributes updated")
+		log.Info("entity attributes updated")
 
 		if !updateResult.IsMultiStatus() {
 			w.WriteHeader(http.StatusNoContent)
@@ -470,7 +470,7 @@ func NewUpdateEntityAttributesHandler(
 func NewDeleteEntityHandler(
 	contextInformationManager cim.EntityDeleter,
 	authenticator auth.Enticator,
-	logger zerolog.Logger) http.HandlerFunc {
+	logger *slog.Logger) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
@@ -489,12 +489,12 @@ func NewDeleteEntityHandler(
 
 		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(
 			span,
-			logger.With().Str("entityID", entityID).Str("tenant", tenant).Logger(),
+			logger.With(slog.String("entityID", entityID), slog.String("tenant", tenant)),
 			ctx)
 
 		err = authenticator.CheckAccess(ctx, r, tenant, []string{})
 		if err != nil {
-			log.Warn().Err(err).Msg("access not granted")
+			log.Warn("access not granted", "err", err.Error())
 			ngsierrors.ReportUnauthorizedRequest(w, "not authorized", traceID)
 			return
 		}
@@ -502,12 +502,12 @@ func NewDeleteEntityHandler(
 		_, err = contextInformationManager.DeleteEntity(ctx, tenant, entityID)
 
 		if err != nil {
-			log.Error().Err(err).Msg("failed to delete entity")
+			log.Error("failed to delete entity", "err", err.Error())
 			mapCIMToNGSILDError(w, err, traceID)
 			return
 		}
 
-		log.Info().Msg("entity deleted")
+		log.Info("entity deleted")
 
 		w.WriteHeader(http.StatusNoContent)
 	})

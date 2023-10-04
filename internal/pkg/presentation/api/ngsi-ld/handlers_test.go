@@ -19,7 +19,6 @@ import (
 	. "github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 	"github.com/go-chi/chi/v5"
 	"github.com/matryer/is"
-	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -288,7 +287,6 @@ func setupTest(t *testing.T) (*is.I, *httptest.Server, *cim.ContextInformationMa
 	r := chi.NewRouter()
 	ts := httptest.NewServer(r)
 
-	log := log.Logger
 	app := &cim.ContextInformationManagerMock{
 		CreateEntityFunc: func(ctx context.Context, tenant string, entity ngsitypes.Entity, h map[string][]string) (*ngsild.CreateEntityResult, error) {
 			return ngsild.NewCreateEntityResult("somewhere"), nil
@@ -301,7 +299,7 @@ func setupTest(t *testing.T) (*is.I, *httptest.Server, *cim.ContextInformationMa
 	}
 
 	policies := bytes.NewBufferString(opaModule)
-	RegisterHandlers(r, policies, app, log)
+	RegisterHandlers(context.Background(), r, policies, app)
 
 	return is, ts, app
 }
