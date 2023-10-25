@@ -249,6 +249,10 @@ type EntityTemporalImpl struct {
 	relationships map[string][]types.Relationship
 }
 
+func (e EntityTemporalImpl) Property(name string) []types.Property {
+	return e.properties[name]
+}
+
 func (e EntityTemporalImpl) MarshalJSON() ([]byte, error) {
 
 	contents := map[string]any{}
