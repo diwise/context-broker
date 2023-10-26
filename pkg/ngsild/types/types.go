@@ -15,7 +15,10 @@ type Entity interface {
 }
 
 type EntityTemporal interface {
-	Property(name string) []Property
+	ID() string
+	Type() string
+
+	Property(name string) []TemporalProperty
 }
 
 type EntityKeyValueMapper interface {
@@ -24,6 +27,12 @@ type EntityKeyValueMapper interface {
 type Property interface {
 	Type() string
 	Value() any
+}
+
+type TemporalProperty interface {
+	Type() string
+	Value() any
+	ObservedAt() string
 }
 
 type Relationship interface {

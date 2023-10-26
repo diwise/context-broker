@@ -22,7 +22,7 @@ const (
 type NumberProperty struct {
 	PropertyImpl
 	Val        float64            `json:"value"`
-	ObservedAt *string            `json:"observedAt,omitempty"`
+	ObservedAt_ *string            `json:"observedAt,omitempty"`
 	ObservedBy types.Relationship `json:"observedBy,omitempty"`
 	UnitCode   *string            `json:"unitCode,omitempty"`
 }
@@ -33,6 +33,13 @@ func (np *NumberProperty) Type() string {
 
 func (np *NumberProperty) Value() any {
 	return np.Val
+}
+
+func (np *NumberProperty) ObservedAt() string {
+	if np.ObservedAt_ != nil {
+		return *np.ObservedAt_
+	}
+	return ""
 }
 
 // NewNumberProperty is a convenience function for creating NumberProperty instances
@@ -61,7 +68,7 @@ type NumberPropertyDecoratorFunc func(np *NumberProperty)
 
 func ObservedAt(timestamp string) NumberPropertyDecoratorFunc {
 	return func(np *NumberProperty) {
-		np.ObservedAt = &timestamp
+		np.ObservedAt_ = &timestamp
 	}
 }
 
@@ -101,6 +108,7 @@ func (dtp *DateTimeProperty) Value() any {
 type TextProperty struct {
 	PropertyImpl
 	Val string `json:"value"`
+	ObservedAt_ *string `json:"observedAt,omitempty"`
 }
 
 func (tp *TextProperty) Type() string {
@@ -111,10 +119,18 @@ func (tp *TextProperty) Value() any {
 	return tp.Val
 }
 
+func (tp *TextProperty) ObservedAt() string {
+	if tp.ObservedAt_ != nil {
+		return *tp.ObservedAt_
+	}
+	return ""
+}
+
 // TextListProperty stores values of type text list
 type TextListProperty struct {
 	PropertyImpl
 	Val []string `json:"value"`
+	ObservedAt_ *string `json:"observedAt,omitempty"`
 }
 
 func (tlp *TextListProperty) Type() string {
@@ -123,6 +139,13 @@ func (tlp *TextListProperty) Type() string {
 
 func (tlp *TextListProperty) Value() any {
 	return tlp.Val
+}
+
+func (tlp *TextListProperty) ObservedAt() string {
+	if tlp.ObservedAt_ != nil {
+		return *tlp.ObservedAt_
+	}
+	return ""
 }
 
 // NewTextListProperty accepts a value as a string array and returns a new TextListProperty
@@ -165,7 +188,7 @@ func UnmarshalP(body map[string]any) (types.Property, error) {
 		// Parse property metadata
 		if obsA, ok := body["observedAt"]; ok {
 			if observedAt, ok := obsA.(string); ok {
-				np.ObservedAt = &observedAt
+				np.ObservedAt_ = &observedAt
 			}
 		}
 		if unit, ok := body["unitCode"]; ok {
