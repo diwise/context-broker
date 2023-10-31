@@ -142,3 +142,9 @@ func Types(typeNames []string) RequestDecoratorFunc {
 		return append(params, fmt.Sprintf("type=%s", strings.Join(typeNames, ",")))
 	}
 }
+
+func NearPoint(distance int, lat, lon float64) RequestDecoratorFunc {
+	return func(params []string) []string {
+		return append(params, fmt.Sprintf("georel=near;maxDistance==%d&geometry=Point&coordinates=[%.6f,%.6f]", distance, lat, lon))
+	}
+}
