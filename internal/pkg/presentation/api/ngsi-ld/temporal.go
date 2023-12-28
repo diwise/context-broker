@@ -77,7 +77,7 @@ func NewQueryTemporalEvolutionOfEntitiesHandler(
 		result, err = contextInformationManager.QueryTemporalEvolutionOfEntities(ctx, tenant, entityIDs, entityTypes, params, propagatedHeaders)
 
 		if err != nil {
-			log.Error("failed to retrieve temporal evolution of entity", "err", err.Error())
+			log.Error("failed to retrieve temporal evolution of entities", "err", err.Error())
 			mapCIMToNGSILDError(w, err, traceID)
 			return
 		}
@@ -159,7 +159,7 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 		entityTemporal, err = contextInformationManager.RetrieveTemporalEvolutionOfEntity(ctx, tenant, entityID, params, propagatedHeaders)
 
 		if err != nil {
-			log.Error("failed to retrieve temporal evolution of entity", "err", err.Error())
+			log.Error("failed to retrieve temporal evolution of an entity", "err", err.Error())
 			mapCIMToNGSILDError(w, err, traceID)
 			return
 		}
