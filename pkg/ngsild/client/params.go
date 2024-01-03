@@ -143,8 +143,8 @@ func Types(typeNames []string) RequestDecoratorFunc {
 	}
 }
 
-func NearPoint(distance int, lat, lon float64) RequestDecoratorFunc {
+func NearPoint(distance int, lon, lat float64) RequestDecoratorFunc {
 	return func(params []string) []string {
-		return append(params, fmt.Sprintf("georel=near;maxDistance==%d&geometry=Point&coordinates=[%.6f,%.6f]", distance, lat, lon))
+		return append(params, fmt.Sprintf("georel=near;maxDistance==%d&geometry=Point&coordinates=[%.6f,%.6f]", distance, lon, lat))
 	}
 }
