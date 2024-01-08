@@ -266,6 +266,10 @@ func TestRetrieveTemporalEvolutionOfAnEntityWithSingleValue(t *testing.T) {
 	et, err := c.RetrieveTemporalEvolutionOfEntity(context.Background(), "id", headers, After(timeAt))
 	is.NoErr(err)
 
+	speeds := et.Property("speed")
+	is.Equal(1, len(speeds))
+	is.Equal(float64(120), speeds[0].Value())
+
 	etBytes, err := json.Marshal(et)
 	is.NoErr(err)
 

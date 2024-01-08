@@ -241,12 +241,30 @@ func (e *EntityImpl) UnmarshalJSON(data []byte) error {
 }
 
 type EntityTemporalImpl struct {
-	entityID   string
-	entityType string
+	entityID   *string
+	entityType *string
 
 	context       []string
-	properties    map[string][]types.Property
+	properties    map[string][]types.TemporalProperty
 	relationships map[string][]types.Relationship
+}
+
+func (e EntityTemporalImpl) ID() string {
+	if e.entityID != nil {
+		return *e.entityID
+	}
+	return ""
+}
+
+func (e EntityTemporalImpl) Type() string {
+	if e.entityType != nil {
+		return *e.entityType
+	}
+	return ""
+}
+
+func (e EntityTemporalImpl) Property(name string) []types.TemporalProperty {
+	return e.properties[name]
 }
 
 func (e EntityTemporalImpl) MarshalJSON() ([]byte, error) {
@@ -289,8 +307,8 @@ func (e *EntityTemporalImpl) UnmarshalJSON(data []byte) error {
 	delete(contents, "type")
 	delete(contents, "@context")
 
-	e.entityID = header.ID
-	e.entityType = header.Type
+	e.entityID = &header.ID
+	e.entityType = &header.Type
 
 	ctxLength := len(header.Context)
 
@@ -308,7 +326,7 @@ func (e *EntityTemporalImpl) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("unsupported context: %s", string(header.Context))
 	}
 
-	e.properties = map[string][]types.Property{}
+	e.properties = map[string][]types.TemporalProperty{}
 	e.relationships = map[string][]types.Relationship{}
 
 	for k, v := range contents {
@@ -344,13 +362,13 @@ func (e *EntityTemporalImpl) UnmarshalJSON(data []byte) error {
 				if err != nil {
 					return err
 				}
-				e.properties[k] = append(e.properties[k], p)
+				e.properties[k] = append(e.properties[k], p.(types.TemporalProperty))
 			} else if objType == "GeoProperty" {
 				p, err := geojson.UnmarshalG(obj)
 				if err != nil {
 					return err
 				}
-				e.properties[k] = append(e.properties[k], p)
+				e.properties[k] = append(e.properties[k], p.(types.TemporalProperty))
 			} else if objType == "Relationship" {
 				r, err := relationships.UnmarshalR(obj)
 				if err != nil {
