@@ -21,10 +21,10 @@ const (
 // NumberProperty holds a float64 Value
 type NumberProperty struct {
 	PropertyImpl
-	Val        float64            `json:"value"`
+	Val         float64            `json:"value"`
 	ObservedAt_ *string            `json:"observedAt,omitempty"`
-	ObservedBy types.Relationship `json:"observedBy,omitempty"`
-	UnitCode   *string            `json:"unitCode,omitempty"`
+	ObservedBy  types.Relationship `json:"observedBy,omitempty"`
+	UnitCode    *string            `json:"unitCode,omitempty"`
 }
 
 func (np *NumberProperty) Type() string {
@@ -107,7 +107,7 @@ func (dtp *DateTimeProperty) Value() any {
 // TextProperty stores values of type text
 type TextProperty struct {
 	PropertyImpl
-	Val string `json:"value"`
+	Val         string  `json:"value"`
 	ObservedAt_ *string `json:"observedAt,omitempty"`
 }
 
@@ -129,8 +129,8 @@ func (tp *TextProperty) ObservedAt() string {
 // TextListProperty stores values of type text list
 type TextListProperty struct {
 	PropertyImpl
-	Val []string `json:"value"`
-	ObservedAt_ *string `json:"observedAt,omitempty"`
+	Val         []string `json:"value"`
+	ObservedAt_ *string  `json:"observedAt,omitempty"`
 }
 
 func (tlp *TextListProperty) Type() string {
@@ -207,7 +207,14 @@ func UnmarshalP(body map[string]any) (types.Property, error) {
 		}
 		return np, nil
 	case string:
-		return NewTextProperty(sanitizeString(typedValue)), nil
+		tp := NewTextProperty(sanitizeString(typedValue))
+
+		if obsA, ok := body["observedAt"]; ok {
+			if observedAt, ok := obsA.(string); ok {
+				tp.ObservedAt_ = &observedAt
+			}
+		}
+		return tp, nil
 	case map[string]any:
 		return unmarshalPropertyObject(typedValue)
 	case []any:
