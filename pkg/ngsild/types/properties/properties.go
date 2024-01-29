@@ -111,6 +111,16 @@ type TextProperty struct {
 	ObservedAt_ *string `json:"observedAt,omitempty"`
 }
 
+type TextPropertyDecoratorFunc func(np *TextProperty)
+
+// Figure out how best to solve the fact that we now have duplicates of this. would a generic "PropertyDecoratorFunc" even be possible?
+// or do I just name this "StrObservedAt" or "TxtObservedAt" for now?
+func TxtObservedAt(timestamp string) TextPropertyDecoratorFunc {
+	return func(tp *TextProperty) {
+		tp.ObservedAt_ = &timestamp
+	}
+}
+
 func (tp *TextProperty) Type() string {
 	return tp.PropertyImpl.Type
 }

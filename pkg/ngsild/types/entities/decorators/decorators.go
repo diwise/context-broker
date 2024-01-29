@@ -88,8 +88,12 @@ func DateObserved(timestamp string) entities.EntityDecoratorFunc {
 	return DateTime(properties.DateObserved, timestamp)
 }
 
-func Status(value string) entities.EntityDecoratorFunc {
-	return Text("status", value)
+func Status(value string, decorators ...properties.TextPropertyDecoratorFunc) entities.EntityDecoratorFunc {
+	nt := properties.NewTextProperty(value)
+	for _, decorator := range decorators {
+		decorator(nt)
+	}
+	return entities.P("status", nt)
 }
 
 func Temperature(t float64) entities.EntityDecoratorFunc {
