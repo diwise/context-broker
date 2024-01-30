@@ -18,13 +18,18 @@ const (
 	Name        string = "name"
 )
 
+// TemporalProperty holds any type of value and a string timestamp
+type TemporalImpl struct {
+	PropertyImpl
+	Value      any     `json:"value"`
+	ObservedAt *string `json:"observedAt,omitempty"`
+}
+
 // NumberProperty holds a float64 Value
 type NumberProperty struct {
-	PropertyImpl
-	Val         float64            `json:"value"`
-	ObservedAt_ *string            `json:"observedAt,omitempty"`
-	ObservedBy  types.Relationship `json:"observedBy,omitempty"`
-	UnitCode    *string            `json:"unitCode,omitempty"`
+	TemporalImpl
+	ObservedBy types.Relationship `json:"observedBy,omitempty"`
+	UnitCode   *string            `json:"unitCode,omitempty"`
 }
 
 func (np *NumberProperty) Type() string {
@@ -32,12 +37,12 @@ func (np *NumberProperty) Type() string {
 }
 
 func (np *NumberProperty) Value() any {
-	return np.Val
+	return np.TemporalImpl.Value
 }
 
 func (np *NumberProperty) ObservedAt() string {
-	if np.ObservedAt_ != nil {
-		return *np.ObservedAt_
+	if np.TemporalImpl.ObservedAt != nil {
+		return *np.TemporalImpl.ObservedAt
 	}
 	return ""
 }
@@ -45,8 +50,9 @@ func (np *NumberProperty) ObservedAt() string {
 // NewNumberProperty is a convenience function for creating NumberProperty instances
 func NewNumberProperty(value float64) *NumberProperty {
 	return &NumberProperty{
-		PropertyImpl: PropertyImpl{Type: "Property"},
-		Val:          value,
+		TemporalImpl: TemporalImpl{
+			Value: value,
+		},
 	}
 }
 
@@ -68,7 +74,7 @@ type NumberPropertyDecoratorFunc func(np *NumberProperty)
 
 func ObservedAt(timestamp string) NumberPropertyDecoratorFunc {
 	return func(np *NumberProperty) {
-		np.ObservedAt_ = &timestamp
+		np.TemporalImpl.ObservedAt = &timestamp
 	}
 }
 
@@ -106,17 +112,7 @@ func (dtp *DateTimeProperty) Value() any {
 
 // TextProperty stores values of type text
 type TextProperty struct {
-	PropertyImpl
-	Val         string  `json:"value"`
-	ObservedAt_ *string `json:"observedAt,omitempty"`
-}
-
-type TextPropertyDecoratorFunc func(np *TextProperty)
-
-func TxtObservedAt(timestamp string) TextPropertyDecoratorFunc {
-	return func(tp *TextProperty) {
-		tp.ObservedAt_ = &timestamp
-	}
+	TemporalImpl
 }
 
 func (tp *TextProperty) Type() string {
@@ -124,21 +120,19 @@ func (tp *TextProperty) Type() string {
 }
 
 func (tp *TextProperty) Value() any {
-	return tp.Val
+	return tp.TemporalImpl.Value
 }
 
 func (tp *TextProperty) ObservedAt() string {
-	if tp.ObservedAt_ != nil {
-		return *tp.ObservedAt_
+	if tp.TemporalImpl.ObservedAt != nil {
+		return *tp.TemporalImpl.ObservedAt
 	}
 	return ""
 }
 
 // TextListProperty stores values of type text list
 type TextListProperty struct {
-	PropertyImpl
-	Val         []string `json:"value"`
-	ObservedAt_ *string  `json:"observedAt,omitempty"`
+	TemporalImpl
 }
 
 func (tlp *TextListProperty) Type() string {
@@ -146,12 +140,12 @@ func (tlp *TextListProperty) Type() string {
 }
 
 func (tlp *TextListProperty) Value() any {
-	return tlp.Val
+	return tlp.TemporalImpl.Value
 }
 
 func (tlp *TextListProperty) ObservedAt() string {
-	if tlp.ObservedAt_ != nil {
-		return *tlp.ObservedAt_
+	if tlp.TemporalImpl.ObservedAt != nil {
+		return *tlp.TemporalImpl.ObservedAt
 	}
 	return ""
 }
@@ -159,8 +153,10 @@ func (tlp *TextListProperty) ObservedAt() string {
 // NewTextListProperty accepts a value as a string array and returns a new TextListProperty
 func NewTextListProperty(value []string) *TextListProperty {
 	return &TextListProperty{
-		PropertyImpl: PropertyImpl{Type: "Property"},
-		Val:          value,
+		TemporalImpl: TemporalImpl{
+			PropertyImpl: PropertyImpl{Type: "Property"},
+			Value:        value,
+		},
 	}
 }
 
@@ -173,8 +169,10 @@ func NewNumberPropertyFromString(value string) *NumberProperty {
 // NewTextProperty accepts a value as a string and returns a new TextProperty
 func NewTextProperty(value string) *TextProperty {
 	return &TextProperty{
-		PropertyImpl: PropertyImpl{Type: "Property"},
-		Val:          value,
+		TemporalImpl: TemporalImpl{
+			PropertyImpl: PropertyImpl{Type: "Property"},
+			Value:        value,
+		},
 	}
 }
 
@@ -196,7 +194,7 @@ func UnmarshalP(body map[string]any) (types.Property, error) {
 		// Parse property metadata
 		if obsA, ok := body["observedAt"]; ok {
 			if observedAt, ok := obsA.(string); ok {
-				np.ObservedAt_ = &observedAt
+				np.TemporalImpl.ObservedAt = &observedAt
 			}
 		}
 		if unit, ok := body["unitCode"]; ok {
@@ -219,7 +217,7 @@ func UnmarshalP(body map[string]any) (types.Property, error) {
 
 		if obsA, ok := body["observedAt"]; ok {
 			if observedAt, ok := obsA.(string); ok {
-				tp.ObservedAt_ = &observedAt
+				tp.TemporalImpl.ObservedAt = &observedAt
 			}
 		}
 		return tp, nil
