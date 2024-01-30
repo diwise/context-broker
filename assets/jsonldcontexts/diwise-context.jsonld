@@ -6,6 +6,7 @@
         "Lifebuoy": "diwise:Lifebuoy",
         "SportsField": "diwise:SportsField",
         "SportsVenue": "diwise:SportsVenue",
+        "SewagePumpingStation": "diwise:SewagePumpingStation",
         "dateLastPreparation": {
             "@id": "https://uri.diwise.io/ns/data-models#dateLastPreparation",
             "@type": "https://uri.etsi.org/ngsi-ld/DateTime"
