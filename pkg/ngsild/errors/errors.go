@@ -23,39 +23,39 @@ type myError struct {
 func (m myError) Error() string        { return m.msg }
 func (m myError) Is(target error) bool { return target == m.target }
 
-func NewAlreadyExistsError(msg string) error {
-	return &myError{
-		msg:    msg,
-		target: ErrAlreadyExists,
+func msgOrDefault(msg, def string) string {
+	if msg != "" {
+		return msg
 	}
+
+	return def
+}
+
+func newMyError(msg string, target error) error {
+	return &myError{
+		msg:    msgOrDefault(msg, target.Error()),
+		target: target,
+	}
+}
+
+func NewAlreadyExistsError(msg string) error {
+	return newMyError(msg, ErrAlreadyExists)
 }
 
 func NewBadRequestDataError(msg string) error {
-	return &myError{
-		msg:    msg,
-		target: ErrBadRequest,
-	}
+	return newMyError(msg, ErrBadRequest)
 }
 
 func NewInvalidRequestError(msg string) error {
-	return &myError{
-		msg:    msg,
-		target: ErrInvalidRequest,
-	}
+	return newMyError(msg, ErrInvalidRequest)
 }
 
 func NewNotFoundError(msg string) error {
-	return &myError{
-		msg:    msg,
-		target: ErrNotFound,
-	}
+	return newMyError(msg, ErrNotFound)
 }
 
 func NewUnknownTenantError(tenant string) error {
-	return &myError{
-		msg:    fmt.Sprintf("unknown tenant: %s", tenant),
-		target: ErrUnknownTenant,
-	}
+	return newMyError(fmt.Sprintf("unknown tenant: %s", tenant), ErrUnknownTenant)
 }
 
 // TODO: Move problem report handling to a single place (presentation layer)
