@@ -10,10 +10,13 @@ RUN go mod download
 
 COPY . .
 
-WORKDIR /app/cmd/context-broker
-
 ARG TARGETARCH
 ARG TARGETOS
+
+WORKDIR /app/cmd/context-broker
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build
+
+WORKDIR /app/cmd/troe-cleaner
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build
 
 
@@ -26,6 +29,7 @@ COPY --from=builder --chown=1001 /app/cmd/context-broker/context-broker /opt/diw
 COPY --chown=1001 assets/config/authz.rego /opt/diwise/config/authz.rego
 COPY --chown=1001 assets/config/default-config.yaml /opt/diwise/config/default.yaml
 COPY --chown=1001 assets/jsonldcontexts/*.jsonld /opt/diwise/contexts/
+COPY --from=builder --chown=1001 /app/cmd/troe-cleaner/troe-cleaner /opt/diwise/
 
 RUN chown -R 1001 /opt/diwise
 
