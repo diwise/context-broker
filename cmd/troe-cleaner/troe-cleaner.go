@@ -69,11 +69,11 @@ func main() {
 		l.Debug("done cleaning duplicates", slog.Int("count", len(dups)), slog.Time("end_time", time.Now()))
 	}
 
-	log.Debug("vacuume")
+	log.Debug("vacuum")
 
-	err = vacuume(ctx, p)
+	err = vacuum(ctx, p)
 	if err != nil {
-		log.Error("failed to vacuume table", "err", err.Error())
+		log.Error("failed to vacuum table", "err", err.Error())
 		os.Exit(1)
 	}
 
@@ -224,7 +224,7 @@ func deleteDuplicates(ctx context.Context, p *pgxpool.Pool, dups []string) error
 	return tx.Commit(ctx)
 }
 
-func vacuume(ctx context.Context, p *pgxpool.Pool) error {
+func vacuum(ctx context.Context, p *pgxpool.Pool) error {
 	_, err := p.Exec(ctx, "VACUUM ANALYZE attributes;")
 	if err != nil {
 		return err
