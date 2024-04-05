@@ -193,7 +193,7 @@ func (e *EntityImpl) UnmarshalJSON(data []byte) error {
 	}
 
 	if bytes.HasPrefix(header.Context, []byte("\"")) && bytes.HasSuffix(header.Context, []byte("\"")) {
-		ctxString := string(header.Context[1 : ctxLength-2])
+		ctxString := string(header.Context[1 : ctxLength-1])
 		e.context = []string{ctxString}
 	} else if bytes.HasPrefix(header.Context, []byte("[")) && bytes.HasSuffix(header.Context, []byte("]")) {
 		e.context = []string{}
