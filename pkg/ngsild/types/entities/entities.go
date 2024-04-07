@@ -123,6 +123,19 @@ func (e EntityImpl) Type() string {
 	return ""
 }
 
+func (e *EntityImpl) RemoveAttribute(predicate func(attributeType, attributeName string, contents any) bool) {
+	props := make(map[string]types.Property, len(e.properties))
+
+	for k, v := range e.properties {
+		if predicate(v.Type(), k, v) {
+			continue
+		}
+		props[k] = v
+	}
+
+	e.properties = props
+}
+
 func (e EntityImpl) ForEachAttribute(callback func(attributeType, attributeName string, contents any)) error {
 
 	for k, v := range e.properties {
