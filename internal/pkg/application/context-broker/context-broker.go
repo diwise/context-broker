@@ -2,6 +2,7 @@ package contextbroker
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"sort"
@@ -333,6 +334,29 @@ func (app *contextBrokerApp) MergeEntity(ctx context.Context, tenant, entityID s
 				}
 
 				cbClient := client.NewContextBrokerClient(src.Endpoint, client.Debug(app.debugClient))
+
+				current, err := cbClient.RetrieveEntity(ctx, entityID, map[string][]string{
+					"Accept": {"application/ld+json"},
+					"Link":   {entities.LinkHeader},
+				})
+				if err != nil {
+					return nil, err
+				}
+
+				fragmentImpl, ok := fragment.(*entities.EntityImpl)
+				if ok {
+					current.ForEachAttribute(func(ct, cn string, cc any) {
+						fragmentImpl.RemoveAttribute(func(ft, fn string, fc any) bool {
+							if ct == ft && cn == fn {
+								c, _ := json.Marshal(cc)
+								f, _ := json.Marshal(fc)
+								return string(c) == string(f)
+							}
+							return false
+						})
+					})
+				}
+
 				result, err := cbClient.MergeEntity(ctx, entityID, fragment, headers)
 				if err != nil {
 					return result, err
