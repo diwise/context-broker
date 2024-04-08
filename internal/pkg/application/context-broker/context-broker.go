@@ -348,24 +348,24 @@ func (app *contextBrokerApp) MergeEntity(ctx context.Context, tenant, entityID s
 
 				fragmentImpl, ok := fragment.(*entities.EntityImpl)
 				if ok {
+					eqFloat64 := func(a, b float64) bool {
+						return math.Abs(a-b) <= 0.0001
+					}
+					eqTime := func(a, b string) bool {
+						atime, err := time.Parse(time.RFC3339, a)
+						if err != nil {
+							return false
+						}
+						btime, err := time.Parse(time.RFC3339, b)
+						if err != nil {
+							return false
+						}
+						return atime.Equal(btime)
+					}
+
 					current.ForEachAttribute(func(ct, cn string, cc any) {
 						fragmentImpl.RemoveAttribute(func(ft, fn string, fc any) bool {
 							if ct == ft && cn == fn {
-								eqFloat64 := func(a, b float64) bool {
-									return math.Abs(a-b) <= 0.0001
-								}
-								eqTime := func(a, b string) bool {
-									atime, err := time.Parse(time.RFC3339, a)
-									if err != nil {
-										return false
-									}
-									btime, err := time.Parse(time.RFC3339, b)
-									if err != nil {
-										return false
-									}
-									return atime.Equal(btime)
-								}
-
 								switch cc.(type) {
 								case *properties.NumberProperty:
 									c := cc.(*properties.NumberProperty)
