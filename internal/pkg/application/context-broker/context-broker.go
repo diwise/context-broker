@@ -333,6 +333,7 @@ func (app *contextBrokerApp) MergeEntity(ctx context.Context, tenant, entityID s
 				}
 
 				cbClient := client.NewContextBrokerClient(src.Endpoint, client.Debug(app.debugClient))
+
 				result, err := cbClient.MergeEntity(ctx, entityID, fragment, headers)
 				if err != nil {
 					return result, err
