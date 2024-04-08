@@ -2,10 +2,12 @@ package contextbroker
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"math"
 	"regexp"
 	"sort"
+	"strings"
+	"time"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
 	"github.com/diwise/context-broker/internal/pkg/application/config"
@@ -15,6 +17,7 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/errors"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
+	"github.com/diwise/context-broker/pkg/ngsild/types/properties"
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 )
 
@@ -348,9 +351,33 @@ func (app *contextBrokerApp) MergeEntity(ctx context.Context, tenant, entityID s
 					current.ForEachAttribute(func(ct, cn string, cc any) {
 						fragmentImpl.RemoveAttribute(func(ft, fn string, fc any) bool {
 							if ct == ft && cn == fn {
-								c, _ := json.Marshal(cc)
-								f, _ := json.Marshal(fc)
-								return string(c) == string(f)
+								eqFloat64 := func(a, b float64) bool {
+									return math.Abs(a-b) <= 0.0001
+								}
+								eqTime := func(a, b string) bool {
+									atime, err := time.Parse(time.RFC3339, a)
+									if err != nil {
+										return false
+									}
+									btime, err := time.Parse(time.RFC3339, b)
+									if err != nil {
+										return false
+									}
+									return atime.Equal(btime)
+								}
+
+								switch cc.(type) {
+								case *properties.NumberProperty:
+									c := cc.(*properties.NumberProperty)
+									f := fc.(*properties.NumberProperty)
+									return eqFloat64(c.Val, f.Val) && eqTime(c.ObservedAt(), f.ObservedAt())
+								case *properties.TextProperty:
+									c := cc.(*properties.TextProperty)
+									f := fc.(*properties.TextProperty)
+									return strings.EqualFold(c.Val, f.Val) && eqTime(c.ObservedAt(), f.ObservedAt())
+								default:
+									return false
+								}
 							}
 							return false
 						})
