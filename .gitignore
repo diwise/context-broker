@@ -16,4 +16,4 @@
 
 .vscode/
 
-assets/config/*.test.* 
+*.test.*

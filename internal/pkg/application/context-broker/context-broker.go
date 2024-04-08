@@ -3,8 +3,11 @@ package contextbroker
 import (
 	"context"
 	"fmt"
+	"math"
 	"regexp"
 	"sort"
+	"strings"
+	"time"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
 	"github.com/diwise/context-broker/internal/pkg/application/config"
@@ -14,6 +17,7 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/errors"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
+	"github.com/diwise/context-broker/pkg/ngsild/types/properties"
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 )
 
@@ -333,6 +337,52 @@ func (app *contextBrokerApp) MergeEntity(ctx context.Context, tenant, entityID s
 				}
 
 				cbClient := client.NewContextBrokerClient(src.Endpoint, client.Debug(app.debugClient))
+
+				current, err := cbClient.RetrieveEntity(ctx, entityID, map[string][]string{
+					"Accept": {"application/ld+json"},
+					"Link":   {entities.LinkHeader},
+				})
+				if err != nil {
+					return nil, err
+				}
+
+				fragmentImpl, ok := fragment.(*entities.EntityImpl)
+				if ok {
+					eqFloat64 := func(a, b float64) bool {
+						return math.Abs(a-b) <= 0.0001
+					}
+					eqTime := func(a, b string) bool {
+						atime, err := time.Parse(time.RFC3339, a)
+						if err != nil {
+							return false
+						}
+						btime, err := time.Parse(time.RFC3339, b)
+						if err != nil {
+							return false
+						}
+						return atime.Equal(btime)
+					}
+
+					current.ForEachAttribute(func(ct, cn string, cc any) {
+						fragmentImpl.RemoveAttribute(func(ft, fn string, fc any) bool {
+							if ct == ft && cn == fn {
+								switch cc.(type) {
+								case *properties.NumberProperty:
+									c := cc.(*properties.NumberProperty)
+									f := fc.(*properties.NumberProperty)
+									return eqFloat64(c.Val, f.Val) && eqTime(c.ObservedAt(), f.ObservedAt())
+								case *properties.TextProperty:
+									c := cc.(*properties.TextProperty)
+									f := fc.(*properties.TextProperty)
+									return strings.EqualFold(c.Val, f.Val) && eqTime(c.ObservedAt(), f.ObservedAt())
+								default:
+									return false
+								}
+							}
+							return false
+						})
+					})
+				}
 
 				result, err := cbClient.MergeEntity(ctx, entityID, fragment, headers)
 				if err != nil {
