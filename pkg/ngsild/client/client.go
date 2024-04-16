@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/diwise/context-broker/pkg/ngsild"
 	"github.com/diwise/context-broker/pkg/ngsild/errors"
@@ -31,7 +32,7 @@ type ContextBrokerClient interface {
 	QueryEntities(ctx context.Context, entityTypes, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error)
 	RetrieveEntity(ctx context.Context, entityID string, headers map[string][]string) (types.Entity, error)
 	QueryTemporalEvolutionOfEntities(ctx context.Context, headers map[string][]string, parameters ...RequestDecoratorFunc) (*ngsild.QueryTemporalEntitiesResult, error)
-	RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityID string, headers map[string][]string, parameters ...RequestDecoratorFunc) (types.EntityTemporal, error)
+	RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityID string, headers map[string][]string, parameters ...RequestDecoratorFunc) (*ngsild.RetrieveTemporalEvolutionOfEntityResult, error)
 	MergeEntity(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error)
 	UpdateEntityAttributes(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error)
 	DeleteEntity(ctx context.Context, entityID string) (*ngsild.DeleteEntityResult, error)
@@ -192,7 +193,6 @@ func (c cbClient) QueryTemporalEvolutionOfEntities(ctx context.Context, headers 
 	response, responseBody, err := c.callContextSource(
 		ctx, http.MethodGet, c.baseURL+"/ngsi-ld/v1/temporal/entities"+urlparams, nil, headers,
 	)
-
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +233,7 @@ func (c cbClient) QueryTemporalEvolutionOfEntities(ctx context.Context, headers 
 	return qer, nil
 }
 
-func (c cbClient) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityID string, headers map[string][]string, parameters ...RequestDecoratorFunc) (types.EntityTemporal, error) {
+func (c cbClient) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityID string, headers map[string][]string, parameters ...RequestDecoratorFunc) (*ngsild.RetrieveTemporalEvolutionOfEntityResult, error) {
 	var err error
 
 	ctx, span := tracer.Start(ctx, "retrieve-entity-temporal",
@@ -256,7 +256,6 @@ func (c cbClient) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityI
 	response, responseBody, err := c.callContextSource(
 		ctx, http.MethodGet, requestURL, nil, headers,
 	)
-
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +271,44 @@ func (c cbClient) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityI
 		return nil, err
 	}
 
-	return entities.NewTemporalFromJSON(responseBody)
+	entity, err := entities.NewTemporalFromJSON(responseBody)
+	if err != nil {
+		return nil, err
+	}
+
+	result := ngsild.NewRetrieveTemporalEvolutionOfEntityResult(entity)
+
+	if response.StatusCode == http.StatusPartialContent {
+
+		contentRangeStr := response.Header.Get("Content-Range")
+
+		if contentRangeStr == "" {
+			return nil, fmt.Errorf("partial response code received, but no content range header was found")
+		}
+
+		contentRangeSli := strings.Split(contentRangeStr, "")
+
+		result.ContentRange = &ngsild.ContentRange{}
+
+		from := strings.Join(contentRangeSli[10:29], "")
+		startTime, err := time.Parse("2006-01-02T15:04:05", from)
+		if err != nil {
+			return nil, err
+		}
+
+		result.ContentRange.StartTime = &startTime
+
+		to := strings.Join(contentRangeSli[30:49], "")
+		endTime, err := time.Parse("2006-01-02T15:04:05", to)
+		if err != nil {
+			return nil, err
+		}
+
+		result.ContentRange.EndTime = &endTime
+
+	}
+
+	return result, nil
 }
 
 func (c cbClient) MergeEntity(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error) {

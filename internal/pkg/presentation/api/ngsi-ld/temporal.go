@@ -146,7 +146,6 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 			return
 		}
 
-		var entityTemporal types.EntityTemporal
 		var params cim.TemporalQueryParams
 
 		params, err = NewTemporalQueryParamsFromRequest(r)
@@ -156,7 +155,7 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 			return
 		}
 
-		entityTemporal, err = contextInformationManager.RetrieveTemporalEvolutionOfEntity(ctx, tenant, entityID, params, propagatedHeaders)
+		result, err := contextInformationManager.RetrieveTemporalEvolutionOfEntity(ctx, tenant, entityID, params, propagatedHeaders)
 
 		if err != nil {
 			log.Error("failed to retrieve temporal evolution of an entity", "err", err.Error())
@@ -164,7 +163,7 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 			return
 		}
 
-		responseBody, err := json.Marshal(entityTemporal)
+		responseBody, err := json.Marshal(result.Found)
 
 		if err != nil {
 			log.Error("failed to convert or marshal response entity", "err", err.Error())
@@ -173,7 +172,34 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 		}
 
 		w.Header().Add("Content-Type", contentType)
-		w.WriteHeader(http.StatusOK)
+
+		if result.ContentRange != nil {
+			w.Header().Add("Content-Range", fmt.Sprintf("DateTime %s-%s", result.ContentRange.StartTime.Format(time.RFC3339), result.ContentRange.EndTime.Format(time.RFC3339)))
+
+			w.Header().Add("Link", fmt.Sprintf(`<%s>; rel="self"; type="%s"`, r.URL.RequestURI(), contentType))
+
+			if rel, ok := params.TemporalRelation(); ok {
+				switch rel {
+				case "before":
+					//
+					next := fmt.Sprintf(`%s/ngsi-ld/v1/temporal/entities/%s?timeAt=%s&timerel=%s`, r.Header.Get("X-Forwarded-For"), entityID, result.ContentRange.StartTime.Format(time.RFC3339), rel)
+					w.Header().Add("Link", fmt.Sprintf(`<%s>; rel="next"; type="%s"`, next, contentType))
+				case "between":
+					requestEndTime, _ := params.EndTimeAt()
+					next := fmt.Sprintf(`%s/ngsi-ld/v1/temporal/entities/%s?endTimeAt=%s&timeAt=%s&timerel=%s`, r.Header.Get("X-Forwarded-For"), entityID, requestEndTime.Format(time.RFC3339), result.ContentRange.EndTime.Format(time.RFC3339), rel)
+					w.Header().Add("Link", fmt.Sprintf(`<%s>; rel="next"; type="%s"`, next, contentType))
+				case "after":
+					//
+					next := fmt.Sprintf(`%s/ngsi-ld/v1/temporal/entities/%s?timeAt=%s&timerel=%s`, r.Header.Get("X-Forwarded-For"), entityID, result.ContentRange.EndTime.Format(time.RFC3339), rel)
+					w.Header().Add("Link", fmt.Sprintf(`<%s>; rel="next"; type="%s"`, next, contentType))
+				}
+			}
+
+			w.WriteHeader(http.StatusPartialContent)
+		} else {
+			w.WriteHeader(http.StatusOK)
+		}
+
 		w.Write(responseBody)
 	})
 }

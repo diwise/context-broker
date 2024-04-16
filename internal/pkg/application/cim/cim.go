@@ -47,7 +47,7 @@ type EntityTemporalQuerier interface {
 }
 
 type EntityTemporalRetriever interface {
-	RetrieveTemporalEvolutionOfEntity(ctx context.Context, tenant, entityID string, params TemporalQueryParams, headers map[string][]string) (types.EntityTemporal, error)
+	RetrieveTemporalEvolutionOfEntity(ctx context.Context, tenant, entityID string, params TemporalQueryParams, headers map[string][]string) (*ngsild.RetrieveTemporalEvolutionOfEntityResult, error)
 }
 
 type EntityDeleter interface {

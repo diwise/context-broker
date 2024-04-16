@@ -266,15 +266,39 @@ func TestRetrieveTemporalEvolutionOfAnEntityWithSingleValue(t *testing.T) {
 	et, err := c.RetrieveTemporalEvolutionOfEntity(context.Background(), "id", headers, After(timeAt))
 	is.NoErr(err)
 
-	speeds := et.Property("speed")
+	speeds := et.Found.Property("speed")
 	is.Equal(1, len(speeds))
 	is.Equal(float64(120), speeds[0].Value())
 
-	etBytes, err := json.Marshal(et)
+	etBytes, err := json.Marshal(et.Found)
 	is.NoErr(err)
 
 	const expectation string = `{"@context":["http://example.org/ngsi-ld/latest/vehicle.jsonld","https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context-v1.5.jsonld"],"id":"urn:ngsi-ld:Vehicle:B9211","speed":[{"type":"Property","value":120,"observedAt":"2018-08-01T12:03:00Z"}],"type":"Vehicle"}`
 	is.Equal(string(etBytes), expectation)
+}
+
+func TestRetrieveTemporalEvolutionOfAnEntityReturnPartialResponseFailsOnEmptyContentRange(t *testing.T) {
+	is := is.New(t)
+
+	timeStr := "2023-01-22T11:59:43Z"
+
+	s := testutils.NewMockServiceThat(
+		Expects(is, expects.AnyInput()),
+		Returns(
+			response.ContentType("application/ld+json"),
+			response.Code(http.StatusPartialContent),
+			response.Body([]byte(temporalEntityResponseWithSingleValue)),
+		),
+	)
+	defer s.Close()
+
+	headers := map[string][]string{"Accept": {"application/ld+json"}}
+	timeAt, _ := time.Parse(time.RFC3339, timeStr)
+
+	c := NewContextBrokerClient(s.URL())
+	_, err := c.RetrieveTemporalEvolutionOfEntity(context.Background(), "id", headers, After(timeAt))
+
+	is.True(err != nil)
 }
 
 func TestRetrieveAggregatedTemporalEvolutionOfAnEntity(t *testing.T) {
