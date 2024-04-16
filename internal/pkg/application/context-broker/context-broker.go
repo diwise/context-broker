@@ -368,13 +368,16 @@ func (app *contextBrokerApp) MergeEntity(ctx context.Context, tenant, entityID s
 							if ct == ft && cn == fn {
 								switch cc.(type) {
 								case *properties.NumberProperty:
-									c := cc.(*properties.NumberProperty)
-									f := fc.(*properties.NumberProperty)
-									return eqFloat64(c.Val, f.Val) && eqTime(c.ObservedAt(), f.ObservedAt())
+									c, cok := cc.(*properties.NumberProperty)
+									f, fok := fc.(*properties.NumberProperty)
+									return cok && fok && eqFloat64(c.Val, f.Val) && eqTime(c.ObservedAt(), f.ObservedAt())
 								case *properties.TextProperty:
-									c := cc.(*properties.TextProperty)
-									f := fc.(*properties.TextProperty)
-									return strings.EqualFold(c.Val, f.Val) && eqTime(c.ObservedAt(), f.ObservedAt())
+									c, cok := cc.(*properties.TextProperty)
+									f, fok := fc.(*properties.TextProperty)
+									return cok && fok && strings.EqualFold(c.Val, f.Val) && eqTime(c.ObservedAt(), f.ObservedAt())
+								case *properties.TextListProperty:
+									//TODO: impl support for TextListProperty?
+									return false
 								default:
 									return false
 								}
