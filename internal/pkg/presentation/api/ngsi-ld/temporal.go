@@ -199,11 +199,10 @@ func nextLinkHeader(params cim.TemporalQueryParams, result *ngsild.RetrieveTempo
 		}
 		return fmt.Sprintf(`<%s/ngsi-ld/v1/temporal/entities/%s?timeAt=%s&timerel=%s>; rel="next"; type="%s"`, r.Header.Get("X-Forwarded-For"), entityID, result.ContentRange.StartTime.Format(time.RFC3339), rel, contentType)
 	case "between":
-		if lastN, ok := params.LastN(); ok {
-			timeAt, _ := params.TimeAt()
-			return fmt.Sprintf(`<%s/ngsi-ld/v1/temporal/entities/%s?endTimeAt=%s&timeAt=%s&timerel=%s&lastN=%d>; rel="next"; type="%s"`, r.Header.Get("X-Forwarded-For"), entityID, timeAt.Format(time.RFC3339), result.ContentRange.StartTime.Format(time.RFC3339), rel, lastN, contentType)
-		}
 		requestEndTime, _ := params.EndTimeAt()
+		if lastN, ok := params.LastN(); ok {
+			return fmt.Sprintf(`<%s/ngsi-ld/v1/temporal/entities/%s?endTimeAt=%s&timeAt=%s&timerel=%s&lastN=%d>; rel="next"; type="%s"`, r.Header.Get("X-Forwarded-For"), entityID, requestEndTime.Format(time.RFC3339), result.ContentRange.EndTime.Format(time.RFC3339), rel, lastN, contentType)
+		}
 		return fmt.Sprintf(`<%s/ngsi-ld/v1/temporal/entities/%s?endTimeAt=%s&timeAt=%s&timerel=%s>; rel="next"; type="%s"`, r.Header.Get("X-Forwarded-For"), entityID, requestEndTime.Format(time.RFC3339), result.ContentRange.EndTime.Format(time.RFC3339), rel, contentType)
 	case "after":
 		url := fmt.Sprintf(`<%s/ngsi-ld/v1/temporal/entities/%s?timeAt=%s&timerel=%s>; rel="next"; type="%s"`, r.Header.Get("X-Forwarded-For"), entityID, result.ContentRange.EndTime.Format(time.RFC3339), rel, contentType)
