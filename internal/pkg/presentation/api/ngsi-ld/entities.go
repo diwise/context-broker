@@ -246,13 +246,17 @@ func NewQueryEntitiesHandler(
 			query.Set("limit", fmt.Sprintf("%d", result.Limit))
 
 			offset := result.Offset - result.Limit
-			if offset >= 0 {
+
+			if result.Offset > 0 {
+				if offset < 0 {
+					offset = 0
+				}
 				query.Set("offset", fmt.Sprintf("%d", offset))
 				w.Header().Add("Link", fmt.Sprintf(`<%s?%s>; rel="prev"; type="%s"`, reqUrl, query.Encode(), contentType))
 			}
 
 			offset = result.Offset + result.Limit
-			if offset < int(result.TotalCount) {
+			if result.Count == result.Limit {
 				query.Set("offset", fmt.Sprintf("%d", offset))
 				w.Header().Add("Link", fmt.Sprintf(`<%s?%s>; rel="next"; type="%s"`, reqUrl, query.Encode(), contentType))
 			}

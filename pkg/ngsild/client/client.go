@@ -382,10 +382,9 @@ func (c cbClient) QueryEntities(ctx context.Context, entityTypes, entityAttribut
 	)
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-	//TODO: change parameter query to be []string?
 	queryValues, err := url.ParseQuery(query[strings.Index(query, "?")+1:])
-	if !queryValues.Has("count") {
-		queryValues.Add("count", "true")
+	if err != nil {
+		return nil, fmt.Errorf("invalid query parameter")
 	}
 
 	endpoint := fmt.Sprintf("%s/ngsi-ld/v1/entities/?%s", c.baseURL, queryValues.Encode())
@@ -432,7 +431,7 @@ func (c cbClient) QueryEntities(ctx context.Context, entityTypes, entityAttribut
 		}
 	}
 
-	qer.PartialResult = qer.TotalCount != int64(qer.Count)
+	qer.PartialResult = qer.Count == qer.Limit || qer.Offset != 0
 
 	go func() {
 		for idx := range entities {
