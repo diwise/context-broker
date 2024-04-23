@@ -173,13 +173,15 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 
 		w.Header().Add("Content-Type", contentType)
 
-		if result.ContentRange != nil {
+		if result.PartialResult {
+			if result.ContentRange == nil {
+				mapCIMToNGSILDError(w, fmt.Errorf("content range missing for partial result"), traceID)
+				return
+			}
+
 			w.Header().Add("Content-Range", fmt.Sprintf("DateTime %s-%s", result.ContentRange.StartTime.Format(time.RFC3339), result.ContentRange.EndTime.Format(time.RFC3339)))
-
 			w.Header().Add("Link", fmt.Sprintf(`<%s>; rel="self"; type="%s"`, r.URL.RequestURI(), contentType))
-
 			w.Header().Add("Link", nextLinkHeader(params, result, r, entityID, contentType))
-
 			w.WriteHeader(http.StatusPartialContent)
 		} else {
 			w.WriteHeader(http.StatusOK)

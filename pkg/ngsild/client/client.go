@@ -279,7 +279,6 @@ func (c cbClient) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityI
 	result := ngsild.NewRetrieveTemporalEvolutionOfEntityResult(entity)
 
 	if response.StatusCode == http.StatusPartialContent {
-
 		contentRangeStr := response.Header.Get("Content-Range")
 
 		if contentRangeStr == "" {
@@ -289,6 +288,7 @@ func (c cbClient) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityI
 		contentRangeSli := strings.Split(contentRangeStr, "")
 
 		result.ContentRange = &ngsild.ContentRange{}
+		result.PartialResult = true
 
 		from := strings.Join(contentRangeSli[10:29], "")
 		startTime, err := time.Parse("2006-01-02T15:04:05", from)
@@ -305,7 +305,6 @@ func (c cbClient) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityI
 		}
 
 		result.ContentRange.EndTime = &endTime
-
 	}
 
 	return result, nil
@@ -383,7 +382,14 @@ func (c cbClient) QueryEntities(ctx context.Context, entityTypes, entityAttribut
 	)
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-	response, responseBody, err := c.callContextSource(ctx, http.MethodGet, c.baseURL+query, nil, headers)
+	//TODO: change parameter query to be []string?
+	queryValues, err := url.ParseQuery(query[strings.Index(query, "?")+1:])
+	if !queryValues.Has("count") {
+		queryValues.Add("count", "true")
+	}
+
+	endpoint := fmt.Sprintf("%s/ngsi-ld/v1/entities/?%s", c.baseURL, queryValues.Encode())
+	response, responseBody, err := c.callContextSource(ctx, http.MethodGet, endpoint, nil, headers)
 	if err != nil {
 		return nil, err
 	}
@@ -412,12 +418,29 @@ func (c cbClient) QueryEntities(ctx context.Context, entityTypes, entityAttribut
 		qer.TotalCount = totalCount
 	}
 
+	qer.Count = len(entities)
+
+	if queryValues.Has("offset") {
+		if i, err := strconv.ParseInt(queryValues.Get("offset"), 0, 64); err == nil {
+			qer.Offset = int(i)
+		}
+	}
+
+	if queryValues.Has("limit") {
+		if i, err := strconv.ParseInt(queryValues.Get("limit"), 0, 64); err == nil {
+			qer.Limit = int(i)
+		}
+	}
+
+	qer.PartialResult = qer.TotalCount != int64(qer.Count)
+
 	go func() {
 		for idx := range entities {
 			qer.Found <- entities[idx]
 		}
 		qer.Found <- nil
 	}()
+
 	return qer, nil
 }
 
