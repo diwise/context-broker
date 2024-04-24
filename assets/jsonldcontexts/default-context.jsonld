@@ -8,6 +8,8 @@
       "SportsVenue": "diwise:SportsVenue",
       "SewagePumpingStation": "diwise:SewagePumpingStation",
       "Sewer": "diwise:Sewer",
+      "CombinedSewageOverflow": "diwise:CombinedSewageOverflow",
+      "WasteContainer": "diwise:WasteContainer",
       "dateLastPreparation": {
         "@id": "https://uri.diwise.io/ns/data-models#dateLastPreparation",
         "@type": "https://uri.etsi.org/ngsi-ld/DateTime"

@@ -231,7 +231,7 @@ func (app *contextBrokerApp) QueryTemporalEvolutionOfEntities(ctx context.Contex
 	return nil, errors.NewNotFoundError("no context source found that could provide temporal evolution of entities")
 }
 
-func (app *contextBrokerApp) RetrieveTemporalEvolutionOfEntity(ctx context.Context, tenant, entityID string, params cim.TemporalQueryParams, headers map[string][]string) (types.EntityTemporal, error) {
+func (app *contextBrokerApp) RetrieveTemporalEvolutionOfEntity(ctx context.Context, tenant, entityID string, params cim.TemporalQueryParams, headers map[string][]string) (*ngsild.RetrieveTemporalEvolutionOfEntityResult, error) {
 	sources, ok := app.tenants[tenant]
 	if !ok {
 		return nil, errors.NewUnknownTenantError(tenant)

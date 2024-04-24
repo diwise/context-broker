@@ -2,6 +2,7 @@ package ngsild
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 )
@@ -20,15 +21,41 @@ func (r CreateEntityResult) Location() string {
 	return r.location
 }
 
+type RetrieveTemporalEvolutionOfEntityResult struct {
+	Found         types.EntityTemporal
+	ContentRange  *ContentRange
+	PartialResult bool
+}
+
+type ContentRange struct {
+	StartTime *time.Time
+	EndTime   *time.Time
+}
+
+func NewRetrieveTemporalEvolutionOfEntityResult(entity types.EntityTemporal) *RetrieveTemporalEvolutionOfEntityResult {
+	return &RetrieveTemporalEvolutionOfEntityResult{
+		Found:        entity,
+		ContentRange: nil,
+	}
+}
+
 type QueryEntitiesResult struct {
-	Found      chan (types.Entity)
-	TotalCount int64
+	Found         chan (types.Entity)
+	TotalCount    int64
+	Count         int
+	Offset        int
+	Limit         int
+	PartialResult bool
 }
 
 func NewQueryEntitiesResult() *QueryEntitiesResult {
 	qer := &QueryEntitiesResult{
-		Found:      make(chan types.Entity),
-		TotalCount: -1,
+		Found:         make(chan types.Entity),
+		TotalCount:    -1,
+		Count:         0,
+		Offset:        0,
+		Limit:         20, // default value
+		PartialResult: false,
 	}
 	return qer
 }
