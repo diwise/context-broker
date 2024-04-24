@@ -146,7 +146,6 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 			return
 		}
 
-		var entityTemporal types.EntityTemporal
 		var params cim.TemporalQueryParams
 
 		params, err = NewTemporalQueryParamsFromRequest(r)
@@ -156,7 +155,7 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 			return
 		}
 
-		entityTemporal, err = contextInformationManager.RetrieveTemporalEvolutionOfEntity(ctx, tenant, entityID, params, propagatedHeaders)
+		result, err := contextInformationManager.RetrieveTemporalEvolutionOfEntity(ctx, tenant, entityID, params, propagatedHeaders)
 
 		if err != nil {
 			log.Error("failed to retrieve temporal evolution of an entity", "err", err.Error())
@@ -164,7 +163,7 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 			return
 		}
 
-		responseBody, err := json.Marshal(entityTemporal)
+		responseBody, err := json.Marshal(result.Found)
 
 		if err != nil {
 			log.Error("failed to convert or marshal response entity", "err", err.Error())
@@ -173,9 +172,49 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 		}
 
 		w.Header().Add("Content-Type", contentType)
-		w.WriteHeader(http.StatusOK)
+
+		if result.PartialResult {
+			if result.ContentRange == nil {
+				mapCIMToNGSILDError(w, fmt.Errorf("content range missing for partial result"), traceID)
+				return
+			}
+
+			w.Header().Add("Content-Range", fmt.Sprintf("DateTime %s-%s", result.ContentRange.StartTime.Format(time.RFC3339), result.ContentRange.EndTime.Format(time.RFC3339)))
+			w.Header().Add("Link", fmt.Sprintf(`<%s>; rel="self"; type="%s"`, r.URL.RequestURI(), contentType))
+			w.Header().Add("Link", nextLinkHeader(params, result, r, entityID, contentType))
+			w.WriteHeader(http.StatusPartialContent)
+		} else {
+			w.WriteHeader(http.StatusOK)
+		}
+
 		w.Write(responseBody)
 	})
+}
+
+func nextLinkHeader(params cim.TemporalQueryParams, result *ngsild.RetrieveTemporalEvolutionOfEntityResult, r *http.Request, entityID, contentType string) string {
+	rel, _ := params.TemporalRelation()
+
+	switch rel {
+	case "before":
+		if lastN, ok := params.LastN(); ok {
+			return fmt.Sprintf(`<%s/ngsi-ld/v1/temporal/entities/%s?timeAt=%s&timerel=%s&lastN=%d>; rel="next"; type="%s"`, r.Header.Get("X-Forwarded-For"), entityID, result.ContentRange.EndTime.Format(time.RFC3339), rel, lastN, contentType)
+		}
+		return fmt.Sprintf(`<%s/ngsi-ld/v1/temporal/entities/%s?timeAt=%s&timerel=%s>; rel="next"; type="%s"`, r.Header.Get("X-Forwarded-For"), entityID, result.ContentRange.StartTime.Format(time.RFC3339), rel, contentType)
+	case "between":
+		requestEndTime, _ := params.EndTimeAt()
+		if lastN, ok := params.LastN(); ok {
+			return fmt.Sprintf(`<%s/ngsi-ld/v1/temporal/entities/%s?endTimeAt=%s&timeAt=%s&timerel=%s&lastN=%d>; rel="next"; type="%s"`, r.Header.Get("X-Forwarded-For"), entityID, requestEndTime.Format(time.RFC3339), result.ContentRange.EndTime.Format(time.RFC3339), rel, lastN, contentType)
+		}
+		return fmt.Sprintf(`<%s/ngsi-ld/v1/temporal/entities/%s?endTimeAt=%s&timeAt=%s&timerel=%s>; rel="next"; type="%s"`, r.Header.Get("X-Forwarded-For"), entityID, requestEndTime.Format(time.RFC3339), result.ContentRange.EndTime.Format(time.RFC3339), rel, contentType)
+	case "after":
+		url := fmt.Sprintf(`<%s/ngsi-ld/v1/temporal/entities/%s?timeAt=%s&timerel=%s>; rel="next"; type="%s"`, r.Header.Get("X-Forwarded-For"), entityID, result.ContentRange.EndTime.Format(time.RFC3339), rel, contentType)
+		if lastN, ok := params.LastN(); ok {
+			url = url + fmt.Sprintf("&lastN=%d", lastN)
+		}
+		return url
+	}
+
+	return ""
 }
 
 func NewTemporalQueryParamsFromRequest(r *http.Request) (cim.TemporalQueryParams, error) {

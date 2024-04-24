@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
-	"github.com/diwise/context-broker/pkg/ngsild/types"
+	"github.com/diwise/context-broker/pkg/ngsild"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"github.com/matryer/is"
 )
@@ -15,8 +15,13 @@ func TestRetrieveTemporalEvolutionOfAnEntity(t *testing.T) {
 	is, ts, app := setupTest(t)
 	defer ts.Close()
 
-	app.RetrieveTemporalEvolutionOfEntityFunc = func(ctx context.Context, tenant string, entityID string, params cim.TemporalQueryParams, headers map[string][]string) (types.EntityTemporal, error) {
-		return entities.NewTemporalFromJSON([]byte(indentedTemporalEvolutionOfEntity))
+	app.RetrieveTemporalEvolutionOfEntityFunc = func(ctx context.Context, tenant string, entityID string, params cim.TemporalQueryParams, headers map[string][]string) (*ngsild.RetrieveTemporalEvolutionOfEntityResult, error) {
+		entity, err := entities.NewTemporalFromJSON([]byte(indentedTemporalEvolutionOfEntity))
+		is.NoErr(err)
+
+		result := ngsild.NewRetrieveTemporalEvolutionOfEntityResult(entity)
+
+		return result, nil
 	}
 
 	resp, respBody := testRequest(is, ts, http.MethodGet, acceptJSONLD, "/ngsi-ld/v1/temporal/entities/someid", nil)

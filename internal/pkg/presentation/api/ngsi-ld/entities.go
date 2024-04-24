@@ -239,8 +239,30 @@ func NewQueryEntitiesHandler(
 		if result.TotalCount >= 0 {
 			w.Header().Add("NGSILD-Results-Count", fmt.Sprintf("%d", result.TotalCount))
 		}
+
+		if result.PartialResult {
+			reqUrl := r.URL.Path
+			query, _ := url.ParseQuery(r.URL.RawQuery)
+			query.Set("limit", fmt.Sprintf("%d", result.Limit))
+
+			offset := result.Offset - result.Limit
+
+			if result.Offset > 0 {
+				if offset < 0 {
+					offset = 0
+				}
+				query.Set("offset", fmt.Sprintf("%d", offset))
+				w.Header().Add("Link", fmt.Sprintf(`<%s?%s>; rel="prev"; type="%s"`, reqUrl, query.Encode(), contentType))
+			}
+
+			offset = result.Offset + result.Limit
+			if result.Count == result.Limit {
+				query.Set("offset", fmt.Sprintf("%d", offset))
+				w.Header().Add("Link", fmt.Sprintf(`<%s?%s>; rel="next"; type="%s"`, reqUrl, query.Encode(), contentType))
+			}
+		}
+
 		w.WriteHeader(http.StatusOK)
-		// TODO: Add a RFC 8288 Link header with information about previous and/or next page if they exist
 		w.Write(responseBody)
 	})
 }
