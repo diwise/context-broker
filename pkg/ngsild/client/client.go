@@ -387,7 +387,7 @@ func (c cbClient) QueryEntities(ctx context.Context, entityTypes, entityAttribut
 		return nil, fmt.Errorf("invalid query parameter")
 	}
 
-	endpoint := fmt.Sprintf("%s/ngsi-ld/v1/entities/?%s", c.baseURL, queryValues.Encode())
+	endpoint := fmt.Sprintf("%s/ngsi-ld/v1/entities?%s", c.baseURL, queryValues.Encode())
 	response, responseBody, err := c.callContextSource(ctx, http.MethodGet, endpoint, nil, headers)
 	if err != nil {
 		return nil, err
