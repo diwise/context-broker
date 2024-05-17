@@ -180,8 +180,11 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 			}
 
 			w.Header().Add("Content-Range", fmt.Sprintf("DateTime %s-%s", result.ContentRange.StartTime.Format(time.RFC3339), result.ContentRange.EndTime.Format(time.RFC3339)))
-			w.Header().Add("Link", fmt.Sprintf(`<%s>; rel="self"; type="%s"`, r.URL.RequestURI(), contentType))
-			w.Header().Add("Link", nextLinkHeader(params, result, r, entityID, contentType))
+			if _, ok := params.LastN(); !ok {
+				w.Header().Add("Link", createLinkHeader(params, result, r, entityID, contentType, "self"))
+				w.Header().Add("Link", createLinkHeader(params, result, r, entityID, contentType, "next"))
+			}
+
 			w.WriteHeader(http.StatusPartialContent)
 		} else {
 			w.WriteHeader(http.StatusOK)
@@ -191,27 +194,45 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 	})
 }
 
-func nextLinkHeader(params cim.TemporalQueryParams, result *ngsild.RetrieveTemporalEvolutionOfEntityResult, r *http.Request, entityID, contentType string) string {
+const beforeLinkResponse string = `%s/ngsi-ld/v1/temporal/entities/%s?timeAt=%s&timerel=before`
+const betweenLinkResponse string = `%s/ngsi-ld/v1/temporal/entities/%s?endTimeAt=%s&timeAt=%s&timerel=between`
+const afterLinkResponse string = `%s/ngsi-ld/v1/temporal/entities/%s?timeAt=%s&timerel=after`
+
+func createLinkHeader(params cim.TemporalQueryParams, result *ngsild.RetrieveTemporalEvolutionOfEntityResult, r *http.Request, entityID, contentType, pageName string) string {
 	rel, _ := params.TemporalRelation()
+	resultStartTime := result.ContentRange.StartTime.Format(time.RFC3339)
+	resultEndTime := result.ContentRange.EndTime.Format(time.RFC3339)
+
+	requestStartTime, _ := params.TimeAt()
+	requestEndTime, _ := params.EndTimeAt()
+
+	hostName := r.Header.Get("X-Forwarded-For")
 
 	switch rel {
 	case "before":
-		if lastN, ok := params.LastN(); ok {
-			return fmt.Sprintf(`<%s/ngsi-ld/v1/temporal/entities/%s?timeAt=%s&timerel=%s&lastN=%d>; rel="next"; type="%s"`, r.Header.Get("X-Forwarded-For"), entityID, result.ContentRange.EndTime.Format(time.RFC3339), rel, lastN, contentType)
+		link := ""
+		if pageName == "self" {
+			link = fmt.Sprintf(beforeLinkResponse, hostName, entityID, resultStartTime)
+		} else if pageName == "next" {
+			link = fmt.Sprintf(beforeLinkResponse, hostName, entityID, resultEndTime)
 		}
-		return fmt.Sprintf(`<%s/ngsi-ld/v1/temporal/entities/%s?timeAt=%s&timerel=%s>; rel="next"; type="%s"`, r.Header.Get("X-Forwarded-For"), entityID, result.ContentRange.StartTime.Format(time.RFC3339), rel, contentType)
+		return fmt.Sprintf(`<%s>; rel="%s"; type="%s"`, link, pageName, contentType)
 	case "between":
-		requestEndTime, _ := params.EndTimeAt()
-		if lastN, ok := params.LastN(); ok {
-			return fmt.Sprintf(`<%s/ngsi-ld/v1/temporal/entities/%s?endTimeAt=%s&timeAt=%s&timerel=%s&lastN=%d>; rel="next"; type="%s"`, r.Header.Get("X-Forwarded-For"), entityID, requestEndTime.Format(time.RFC3339), result.ContentRange.EndTime.Format(time.RFC3339), rel, lastN, contentType)
+		link := ""
+		if pageName == "self" {
+			link = fmt.Sprintf(betweenLinkResponse, hostName, entityID, resultEndTime, resultStartTime)
+		} else if pageName == "next" {
+			link = fmt.Sprintf(betweenLinkResponse, hostName, entityID, requestEndTime.Format(time.RFC3339), resultEndTime)
 		}
-		return fmt.Sprintf(`<%s/ngsi-ld/v1/temporal/entities/%s?endTimeAt=%s&timeAt=%s&timerel=%s>; rel="next"; type="%s"`, r.Header.Get("X-Forwarded-For"), entityID, requestEndTime.Format(time.RFC3339), result.ContentRange.EndTime.Format(time.RFC3339), rel, contentType)
+		return fmt.Sprintf(`<%s>; rel="%s"; type="%s"`, link, pageName, contentType)
 	case "after":
-		url := fmt.Sprintf(`<%s/ngsi-ld/v1/temporal/entities/%s?timeAt=%s&timerel=%s>; rel="next"; type="%s"`, r.Header.Get("X-Forwarded-For"), entityID, result.ContentRange.EndTime.Format(time.RFC3339), rel, contentType)
-		if lastN, ok := params.LastN(); ok {
-			url = url + fmt.Sprintf("&lastN=%d", lastN)
+		link := ""
+		if pageName == "self" {
+			link = fmt.Sprintf(afterLinkResponse, hostName, entityID, requestStartTime.Format(time.RFC3339))
+		} else if pageName == "next" {
+			link = fmt.Sprintf(afterLinkResponse, hostName, entityID, resultEndTime)
 		}
-		return url
+		return fmt.Sprintf(`<%s>; rel="%s"; type="%s"`, link, pageName, contentType)
 	}
 
 	return ""
