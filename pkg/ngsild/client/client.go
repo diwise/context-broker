@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	log "log/slog"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -67,7 +68,7 @@ func NewContextBrokerClient(broker string, options ...func(*cbClient)) ContextBr
 	c := &cbClient{
 		baseURL: broker,
 		tenant:  entities.DefaultNGSITenant,
-		debug:   false,
+		debug:   true,
 		httpClient: http.Client{
 			Transport: otelhttp.NewTransport(http.DefaultTransport),
 		},
@@ -278,8 +279,14 @@ func (c cbClient) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityI
 
 	result := ngsild.NewRetrieveTemporalEvolutionOfEntityResult(entity)
 
+	distances, _ := json.Marshal(result.Found.Property("distance"))
+
+	fmt.Printf("TEMPORAL RESULT: %s\n", distances)
+
 	if response.StatusCode == http.StatusPartialContent {
 		contentRangeStr := response.Header.Get("Content-Range")
+
+		fmt.Printf("context range header: %s\n", contentRangeStr)
 
 		if contentRangeStr == "" {
 			return nil, fmt.Errorf("partial response code received, but no content range header was found")
@@ -291,16 +298,24 @@ func (c cbClient) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityI
 		result.PartialResult = true
 
 		from := strings.Join(contentRangeSli[10:29], "")
-		startTime, err := time.Parse("2006-01-02T15:04:05", from)
+
+		fmt.Printf("split content range header from: %s\n", from)
+
+		startTime, err := time.Parse(time.RFC3339, from+"Z")
 		if err != nil {
+			log.Error(fmt.Sprintf("failed parse startTime: %s from query parameter from: %s", startTime, from), "err", err.Error())
 			return nil, err
 		}
 
 		result.ContentRange.StartTime = &startTime
 
 		to := strings.Join(contentRangeSli[30:49], "")
-		endTime, err := time.Parse("2006-01-02T15:04:05", to)
+
+		fmt.Printf("split content range header to: %s\n", to)
+
+		endTime, err := time.Parse(time.RFC3339, to+"Z")
 		if err != nil {
+			log.Error(fmt.Sprintf("failed parse endTime: %s from query parameter to: %s", endTime, to), "err", err.Error())
 			return nil, err
 		}
 

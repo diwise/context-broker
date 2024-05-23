@@ -301,6 +301,34 @@ func TestRetrieveTemporalEvolutionOfAnEntityReturnPartialResponseFailsOnEmptyCon
 	is.True(err != nil)
 }
 
+func TestRetrieveTemporalEvolutionParsesDatesFromContentRangeHeaderCorrectly(t *testing.T) {
+	is := is.New(t)
+
+	timeAtStr := "2023-01-22T11:59:43Z"
+	endTimeAtStr := "2025-01-22T11:59:43Z"
+
+	s := testutils.NewMockServiceThat(
+		Expects(is, expects.AnyInput()),
+		Returns(
+			response.ContentType("application/ld+json"),
+			response.Header("Content-Range", "date-time 2006-03-21T14:35:31-2024-04-30T12:26:24/*"),
+			response.Code(http.StatusPartialContent),
+			response.Body([]byte(temporalEntityResponseWithSingleValue)),
+		),
+	)
+	defer s.Close()
+
+	headers := map[string][]string{"Accept": {"application/ld+json"}}
+	timeAt, _ := time.Parse(time.RFC3339, timeAtStr)
+	endTimeAt, _ := time.Parse(time.RFC3339, endTimeAtStr)
+
+	c := NewContextBrokerClient(s.URL())
+	result, err := c.RetrieveTemporalEvolutionOfEntity(context.Background(), "id", headers, Between(timeAt, endTimeAt))
+	is.NoErr(err)
+
+	is.True(result.PartialResult)
+}
+
 func TestRetrieveAggregatedTemporalEvolutionOfAnEntity(t *testing.T) {
 	is := is.New(t)
 

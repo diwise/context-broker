@@ -128,6 +128,8 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 		)
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
+		fmt.Printf("entered rteoae handler\n")
+
 		contentType := r.Header.Get("Accept")
 		if contentType == "" {
 			contentType = "application/ld+json"
@@ -154,6 +156,18 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 			ngsierrors.ReportNewBadRequestData(w, err.Error(), traceID)
 			return
 		}
+
+		timeAt, isNotZero := params.TimeAt()
+		if !isNotZero {
+			fmt.Printf("timeAt is not ok")
+		}
+
+		endTimeAt, isNotZero := params.EndTimeAt()
+		if !isNotZero {
+			fmt.Printf("endTimeAt is not ok")
+		}
+
+		fmt.Printf("params sent to CIM: \ntimeAt: %s, endTimeAt: %s\n", timeAt, endTimeAt)
 
 		result, err := contextInformationManager.RetrieveTemporalEvolutionOfEntity(ctx, tenant, entityID, params, propagatedHeaders)
 
@@ -262,10 +276,14 @@ func NewTemporalQueryParamsFromRequest(r *http.Request) (cim.TemporalQueryParams
 			return parseTimeParamValue(r.URL.Query().Get(name), name)
 		}
 
+		fmt.Printf("timeAt before parse: %s\n", qp.timeAt)
+
 		qp.timeAt, err = parseTimeParamValueByName("timeAt")
 		if err != nil {
 			return nil, err
 		}
+
+		fmt.Printf("timeAt after parse: %s\n", qp.timeAt)
 
 		if qp.timeAt.IsZero() {
 			return nil, errors.New("temporal queries with a relation must include a timeAt parameter")
@@ -276,6 +294,8 @@ func NewTemporalQueryParamsFromRequest(r *http.Request) (cim.TemporalQueryParams
 			if err != nil {
 				return nil, err
 			}
+
+			fmt.Printf("endTimeAt after parse: %s\n", qp.endTimeAt)
 
 			if qp.endTimeAt.IsZero() {
 				return nil, errors.New("temporal queries with relation 'between' must include an endTimeAt parameter")
@@ -378,6 +398,8 @@ func parseTimeParamValue(t, paramName string) (time.Time, error) {
 	if t == "" {
 		return time.Time{}, nil
 	}
+
+	fmt.Printf("%s in parseTimeParamValue: %s\n", paramName, t)
 
 	timeAt, err := time.Parse(time.RFC3339, t)
 	if err != nil {
