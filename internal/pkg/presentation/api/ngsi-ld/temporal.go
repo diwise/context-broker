@@ -179,7 +179,11 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 				return
 			}
 
-			w.Header().Add("Content-Range", fmt.Sprintf("DateTime %s-%s", result.ContentRange.StartTime.Format(time.RFC3339), result.ContentRange.EndTime.Format(time.RFC3339)))
+			startTime := result.ContentRange.StartTime.UTC().Format(time.RFC3339)
+			endTime := result.ContentRange.EndTime.UTC().Format(time.RFC3339)
+			contentRangeHeader := fmt.Sprintf("DateTime %s-%s/*", startTime, endTime)
+
+			w.Header().Add("Content-Range", contentRangeHeader)
 			if _, ok := params.LastN(); !ok {
 				w.Header().Add("Link", createLinkHeader(params, result, r, entityID, contentType, "self"))
 				w.Header().Add("Link", createLinkHeader(params, result, r, entityID, contentType, "next"))
