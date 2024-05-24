@@ -279,18 +279,24 @@ func (c cbClient) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityI
 	result := ngsild.NewRetrieveTemporalEvolutionOfEntityResult(entity)
 
 	if response.StatusCode == http.StatusPartialContent {
-		contentRangeStr := response.Header.Get("Content-Range")
+		contentRange := response.Header.Get("Content-Range")
 
-		if contentRangeStr == "" {
+		if contentRange == "" {
 			return nil, fmt.Errorf("partial response code received, but no content range header was found")
-		}
+		}					
 
-		contentRangeSli := strings.Split(contentRangeStr, "")
-
+		// MINTAKA 0.6 sets content-range to "date-time 2006-01-02T15:04:05-2007-01-02T15:04:05/*"
+		// but ETSI GS CIM 009 V1.8.1 states that the format should be "DateTime 2006-01-02T15:04:05Z-2007-01-02T15:04:05Z"
+		contentRange = strings.ReplaceAll(contentRange, "date-time", "")
+		contentRange = strings.ReplaceAll(contentRange, "DateTime", "")		
+		contentRange = strings.ReplaceAll(contentRange, "Z", "Z")
+		contentRange = strings.TrimSpace(contentRange)
+		contentRange = strings.TrimSuffix(contentRange, "/*")
+		
 		result.ContentRange = &ngsild.ContentRange{}
 		result.PartialResult = true
 
-		from := strings.Join(contentRangeSli[10:29], "")
+		from := contentRange[:19]
 		startTime, err := time.Parse("2006-01-02T15:04:05", from)
 		if err != nil {
 			return nil, err
@@ -298,7 +304,7 @@ func (c cbClient) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityI
 
 		result.ContentRange.StartTime = &startTime
 
-		to := strings.Join(contentRangeSli[30:49], "")
+		to := contentRange[20:]
 		endTime, err := time.Parse("2006-01-02T15:04:05", to)
 		if err != nil {
 			return nil, err

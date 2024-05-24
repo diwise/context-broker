@@ -179,9 +179,9 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 				return
 			}
 
-			startTime := strings.TrimSuffix(result.ContentRange.StartTime.UTC().Format(time.RFC3339), "Z")
-			endTime := strings.TrimSuffix(result.ContentRange.EndTime.UTC().Format(time.RFC3339), "Z")
-			contentRangeHeader := fmt.Sprintf("date-time %s-%s/*", startTime, endTime)
+			startTime := result.ContentRange.StartTime.UTC().Format(time.RFC3339)
+			endTime := result.ContentRange.EndTime.UTC().Format(time.RFC3339)
+			contentRangeHeader := fmt.Sprintf("DateTime %s-%s/*", startTime, endTime)
 
 			w.Header().Add("Content-Range", contentRangeHeader)
 			if _, ok := params.LastN(); !ok {
