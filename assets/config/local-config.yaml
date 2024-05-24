@@ -1,0 +1,16 @@
+tenants:
+  - id: default
+    name: Default
+    contextSources:
+    - endpoint: http://localhost:1026
+      temporal:
+        enabled: true
+        endpoint: http://localhost:1027
+      information:
+      - entities:
+        - idPattern: ^urn:ngsi-ld:Device:.+
+          type: Device
+        - idPattern: ^urn:ngsi-ld:WeatherObserved:.+
+          type: WeatherObserved
+        - idPattern: ^urn:ngsi-ld:Sewer:.+
+          type: Sewer

@@ -3,6 +3,9 @@ tenants:
     name: Default
     contextSources:
     - endpoint: http://orion-ld:1026
+      temporal:
+        enabled: true
+        endpoint: http://mintaka:8080
       information:
       - entities:
         - idPattern: ^urn:ngsi-ld:AirQualityObserved:.+
@@ -23,4 +26,5 @@ tenants:
           type: WaterQualityObserved
         - idPattern: ^urn:ngsi-ld:WeatherObserved:.+
           type: WeatherObserved
-
+        - idPattern: ^urn:ngsi-ld:Sewer:.+
+          type: Sewer
