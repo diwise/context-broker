@@ -297,20 +297,28 @@ func (c cbClient) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityI
 		result.ContentRange = &ngsild.ContentRange{}
 		result.PartialResult = true
 
-		// TODO: dates below will be parsed into a format that always sets seconds to "00".
-		// This is a temporary fix until mintaka fixes issue with incomplete dates being set in content-range header
-		from := contentRange[:16]
-		startTime, err := time.Parse("2006-01-02T15:04", from)
+		// TODO: Below is a temporary fix until mintaka fixes issue with incomplete dates being set in content-range header.
+		// If we get a startTime or endTime from mintaka that does not have seconds on it, we will set seconds to ":00"
+		var startTime time.Time
+		from := contentRange[:19]
+		startTime, err := time.Parse("2006-01-02T15:04:05", from)
 		if err != nil {
-			return nil, err
+			startTime, err = time.Parse("2006-01-02T15:04", from)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		result.ContentRange.StartTime = &startTime
 
-		to := contentRange[20:36]
-		endTime, err := time.Parse("2006-01-02T15:04", to)
+		var endTime time.Time
+		to := contentRange[20:]
+		endTime, err = time.Parse("2006-01-02T15:04:05", to)
 		if err != nil {
-			return nil, err
+			endTime, err = time.Parse("2006-01-02T15:04", to)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		result.ContentRange.EndTime = &endTime
