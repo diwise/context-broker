@@ -3,7 +3,11 @@ package entities
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math"
+	"strconv"
+	"strings"
 
 	"github.com/diwise/context-broker/pkg/ngsild/geojson"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
@@ -399,6 +403,67 @@ func (e EntityImpl) KeyValues() types.EntityKeyValueMapper {
 	return kvMapper{
 		e: e,
 	}
+}
+
+func ValidateFragmentAttributes(fragment types.EntityFragment, expectations map[string]any) (err error) {
+	fragment.ForEachAttribute(func(attributeType, attributeName string, contents any) {
+		if expect, ok := expectations[attributeName]; ok {
+			// Remove the matched expectation from the map
+			delete(expectations, attributeName)
+
+			switch v := contents.(type) {
+			case *properties.DateTimeProperty:
+				{
+					expectValue := expect.(string)
+					if strings.Compare(expectValue, v.Val.Value) != 0 {
+						err = errors.Join(err, fmt.Errorf("attribute %s value \"%s\" != \"%s\"", attributeName, v.Val.Value, expectValue))
+					}
+				}
+			case *properties.NumberProperty:
+				{
+					decimalPrecision := 3
+					var expectValue float64
+
+					switch ev := expect.(type) {
+					case int:
+						expectValue = float64(ev)
+						decimalPrecision = 1
+					case float64:
+						expectValue = ev
+					default:
+						err = errors.Join(err, fmt.Errorf("unable to match expected value of %s (unknown type %T)", attributeName, v))
+						return
+					}
+
+					divider := int64(math.Pow(10, float64(decimalPrecision)))
+					delta := 1.0 / float64(divider)
+
+					if math.Abs(v.Val-expectValue) >= delta {
+						err = errors.Join(err, fmt.Errorf("attribute %s value %s != %s",
+							attributeName,
+							strconv.FormatFloat(v.Val, 'f', decimalPrecision, 64),
+							strconv.FormatFloat(expectValue, 'f', decimalPrecision, 64)),
+						)
+					}
+				}
+			case *properties.TextProperty:
+				{
+					expectValue := expect.(string)
+					if strings.Compare(expectValue, v.Val) != 0 {
+						err = errors.Join(err, fmt.Errorf("attribute %s value \"%s\" != \"%s\"", attributeName, v.Val, expectValue))
+					}
+				}
+			default:
+				err = errors.Join(err, fmt.Errorf("unable to match expected value of %s (unknown type %T)", attributeName, v))
+			}
+		}
+	})
+
+	for expectedAttribute := range expectations {
+		err = errors.Join(fmt.Errorf("expected attribute %s not found in fragment", expectedAttribute))
+	}
+
+	return
 }
 
 type kvMapper struct {
