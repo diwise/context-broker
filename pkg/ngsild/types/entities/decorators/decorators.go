@@ -13,6 +13,10 @@ func RefDevice(device string) entities.EntityDecoratorFunc {
 	return entities.R("refDevice", relationships.NewSingleObjectRelationship(device))
 }
 
+func RefDevices(devices []string) entities.EntityDecoratorFunc {
+	return entities.R("refDevices", relationships.NewMultiObjectRelationship(devices))
+}
+
 func Location(latitude, longitude float64) entities.EntityDecoratorFunc {
 	location := geojson.CreateGeoJSONPropertyFromWGS84(longitude, latitude)
 	return entities.P(properties.Location, location)
