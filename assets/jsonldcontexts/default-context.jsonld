@@ -9,6 +9,7 @@
       "SewagePumpingStation": "diwise:SewagePumpingStation",
       "Sewer": "diwise:Sewer",
       "CombinedSewageOverflow": "diwise:CombinedSewageOverflow",
+      "CombinedSewerOverflow": "diwise:CombinedSewerOverflow",
       "WasteContainer": "diwise:WasteContainer",
       "dateLastPreparation": {
         "@id": "https://uri.diwise.io/ns/data-models#dateLastPreparation",
