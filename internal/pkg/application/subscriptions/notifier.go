@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -171,7 +172,10 @@ func postNotification(ctx context.Context, e types.Entity, endpoint string) erro
 		return fmt.Errorf("failed to send request (%w)", err)
 	}
 
-	defer resp.Body.Close()
+	defer func() {
+		io.Copy(io.Discard, resp.Body)
+		resp.Body.Close()
+	}()
 
 	return nil
 }
