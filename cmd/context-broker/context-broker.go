@@ -28,7 +28,7 @@ var opaFilePath string
 func main() {
 
 	serviceVersion := buildinfo.SourceVersion()
-	ctx, logger, cleanup := o11y.Init(context.Background(), serviceName, serviceVersion)
+	ctx, logger, cleanup := o11y.Init(context.Background(), serviceName, serviceVersion, "json")
 	defer cleanup()
 
 	flag.StringVar(&configFilePath, "config", "/opt/diwise/config/default.yaml", "A configuration file containing federation information")

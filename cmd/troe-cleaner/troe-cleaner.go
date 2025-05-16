@@ -20,7 +20,7 @@ const (
 func main() {
 	appVersion := buildinfo.SourceVersion()
 
-	ctx, log, cleanup := o11y.Init(context.Background(), appName, appVersion)
+	ctx, log, cleanup := o11y.Init(context.Background(), appName, appVersion, "json")
 	defer cleanup()
 
 	log.Debug("begin clean troe")
