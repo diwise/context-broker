@@ -281,50 +281,64 @@ func (c cbClient) RetrieveTemporalEvolutionOfEntity(ctx context.Context, entityI
 	if response.StatusCode == http.StatusPartialContent {
 		contentRange := response.Header.Get("Content-Range")
 
-		if contentRange == "" {
-			return nil, fmt.Errorf("partial response code received, but no content range header was found")
+		startTime, endTime, err := parseContentRange(contentRange)
+		if err != nil {
+			return nil, err
 		}
 
-		// MINTAKA 0.6 sets content-range to "date-time 2006-01-02T15:04:05-2007-01-02T15:04:05/*"
-		// but ETSI GS CIM 009 V1.8.1 states that the format should be "DateTime 2006-01-02T15:04:05Z-2007-01-02T15:04:05Z"
-		contentRange = strings.ReplaceAll(contentRange, "date-time", "")
-		contentRange = strings.ReplaceAll(contentRange, "DateTime", "")
-		contentRange = strings.ReplaceAll(contentRange, "Z", "")
-		contentRange = strings.TrimSpace(contentRange)
-		contentRange = strings.TrimSuffix(contentRange, "/*")
-		contentRange = strings.TrimSuffix(contentRange, "/20") // new suffix encountered
+		result.ContentRange = &ngsild.ContentRange{
+			StartTime: &startTime,
+			EndTime:   &endTime,
+		}
 
-		result.ContentRange = &ngsild.ContentRange{}
 		result.PartialResult = true
-
-		// TODO: Below is a temporary fix until mintaka fixes issue with incomplete dates being set in content-range header.
-		// If we get a startTime or endTime from mintaka that does not have seconds on it, we will set seconds to ":00"
-		var startTime time.Time
-		from := contentRange[:19]
-		startTime, err := time.Parse("2006-01-02T15:04:05", from)
-		if err != nil {
-			startTime, err = time.Parse("2006-01-02T15:04", from)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		result.ContentRange.StartTime = &startTime
-
-		var endTime time.Time
-		to := contentRange[20:]
-		endTime, err = time.Parse("2006-01-02T15:04:05", to)
-		if err != nil {
-			endTime, err = time.Parse("2006-01-02T15:04", to)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		result.ContentRange.EndTime = &endTime
 	}
 
 	return result, nil
+}
+
+func parseContentRange(contentRange string) (time.Time, time.Time, error) {
+	if contentRange == "" {
+		return time.Time{}, time.Time{}, fmt.Errorf("partial response code received, but no content range header was found")
+	}
+
+	// TODO: Below is a temporary fix until mintaka fixes issue with incomplete dates being set in content-range header.
+	// If we get a startTime or endTime from mintaka that does not have seconds on it, we will set seconds to ":00"
+
+	// MINTAKA 0.6 sets content-range to "date-time 2006-01-02T15:04:05-2007-01-02T15:04:05/*"
+	// but ETSI GS CIM 009 V1.8.1 states that the format should be "DateTime 2006-01-02T15:04:05Z-2007-01-02T15:04:05Z"
+	contentRange = strings.ReplaceAll(contentRange, "date-time", "")
+	contentRange = strings.ReplaceAll(contentRange, "DateTime", "")
+	contentRange = strings.ReplaceAll(contentRange, "Z", "")
+	contentRange = strings.TrimSpace(contentRange)
+	contentRange = strings.TrimSuffix(contentRange, "/*")
+	contentRange = strings.TrimSuffix(contentRange, "/20") // new suffix encountered
+
+	var layout, start, end string
+
+	if len(contentRange) == len("2025-05-12T01:00-2025-05-15T06:00") {
+		start = contentRange[:16]
+		end = contentRange[17:]
+		layout = "2006-01-02T15:04"
+	} else if len(contentRange) == len("2006-01-02T15:04:05-2007-01-02T15:04:05") {
+		start = contentRange[:19]
+		end = contentRange[20:]
+		layout = "2006-01-02T15:04:05"
+	} else {
+		return time.Time{}, time.Time{}, fmt.Errorf("unknown datetime format")
+	}
+
+	startTime, err := time.Parse(layout, start)
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("partial response code received, count not parse start time %w", err)
+	}
+
+	endTime, err := time.Parse(layout, end)
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("partial response code received, count not parse end time %w", err)
+	}
+
+	return startTime, endTime, nil
 }
 
 func (c cbClient) MergeEntity(ctx context.Context, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error) {

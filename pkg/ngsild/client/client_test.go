@@ -355,6 +355,26 @@ func TestCustomUserAgent(t *testing.T) {
 	is.Equal(s.RequestCount(), 1)
 }
 
+func TestParseContentRange(t *testing.T) {
+	is := is.New(t)
+
+	startTime, endTime, err := parseContentRange("date-time 2025-05-12T01:00-2025-05-15T06:00/*")
+	is.NoErr(err)
+	is.Equal("2025-05-12T01:00:00Z", startTime.Format(time.RFC3339))
+	is.Equal("2025-05-15T06:00:00Z", endTime.Format(time.RFC3339))
+
+	startTime, endTime, err = parseContentRange("date-time 2025-05-12T01:00:00-2025-05-15T06:00:00/*")
+	is.NoErr(err)
+	is.Equal("2025-05-12T01:00:00Z", startTime.Format(time.RFC3339))
+	is.Equal("2025-05-15T06:00:00Z", endTime.Format(time.RFC3339))
+
+	startTime, endTime, err = parseContentRange("DateTime 2025-05-12T01:00:00Z-2025-05-15T06:00:00Z")
+	is.NoErr(err)
+	is.Equal("2025-05-12T01:00:00Z", startTime.Format(time.RFC3339))
+	is.Equal("2025-05-15T06:00:00Z", endTime.Format(time.RFC3339))
+
+}
+
 func testEntity(entityType, entityID string) types.Entity {
 	e, _ := entities.New(entityID, entityType)
 	return e
