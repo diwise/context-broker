@@ -330,12 +330,12 @@ func parseContentRange(contentRange string) (time.Time, time.Time, error) {
 
 	startTime, err := time.Parse(layout, start)
 	if err != nil {
-		return time.Time{}, time.Time{}, fmt.Errorf("partial response code received, count not parse start time %w", err)
+		return time.Time{}, time.Time{}, fmt.Errorf("partial response code received, could not parse start time %w", err)
 	}
 
 	endTime, err := time.Parse(layout, end)
 	if err != nil {
-		return time.Time{}, time.Time{}, fmt.Errorf("partial response code received, count not parse end time %w", err)
+		return time.Time{}, time.Time{}, fmt.Errorf("partial response code received, could not parse end time %w", err)
 	}
 
 	return startTime, endTime, nil
