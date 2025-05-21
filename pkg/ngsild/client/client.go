@@ -302,17 +302,20 @@ func parseContentRange(contentRange string) (time.Time, time.Time, error) {
 		return time.Time{}, time.Time{}, fmt.Errorf("partial response code received, but no content range header was found")
 	}
 
-	// TODO: Below is a temporary fix until mintaka fixes issue with incomplete dates being set in content-range header.
-	// If we get a startTime or endTime from mintaka that does not have seconds on it, we will set seconds to ":00"
+	originalContentRange := contentRange
 
 	// MINTAKA 0.6 sets content-range to "date-time 2006-01-02T15:04:05-2007-01-02T15:04:05/*"
 	// but ETSI GS CIM 009 V1.8.1 states that the format should be "DateTime 2006-01-02T15:04:05Z-2007-01-02T15:04:05Z"
 	contentRange = strings.ReplaceAll(contentRange, "date-time", "")
 	contentRange = strings.ReplaceAll(contentRange, "DateTime", "")
 	contentRange = strings.ReplaceAll(contentRange, "Z", "")
+
+	if strings.Contains(contentRange, "/") {
+		// lastN adds /<lastN> at the end of content-range
+		contentRange = contentRange[:strings.LastIndex(contentRange, "/")]
+	}
+
 	contentRange = strings.TrimSpace(contentRange)
-	contentRange = strings.TrimSuffix(contentRange, "/*")
-	contentRange = strings.TrimSuffix(contentRange, "/20") // new suffix encountered
 
 	var layout, start, end string
 
@@ -325,7 +328,7 @@ func parseContentRange(contentRange string) (time.Time, time.Time, error) {
 		end = contentRange[20:]
 		layout = "2006-01-02T15:04:05"
 	} else {
-		return time.Time{}, time.Time{}, fmt.Errorf("unknown datetime format")
+		return time.Time{}, time.Time{}, fmt.Errorf("unknown datetime format %s", originalContentRange)
 	}
 
 	startTime, err := time.Parse(layout, start)
