@@ -310,26 +310,34 @@ func parseContentRange(contentRange string) (time.Time, time.Time, error) {
 	contentRange = strings.ReplaceAll(contentRange, "DateTime", "")
 	contentRange = strings.ReplaceAll(contentRange, "Z", "")
 
+	// lastN adds /<lastN> at the end of content-range
 	if strings.Contains(contentRange, "/") {
-		// lastN adds /<lastN> at the end of content-range
 		contentRange = contentRange[:strings.LastIndex(contentRange, "/")]
 	}
 
 	contentRange = strings.TrimSpace(contentRange)
 
-	var layout, start, end string
+	var start, end string
 
-	if len(contentRange) == len("2025-05-12T01:00-2025-05-15T06:00") {
-		start = contentRange[:16]
-		end = contentRange[17:]
-		layout = "2006-01-02T15:04"
-	} else if len(contentRange) == len("2006-01-02T15:04:05-2007-01-02T15:04:05") {
-		start = contentRange[:19]
-		end = contentRange[20:]
-		layout = "2006-01-02T15:04:05"
-	} else {
+	parts := strings.Split(contentRange, "-")
+
+	if len(parts) != 6 {
 		return time.Time{}, time.Time{}, fmt.Errorf("unknown datetime format %s", originalContentRange)
 	}
+
+	start = strings.Join(parts[:3], "-")
+	end = strings.Join(parts[3:], "-")
+
+	// MINTAKA sometimes responds without seconds
+	if strings.Count(start, ":") == 1 {
+		start += ":00"
+	}
+
+	if strings.Count(end, ":") == 1 {
+		end += ":00"
+	}
+
+	const layout = "2006-01-02T15:04:05"
 
 	startTime, err := time.Parse(layout, start)
 	if err != nil {

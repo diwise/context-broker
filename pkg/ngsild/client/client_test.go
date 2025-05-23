@@ -373,6 +373,10 @@ func TestParseContentRange(t *testing.T) {
 	is.Equal("2025-05-12T01:00:00Z", startTime.Format(time.RFC3339))
 	is.Equal("2025-05-15T06:00:00Z", endTime.Format(time.RFC3339))
 
+	startTime, endTime, err = parseContentRange("date-time 2025-05-12T22:00-2025-05-22T04:53:58/*")
+	is.NoErr(err)
+	is.Equal("2025-05-12T22:00:00Z", startTime.Format(time.RFC3339))
+	is.Equal("2025-05-22T04:53:58Z", endTime.Format(time.RFC3339))
 }
 
 func testEntity(entityType, entityID string) types.Entity {
