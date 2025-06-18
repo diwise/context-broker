@@ -40,7 +40,10 @@ func TestIntegrateRetriveTemporalEvolutionOfEntity(t *testing.T) {
 		),
 	)
 
-	app, r := initialize(ctx, newTestConfig(ms.URL()), newAuthConfig())
+	app, r := initialize(ctx, &AppConfig{
+		brokerConfig: newTestConfig(ms.URL()),
+		opaConfig:    newAuthConfig(),
+	})
 	app.Start()
 	defer app.Stop()
 
@@ -75,7 +78,10 @@ func TestIntegrateQueryTemporalEvolutionOfEntities(t *testing.T) {
 		),
 	)
 
-	app, r := initialize(ctx, newTestConfig(ms.URL()), newAuthConfig())
+	app, r := initialize(ctx, &AppConfig{
+		brokerConfig: newTestConfig(ms.URL()),
+		opaConfig:    newAuthConfig(),
+	})
 	app.Start()
 	defer app.Stop()
 
@@ -97,12 +103,12 @@ func testRequest(url, method, path string, body io.Reader) (*http.Response, stri
 	return resp, string(respBody)
 }
 
-func newAuthConfig() io.Reader {
-	return bytes.NewBufferString(opaModule)
+func newAuthConfig() io.ReadCloser {
+	return io.NopCloser(bytes.NewBufferString(opaModule))
 }
 
-func newTestConfig(url string) io.Reader {
-	return bytes.NewBufferString(fmt.Sprintf(configFileFmt, url, url))
+func newTestConfig(url string) io.ReadCloser {
+	return io.NopCloser(bytes.NewBufferString(fmt.Sprintf(configFileFmt, url, url)))
 }
 
 var configFileFmt string = `

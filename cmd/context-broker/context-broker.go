@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -42,15 +41,15 @@ func main() {
 	ctx, logger, cleanup := o11y.Init(ctx, serviceName, serviceVersion, flags[logFormat])
 	defer cleanup()
 
-	configFile, err := os.Open(flags[configPath])
-	exitIf(err, logger, "failed to open the configuration file", "path", flags[configPath])
-	defer configFile.Close()
+	appConfig, err := newConfig(ctx, flags)
+	exitIf(err, logger, "failed to create application config")
 
-	policyFile, err := os.Open(flags[opaPath])
-	exitIf(err, logger, "unable to open opa policy file", "path", flags[opaPath])
-	defer policyFile.Close()
+	defer appConfig.brokerConfig.Close()
+	defer appConfig.opaConfig.Close()
 
-	app, r := initialize(ctx, configFile, policyFile)
+	ctx, appConfig.cancelContext = context.WithCancel(ctx)
+
+	app, r := initialize(ctx, appConfig)
 	app.Start()
 	defer app.Stop()
 
@@ -61,17 +60,34 @@ func main() {
 	exitIf(err, logger, "failed to listen for connections", "port", port)
 }
 
-func initialize(ctx context.Context, brokerConfig io.Reader, authPolices io.Reader) (cim.ContextInformationManager, *chi.Mux) {
+func newConfig(ctx context.Context, flags FlagMap) (*AppConfig, error) {
 	logger := logging.GetFromContext(ctx)
 
-	cfg, err := config.Load(brokerConfig)
+	configFile, err := os.Open(flags[configPath])
+	exitIf(err, logger, "failed to open the configuration file", "path", flags[configPath])
+
+	policyFile, err := os.Open(flags[opaPath])
+	exitIf(err, logger, "unable to open opa policy file", "path", flags[opaPath])
+
+	cfg := &AppConfig{
+		brokerConfig: configFile,
+		opaConfig:    policyFile,
+	}
+
+	return cfg, nil
+}
+
+func initialize(ctx context.Context, appConfig *AppConfig) (cim.ContextInformationManager, *chi.Mux) {
+	logger := logging.GetFromContext(ctx)
+
+	cfg, err := config.Load(appConfig.brokerConfig)
 	exitIf(err, logger, "failed to load configuration")
 
 	app, err := contextbroker.New(ctx, *cfg)
 	exitIf(err, logger, "failed to configure context broker")
 
 	r := router.New(serviceName)
-	ngsild.RegisterHandlers(ctx, r, authPolices, app)
+	ngsild.RegisterHandlers(ctx, r, appConfig.opaConfig, app)
 
 	return app, r
 }
