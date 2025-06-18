@@ -3,8 +3,6 @@ package ngsild
 import (
 	"log/slog"
 	"net/http"
-
-	"github.com/go-chi/chi/v5"
 )
 
 // TODO: Load from file in file system instead of hardcoding a constant
@@ -18,7 +16,7 @@ func NewServeContextHandler(logger *slog.Logger) http.HandlerFunc {
 	responseBytes := []byte(DefaultContext)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		contextID := chi.URLParam(r, "contextId")
+		contextID := r.PathValue("contextId")
 
 		if contextID != "default-context.jsonld" {
 			w.WriteHeader(http.StatusNotFound)

@@ -17,6 +17,7 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/servicerunner"
+	"github.com/rs/cors"
 )
 
 const serviceName string = "context-broker"
@@ -101,13 +102,14 @@ func initialize(ctx context.Context, flags FlagMap, appConfig *AppConfig) (servi
 					return fmt.Errorf("failed to configure context broker: %w", err)
 				}
 
-				mux := http.NewServeMux()
+				middlewares := make([]func(http.Handler) http.Handler, 0, 10)
+				middlewares = append(middlewares, cors.New(cors.Options{
+					AllowedOrigins:   []string{"*"},
+					AllowCredentials: true,
+					Debug:            false,
+				}).Handler)
 
-				ngsild.RegisterHandlers(ctx, nil, appConfig.opaConfig, svcCfg.app)
-
-				handler.Handle("GET /", mux)
-				handler.Handle("POST /", mux)
-				handler.Handle("DELETE /", mux)
+				ngsild.RegisterHandlers(ctx, handler, middlewares, appConfig.opaConfig, svcCfg.app)
 
 				return nil
 			}),

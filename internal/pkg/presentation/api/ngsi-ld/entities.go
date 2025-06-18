@@ -22,7 +22,6 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
-	"github.com/go-chi/chi/v5"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -278,7 +277,8 @@ func NewRetrieveEntityHandler(
 
 		ctx := r.Context()
 		tenant := GetTenantFromContext(ctx)
-		entityID, _ := url.QueryUnescape(chi.URLParam(r, "entityId"))
+
+		entityID, _ := url.QueryUnescape(r.PathValue("entityId"))
 
 		propagatedHeaders := extractHeaders(r, "Accept", "Link")
 
@@ -377,7 +377,7 @@ func NewMergeEntityHandler(
 
 		ctx := r.Context()
 		tenant := GetTenantFromContext(ctx)
-		entityID, _ := url.QueryUnescape(chi.URLParam(r, "entityId"))
+		entityID, _ := url.QueryUnescape(r.PathValue("entityId"))
 
 		propagatedHeaders := extractHeaders(r, "Content-Type", "Link")
 
@@ -436,7 +436,7 @@ func NewUpdateEntityAttributesHandler(
 
 		ctx := r.Context()
 		tenant := GetTenantFromContext(ctx)
-		entityID, _ := url.QueryUnescape(chi.URLParam(r, "entityId"))
+		entityID, _ := url.QueryUnescape(r.PathValue("entityId"))
 
 		propagatedHeaders := extractHeaders(r, "Content-Type", "Link")
 
@@ -499,7 +499,7 @@ func NewDeleteEntityHandler(
 
 		ctx := r.Context()
 		tenant := GetTenantFromContext(ctx)
-		entityID, _ := url.QueryUnescape(chi.URLParam(r, "entityId"))
+		entityID, _ := url.QueryUnescape(r.PathValue("entityId"))
 
 		ctx, span := tracer.Start(ctx, "delete-entity",
 			trace.WithAttributes(

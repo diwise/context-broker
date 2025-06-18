@@ -35,7 +35,7 @@ func DefaultTestFlags() FlagMap {
 
 func TestIntegrateRetriveTemporalEvolutionOfEntity(t *testing.T) {
 	is := is.New(t)
-	ctx := t.Context()
+	ctx, cancelTest := context.WithCancel(t.Context())
 
 	ms := testutils.NewMockServiceThat(
 		Expects(
@@ -59,8 +59,11 @@ func TestIntegrateRetriveTemporalEvolutionOfEntity(t *testing.T) {
 	is.NoErr(err)
 
 	app.Run(ctx, dowork(func(ctx context.Context, appConfig *AppConfig) error {
+		defer cancelTest()
+
 		response, responseBody := testRequest(appConfig.url, http.MethodGet, "/ngsi-ld/v1/temporal/entities/urn:ngsi-ld:Vehicle:B9211?timerel=after&timeAt=2022-02-13T21:33:42Z", nil)
 
+		is.True(response != nil)
 		is.Equal(response.StatusCode, http.StatusOK)
 		is.Equal(responseBody, temporalResponseBody)
 
@@ -70,7 +73,7 @@ func TestIntegrateRetriveTemporalEvolutionOfEntity(t *testing.T) {
 
 func TestIntegrateQueryTemporalEvolutionOfEntities(t *testing.T) {
 	is := is.New(t)
-	ctx := t.Context()
+	ctx, cancelTest := context.WithCancel(t.Context())
 
 	responseBody := "[" + temporalResponseBody + "]"
 
@@ -97,8 +100,11 @@ func TestIntegrateQueryTemporalEvolutionOfEntities(t *testing.T) {
 	is.NoErr(err)
 
 	app.Run(ctx, dowork(func(ctx context.Context, appConfig *AppConfig) error {
+		defer cancelTest()
+
 		response, responseBody := testRequest(appConfig.url, http.MethodGet, "/ngsi-ld/v1/temporal/entities?timerel=between&timeAt=2022-01-01T00:00:00Z&endTimeAt=2022-02-01T00:00:00Z", nil)
 
+		is.True(response != nil)
 		is.Equal(response.StatusCode, http.StatusOK)
 		is.Equal(responseBody, responseBody)
 

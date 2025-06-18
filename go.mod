@@ -4,11 +4,9 @@ go 1.24
 
 require (
 	github.com/diwise/service-chassis v0.0.0-20250616202216-d784ef618a4e
-	github.com/go-chi/chi/v5 v5.2.1
 	github.com/google/uuid v1.6.0
 	github.com/matryer/is v1.4.1
 	github.com/open-policy-agent/opa v0.68.0
-	github.com/riandyrn/otelchi v0.12.1
 	github.com/rs/cors v1.11.1
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.53.0
 	go.opentelemetry.io/otel v1.36.0
