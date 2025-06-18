@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/diwise/context-broker/internal/pkg/application/cim"
 	"github.com/diwise/service-chassis/pkg/infrastructure/servicerunner"
 )
 
@@ -22,6 +23,9 @@ const (
 )
 
 type AppConfig struct {
+	app cim.ContextInformationManager
+	url string
+
 	brokerConfig io.ReadCloser
 	opaConfig    io.ReadCloser
 

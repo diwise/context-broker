@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
+	"github.com/diwise/service-chassis/pkg/infrastructure/servicerunner"
 	testutils "github.com/diwise/service-chassis/pkg/test/http"
 	"github.com/diwise/service-chassis/pkg/test/http/expects"
 	"github.com/diwise/service-chassis/pkg/test/http/response"
@@ -21,9 +21,21 @@ var Returns = testutils.Returns
 var method = expects.RequestMethod
 var path = expects.RequestPath
 
+var dowork = servicerunner.WithWorker[AppConfig]
+
+func DefaultTestFlags() FlagMap {
+	return FlagMap{
+		listenAddress: "",  // listen on all ipv4 and ipv6 interfaces
+		servicePort:   "0", //
+		controlPort:   "",  // control port disabled by default
+
+		logFormat: "json",
+	}
+}
+
 func TestIntegrateRetriveTemporalEvolutionOfEntity(t *testing.T) {
 	is := is.New(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	ms := testutils.NewMockServiceThat(
 		Expects(
@@ -40,25 +52,25 @@ func TestIntegrateRetriveTemporalEvolutionOfEntity(t *testing.T) {
 		),
 	)
 
-	app, r := initialize(ctx, &AppConfig{
+	app, err := initialize(ctx, DefaultTestFlags(), &AppConfig{
 		brokerConfig: newTestConfig(ms.URL()),
 		opaConfig:    newAuthConfig(),
 	})
-	app.Start()
-	defer app.Stop()
+	is.NoErr(err)
 
-	api := httptest.NewServer(r)
-	defer api.Close()
+	app.Run(ctx, dowork(func(ctx context.Context, appConfig *AppConfig) error {
+		response, responseBody := testRequest(appConfig.url, http.MethodGet, "/ngsi-ld/v1/temporal/entities/urn:ngsi-ld:Vehicle:B9211?timerel=after&timeAt=2022-02-13T21:33:42Z", nil)
 
-	response, responseBody := testRequest(api.URL, http.MethodGet, "/ngsi-ld/v1/temporal/entities/urn:ngsi-ld:Vehicle:B9211?timerel=after&timeAt=2022-02-13T21:33:42Z", nil)
+		is.Equal(response.StatusCode, http.StatusOK)
+		is.Equal(responseBody, temporalResponseBody)
 
-	is.Equal(response.StatusCode, http.StatusOK)
-	is.Equal(responseBody, temporalResponseBody)
+		return nil
+	}))
 }
 
 func TestIntegrateQueryTemporalEvolutionOfEntities(t *testing.T) {
 	is := is.New(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	responseBody := "[" + temporalResponseBody + "]"
 
@@ -78,20 +90,20 @@ func TestIntegrateQueryTemporalEvolutionOfEntities(t *testing.T) {
 		),
 	)
 
-	app, r := initialize(ctx, &AppConfig{
+	app, err := initialize(ctx, DefaultTestFlags(), &AppConfig{
 		brokerConfig: newTestConfig(ms.URL()),
 		opaConfig:    newAuthConfig(),
 	})
-	app.Start()
-	defer app.Stop()
+	is.NoErr(err)
 
-	api := httptest.NewServer(r)
-	defer api.Close()
+	app.Run(ctx, dowork(func(ctx context.Context, appConfig *AppConfig) error {
+		response, responseBody := testRequest(appConfig.url, http.MethodGet, "/ngsi-ld/v1/temporal/entities?timerel=between&timeAt=2022-01-01T00:00:00Z&endTimeAt=2022-02-01T00:00:00Z", nil)
 
-	response, responseBody := testRequest(api.URL, http.MethodGet, "/ngsi-ld/v1/temporal/entities?timerel=between&timeAt=2022-01-01T00:00:00Z&endTimeAt=2022-02-01T00:00:00Z", nil)
+		is.Equal(response.StatusCode, http.StatusOK)
+		is.Equal(responseBody, responseBody)
 
-	is.Equal(response.StatusCode, http.StatusOK)
-	is.Equal(responseBody, responseBody)
+		return nil
+	}))
 }
 
 func testRequest(url, method, path string, body io.Reader) (*http.Response, string) {
