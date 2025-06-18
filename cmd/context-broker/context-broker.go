@@ -90,7 +90,7 @@ func initialize(ctx context.Context, flags FlagMap, appConfig *AppConfig) (servi
 		webserver("public", listen(flags[listenAddress]), port(flags[servicePort]),
 			muxinit(func(ctx context.Context, identifier string, port string, svcCfg *AppConfig, handler *http.ServeMux) (err error) {
 
-				svcCfg.url = "http://127.0.0.1:" + port
+				svcCfg.publicPort = port
 
 				brokerConfig, err := config.Load(appConfig.brokerConfig)
 				if err != nil {

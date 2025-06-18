@@ -23,8 +23,8 @@ const (
 )
 
 type AppConfig struct {
-	app cim.ContextInformationManager
-	url string
+	app        cim.ContextInformationManager
+	publicPort string
 
 	brokerConfig io.ReadCloser
 	opaConfig    io.ReadCloser
