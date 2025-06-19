@@ -18,7 +18,6 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
-	"github.com/go-chi/chi/v5"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -116,7 +115,7 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 
 		ctx := r.Context()
 		tenant := GetTenantFromContext(ctx)
-		entityID, _ := url.QueryUnescape(chi.URLParam(r, "entityId"))
+		entityID, _ := url.QueryUnescape(r.PathValue("entityId"))
 
 		propagatedHeaders := extractHeaders(r, "Accept", "Link")
 

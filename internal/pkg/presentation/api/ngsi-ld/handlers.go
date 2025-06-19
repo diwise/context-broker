@@ -6,86 +6,73 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"slices"
+	"strings"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
 	"github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/auth"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 )
 
-func RegisterHandlers(ctx context.Context, r chi.Router, policies io.Reader, app cim.ContextInformationManager) error {
-
-	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
+func RegisterHandlers(ctx context.Context, mux *http.ServeMux, middleware []func(http.Handler) http.Handler, policies io.Reader, app cim.ContextInformationManager) error {
 
 	authenticator, err := auth.NewAuthenticator(ctx, policies)
 	if err != nil {
 		return fmt.Errorf("failed to create api authenticator: %w", err)
 	}
 
-	r.Route("/ngsi-ld/v1", func(r chi.Router) {
-		r.Group(func(r chi.Router) {
-			r.Use(middleware.AllowContentType("application/json", "application/ld+json"))
-			r.Use(NGSIMiddleware())
+	middleware = append(middleware,
+		NGSIMiddleware(),
+		RequiredContentTypes([]string{"application/json", "application/ld+json"}),
+	)
 
-			log := logging.GetFromContext(ctx)
+	log := logging.GetFromContext(ctx)
 
-			r.Get(
-				"/entities",
-				NewQueryEntitiesHandler(app, authenticator, log),
-			)
+	r := http.NewServeMux()
 
-			r.Get(
-				"/entities/{entityId}",
-				NewRetrieveEntityHandler(app, authenticator, log),
-			)
+	register := func(method, endpoint string, handler http.HandlerFunc) {
+		r.HandleFunc(
+			fmt.Sprintf("%s /ngsi-ld/v1%s", method, endpoint),
+			handler,
+		)
+	}
 
-			r.Patch(
-				"/entities/{entityId}",
-				NewMergeEntityHandler(app, authenticator, log),
-			)
+	register(http.MethodGet, "/entities", NewQueryEntitiesHandler(app, authenticator, log))
+	register(http.MethodGet, "/entities/{entityId}", NewRetrieveEntityHandler(app, authenticator, log))
+	register(http.MethodPatch, "/entities/{entityId}", NewMergeEntityHandler(app, authenticator, log))
+	register(http.MethodPatch, "/entities/{entityId}/attrs/", NewUpdateEntityAttributesHandler(app, authenticator, log))
+	register(
+		http.MethodPost, "/entities",
+		NewCreateEntityHandler(
+			app, authenticator, log,
+			func(ctx context.Context, entityType, entityID string, logger *slog.Logger) {},
+		),
+	)
 
-			r.Patch(
-				"/entities/{entityId}/attrs/",
-				NewUpdateEntityAttributesHandler(app, authenticator, log),
-			)
+	register(http.MethodDelete, "/entities/{entityId}", NewDeleteEntityHandler(app, authenticator, log))
 
-			r.Post(
-				"/entities",
-				NewCreateEntityHandler(
-					app, authenticator, log,
-					func(ctx context.Context, entityType, entityID string, logger *slog.Logger) {},
-				),
-			)
+	register(http.MethodGet, "/temporal/entities",
+		NewQueryTemporalEvolutionOfEntitiesHandler(app, authenticator, log),
+	)
 
-			r.Delete(
-				"/entities/{entityId}",
-				NewDeleteEntityHandler(app, authenticator, log),
-			)
+	register(http.MethodGet, "/temporal/entities/{entityId}",
+		NewRetrieveTemporalEvolutionOfAnEntityHandler(app, authenticator, log),
+	)
 
-			r.Get(
-				"/temporal/entities",
-				NewQueryTemporalEvolutionOfEntitiesHandler(app, authenticator, log),
-			)
+	register(http.MethodGet, "/types", NewRetrieveAvailableEntityTypesHandler(app, authenticator, log))
+	register(http.MethodGet, "/jsonldContexts/{contextId}", NewServeContextHandler(log))
 
-			r.Get(
-				"/temporal/entities/{entityId}",
-				NewRetrieveTemporalEvolutionOfAnEntityHandler(app, authenticator, log),
-			)
+	var handler http.Handler = r
 
-			r.Get(
-				"/types",
-				NewRetrieveAvailableEntityTypesHandler(app, authenticator, log),
-			)
+	// wrap the mux with any passed in middleware handlers
+	for _, mw := range slices.Backward(middleware) {
+		handler = mw(handler)
+	}
 
-			r.Get(
-				"/jsonldContexts/{contextId}",
-				NewServeContextHandler(log),
-			)
-		})
-	})
+	mux.Handle("GET /", handler)
+	mux.Handle("PATCH /", handler)
+	mux.Handle("POST /", handler)
+	mux.Handle("DELETE /", handler)
 
 	return nil
 }
@@ -95,6 +82,32 @@ type tenantContextKey struct {
 }
 
 var tenantCtxKey = &tenantContextKey{"ngsi-tenant"}
+
+func RequiredContentTypes(validTypes []string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			contentType := r.Header.Get("Content-Type")
+			isValidContentType := true
+
+			if len(contentType) > 0 {
+				isValidContentType = false
+
+				for _, t := range validTypes {
+					if strings.HasPrefix(contentType, t) {
+						isValidContentType = true
+						break
+					}
+				}
+			}
+
+			if isValidContentType {
+				next.ServeHTTP(w, r)
+			} else {
+				http.Error(w, "unsupported media type", http.StatusUnsupportedMediaType)
+			}
+		})
+	}
+}
 
 // NGSIMiddleware packs any tenant id into the context
 func NGSIMiddleware() func(http.Handler) http.Handler {
