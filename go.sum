@@ -27,6 +27,8 @@ github.com/dgryski/trifles v0.0.0-20200323201526-dd97f9abfb48 h1:fRzb/w+pyskVMQ+
 github.com/dgryski/trifles v0.0.0-20200323201526-dd97f9abfb48/go.mod h1:if7Fbed8SFyPtHLHbg49SI7NAdJiC5WIA09pe59rfAA=
 github.com/diwise/service-chassis v0.0.0-20250616202216-d784ef618a4e h1:w7DOe1d+ZgbC0ieONR5z3DJZCUK3cLkJoWpTQ9OB0l4=
 github.com/diwise/service-chassis v0.0.0-20250616202216-d784ef618a4e/go.mod h1:VAGY1hjH+XkZ/xjqxYNMGR9yYv9lJW9aasKd9dZl2fA=
+github.com/diwise/service-chassis v0.0.0-20250619121153-0e2a41f18663 h1:HoGJnQbyGJYONEnnBMy/yK7PXKnXtU2x0QrDlR7UR+0=
+github.com/diwise/service-chassis v0.0.0-20250619121153-0e2a41f18663/go.mod h1:Meq0CX6TEFQ5ededqNWVyZry8afJZSOhuhmHKkf/8Ds=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
 github.com/felixge/httpsnoop v1.0.4 h1:NFTV2Zj1bL4mc9sqWACXbQFVBBg2W3GPvqp8/ESS2Wg=
@@ -128,8 +130,8 @@ go.opentelemetry.io/auto/sdk v1.1.0 h1:cH53jehLUN6UFLY71z+NDOiNJqDdPRaXzTel0sJyS
 go.opentelemetry.io/auto/sdk v1.1.0/go.mod h1:3wSPjt5PWp2RhlCcmmOial7AvC4DQqZb7a7wCow3W8A=
 go.opentelemetry.io/contrib/bridges/otelslog v0.11.0 h1:EMIiYTms4Z4m3bBuKp1VmMNRLZcl6j4YbvOPL1IhlWo=
 go.opentelemetry.io/contrib/bridges/otelslog v0.11.0/go.mod h1:DIEZmUR7tzuOOVUTDKvkGWtYWSHFV18Qg8+GMb8wPJw=
-go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.53.0 h1:4K4tsIXefpVJtvA/8srF4V4y0akAoPHkIslgAkjixJA=
-go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.53.0/go.mod h1:jjdQuTGVsXV4vSs+CJ2qYDeDPf9yIJV23qlIzBm73Vg=
+go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0 h1:F7Jx+6hwnZ41NSFTO5q4LYDtJRXBf2PD0rNBkeB/lus=
+go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0/go.mod h1:UHB22Z8QsdRDrnAtX4PntOl36ajSxcdUMt1sF7Y6E7Q=
 go.opentelemetry.io/otel v1.36.0 h1:UumtzIklRBY6cI/lllNZlALOF5nNIzJVb16APdvgTXg=
 go.opentelemetry.io/otel v1.36.0/go.mod h1:/TcFMXYjyRNh8khOAO9ybYkqaDBb/70aVwkNML4pP8E=
 go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.12.2 h1:tPLwQlXbJ8NSOfZc4OkgU5h2A38M4c9kfHSVc4PFQGs=

@@ -11,7 +11,11 @@ import (
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
 	"github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/auth"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func RegisterHandlers(ctx context.Context, mux *http.ServeMux, middleware []func(http.Handler) http.Handler, policies io.Reader, app cim.ContextInformationManager) error {
@@ -22,45 +26,44 @@ func RegisterHandlers(ctx context.Context, mux *http.ServeMux, middleware []func
 	}
 
 	middleware = append(middleware,
+		Logger(logging.GetFromContext(ctx)),
 		NGSIMiddleware(),
 		RequiredContentTypes([]string{"application/json", "application/ld+json"}),
 	)
 
-	log := logging.GetFromContext(ctx)
-
 	r := http.NewServeMux()
 
 	register := func(method, endpoint string, handler http.HandlerFunc) {
-		r.HandleFunc(
+		r.Handle(
 			fmt.Sprintf("%s /ngsi-ld/v1%s", method, endpoint),
-			handler,
+			otelhttp.WithRouteTag(endpoint, handler),
 		)
 	}
 
-	register(http.MethodGet, "/entities", NewQueryEntitiesHandler(app, authenticator, log))
-	register(http.MethodGet, "/entities/{entityId}", NewRetrieveEntityHandler(app, authenticator, log))
-	register(http.MethodPatch, "/entities/{entityId}", NewMergeEntityHandler(app, authenticator, log))
-	register(http.MethodPatch, "/entities/{entityId}/attrs/", NewUpdateEntityAttributesHandler(app, authenticator, log))
+	register(http.MethodGet, "/entities", NewQueryEntitiesHandler(app, authenticator))
+	register(http.MethodGet, "/entities/{entityId}", NewRetrieveEntityHandler(app, authenticator))
+	register(http.MethodPatch, "/entities/{entityId}", NewMergeEntityHandler(app, authenticator))
+	register(http.MethodPatch, "/entities/{entityId}/attrs/", NewUpdateEntityAttributesHandler(app, authenticator))
 	register(
 		http.MethodPost, "/entities",
 		NewCreateEntityHandler(
-			app, authenticator, log,
+			app, authenticator,
 			func(ctx context.Context, entityType, entityID string, logger *slog.Logger) {},
 		),
 	)
 
-	register(http.MethodDelete, "/entities/{entityId}", NewDeleteEntityHandler(app, authenticator, log))
+	register(http.MethodDelete, "/entities/{entityId}", NewDeleteEntityHandler(app, authenticator))
 
 	register(http.MethodGet, "/temporal/entities",
-		NewQueryTemporalEvolutionOfEntitiesHandler(app, authenticator, log),
+		NewQueryTemporalEvolutionOfEntitiesHandler(app, authenticator),
 	)
 
 	register(http.MethodGet, "/temporal/entities/{entityId}",
-		NewRetrieveTemporalEvolutionOfAnEntityHandler(app, authenticator, log),
+		NewRetrieveTemporalEvolutionOfAnEntityHandler(app, authenticator),
 	)
 
-	register(http.MethodGet, "/types", NewRetrieveAvailableEntityTypesHandler(app, authenticator, log))
-	register(http.MethodGet, "/jsonldContexts/{contextId}", NewServeContextHandler(log))
+	register(http.MethodGet, "/types", NewRetrieveAvailableEntityTypesHandler(app, authenticator))
+	register(http.MethodGet, "/jsonldContexts/{contextId}", NewServeContextHandler())
 
 	var handler http.Handler = r
 
@@ -82,6 +85,21 @@ type tenantContextKey struct {
 }
 
 var tenantCtxKey = &tenantContextKey{"ngsi-tenant"}
+
+func Logger(logger *slog.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+
+			_, ctx, _ = o11y.AddTraceIDToLoggerAndStoreInContext(
+				trace.SpanFromContext(ctx),
+				logger,
+				ctx)
+
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
 
 func RequiredContentTypes(validTypes []string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -122,14 +140,24 @@ func NGSIMiddleware() func(http.Handler) http.Handler {
 				tenant = tenantHeader[0]
 			}
 
+			if labeler, found := otelhttp.LabelerFromContext(r.Context()); found {
+				labeler.Add(attribute.String(TraceAttributeNGSILDTenant, tenant))
+			}
+
 			ctx := context.WithValue(r.Context(), tenantCtxKey, tenant)
-			r = r.WithContext(ctx)
+
+			ctx = logging.NewContextWithLogger(
+				ctx,
+				logging.GetFromContext(r.Context()),
+				"tenant",
+				tenant,
+			)
 
 			if tenant != "default" {
 				w.Header().Add(tenantHeaderName, tenant)
 			}
 
-			next.ServeHTTP(w, r)
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
