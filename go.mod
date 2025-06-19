@@ -3,7 +3,7 @@ module github.com/diwise/context-broker
 go 1.24
 
 require (
-	github.com/diwise/service-chassis v0.0.0-20250619121153-0e2a41f18663
+	github.com/diwise/service-chassis v0.0.0-20250619161816-9a6803fd0111
 	github.com/google/uuid v1.6.0
 	github.com/matryer/is v1.4.1
 	github.com/open-policy-agent/opa v0.68.0

@@ -6,11 +6,11 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"slices"
 	"strings"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
 	"github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/auth"
+	"github.com/diwise/service-chassis/pkg/infrastructure/net/http/router"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -31,51 +31,34 @@ func RegisterHandlers(ctx context.Context, mux *http.ServeMux, middleware []func
 		RequiredContentTypes([]string{"application/json", "application/ld+json"}),
 	)
 
-	r := http.NewServeMux()
+	r := router.New(mux, router.WithTaggedRoutes())
+	r.Route("/ngsi-ld/v1", func(r router.Router) {
+		r.Use(middleware...)
 
-	register := func(method, endpoint string, handler http.HandlerFunc) {
-		r.Handle(
-			fmt.Sprintf("%s /ngsi-ld/v1%s", method, endpoint),
-			otelhttp.WithRouteTag(endpoint, handler),
-		)
-	}
+		r.Route("/entities", func(r router.Router) {
+			r.Get("", NewQueryEntitiesHandler(app, authenticator))
+			r.Post("", NewCreateEntityHandler(app, authenticator,
+				func(ctx context.Context, entityType, entityID string, logger *slog.Logger) {},
+			))
 
-	register(http.MethodGet, "/entities", NewQueryEntitiesHandler(app, authenticator))
-	register(http.MethodGet, "/entities/{entityId}", NewRetrieveEntityHandler(app, authenticator))
-	register(http.MethodPatch, "/entities/{entityId}", NewMergeEntityHandler(app, authenticator))
-	register(http.MethodPatch, "/entities/{entityId}/attrs/", NewUpdateEntityAttributesHandler(app, authenticator))
-	register(
-		http.MethodPost, "/entities",
-		NewCreateEntityHandler(
-			app, authenticator,
-			func(ctx context.Context, entityType, entityID string, logger *slog.Logger) {},
-		),
-	)
+			r.Route("/{entityId}", func(r router.Router) {
+				r.Get("", NewRetrieveEntityHandler(app, authenticator))
+				r.Patch("", NewMergeEntityHandler(app, authenticator))
+				r.Delete("", NewDeleteEntityHandler(app, authenticator))
 
-	register(http.MethodDelete, "/entities/{entityId}", NewDeleteEntityHandler(app, authenticator))
+				r.Patch("/attrs/", NewUpdateEntityAttributesHandler(app, authenticator))
+			})
+		})
 
-	register(http.MethodGet, "/temporal/entities",
-		NewQueryTemporalEvolutionOfEntitiesHandler(app, authenticator),
-	)
+		r.Route("/temporal/entities", func(r router.Router) {
+			r.Get("", NewQueryTemporalEvolutionOfEntitiesHandler(app, authenticator))
 
-	register(http.MethodGet, "/temporal/entities/{entityId}",
-		NewRetrieveTemporalEvolutionOfAnEntityHandler(app, authenticator),
-	)
+			r.Get("/{entityId}", NewRetrieveTemporalEvolutionOfAnEntityHandler(app, authenticator))
+		})
 
-	register(http.MethodGet, "/types", NewRetrieveAvailableEntityTypesHandler(app, authenticator))
-	register(http.MethodGet, "/jsonldContexts/{contextId}", NewServeContextHandler())
-
-	var handler http.Handler = r
-
-	// wrap the mux with any passed in middleware handlers
-	for _, mw := range slices.Backward(middleware) {
-		handler = mw(handler)
-	}
-
-	mux.Handle("GET /", handler)
-	mux.Handle("PATCH /", handler)
-	mux.Handle("POST /", handler)
-	mux.Handle("DELETE /", handler)
+		r.Get("/types", NewRetrieveAvailableEntityTypesHandler(app, authenticator))
+		r.Get("/jsonldContexts/{contextId}", NewServeContextHandler())
+	})
 
 	return nil
 }

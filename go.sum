@@ -29,6 +29,8 @@ github.com/diwise/service-chassis v0.0.0-20250616202216-d784ef618a4e h1:w7DOe1d+
 github.com/diwise/service-chassis v0.0.0-20250616202216-d784ef618a4e/go.mod h1:VAGY1hjH+XkZ/xjqxYNMGR9yYv9lJW9aasKd9dZl2fA=
 github.com/diwise/service-chassis v0.0.0-20250619121153-0e2a41f18663 h1:HoGJnQbyGJYONEnnBMy/yK7PXKnXtU2x0QrDlR7UR+0=
 github.com/diwise/service-chassis v0.0.0-20250619121153-0e2a41f18663/go.mod h1:Meq0CX6TEFQ5ededqNWVyZry8afJZSOhuhmHKkf/8Ds=
+github.com/diwise/service-chassis v0.0.0-20250619161816-9a6803fd0111 h1:kvB5Db5CAL8vne/PJWWA/+3rLxELaIU2PjIXqbTaVjc=
+github.com/diwise/service-chassis v0.0.0-20250619161816-9a6803fd0111/go.mod h1:Meq0CX6TEFQ5ededqNWVyZry8afJZSOhuhmHKkf/8Ds=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
 github.com/felixge/httpsnoop v1.0.4 h1:NFTV2Zj1bL4mc9sqWACXbQFVBBg2W3GPvqp8/ESS2Wg=
