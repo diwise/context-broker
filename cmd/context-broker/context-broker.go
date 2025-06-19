@@ -26,7 +26,7 @@ func DefaultFlags() FlagMap {
 	return FlagMap{
 		listenAddress: "",     // listen on all ipv4 and ipv6 interfaces
 		servicePort:   "8080", //
-		controlPort:   "",     // control port disabled by default
+		controlPort:   "8000",
 
 		configPath: "/opt/diwise/config/default.yaml",
 		opaPath:    "/opt/diwise/config/authz.rego",
@@ -87,7 +87,7 @@ func initialize(ctx context.Context, flags FlagMap, appConfig *AppConfig) (servi
 			webserver("control", listen(flags[listenAddress]), port(flags[controlPort]),
 				pprof(), liveness(func() error { return nil }), readiness(probes),
 			)),
-		webserver("public", listen(flags[listenAddress]), port(flags[servicePort]),
+		webserver("public", listen(flags[listenAddress]), port(flags[servicePort]), tracing(true),
 			muxinit(func(ctx context.Context, identifier string, port string, svcCfg *AppConfig, handler *http.ServeMux) (err error) {
 
 				svcCfg.publicPort = port

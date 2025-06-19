@@ -19,16 +19,12 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/geojson"
 	ngsitypes "github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
-	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
-	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 
-	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
-
-var tracer = otel.Tracer("context-broker/ngsi-ld/entities")
 
 const (
 	TraceAttributeEntityID     string = "entity-id"
@@ -37,11 +33,25 @@ const (
 
 type CreateEntityCompletionCallback func(ctx context.Context, entityType, entityID string, logger *slog.Logger)
 
+func addLabelIfError(err error, labeler *otelhttp.Labeler) {
+	if err != nil {
+		labeler.Add(attribute.Bool("error", true))
+		labeler.Add(attribute.String("err", err.Error()))
+	}
+}
+
+func traceID(ctx context.Context) string {
+	t := trace.SpanFromContext(ctx).SpanContext().TraceID()
+	if !t.IsValid() {
+		return ""
+	}
+	return t.String()
+}
+
 // NewCreateEntityHandler handles incoming POST requests for NGSI entities
 func NewCreateEntityHandler(
 	contextInformationManager cim.EntityCreator,
 	authenticator auth.Enticator,
-	logger *slog.Logger,
 	onsuccess CreateEntityCompletionCallback) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -50,14 +60,10 @@ func NewCreateEntityHandler(
 		ctx := r.Context()
 		tenant := GetTenantFromContext(ctx)
 
+		labeler, _ := otelhttp.LabelerFromContext(ctx)
+		defer func() { addLabelIfError(err, labeler) }()
+
 		propagatedHeaders := extractHeaders(r, "Content-Type", "Link")
-
-		ctx, span := tracer.Start(ctx, "create-entity",
-			trace.WithAttributes(attribute.String(TraceAttributeNGSILDTenant, tenant)),
-		)
-		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
-
-		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 		// copy the body from the request and restore it for later use
 		body, _ := io.ReadAll(r.Body)
@@ -69,7 +75,7 @@ func NewCreateEntityHandler(
 			ngsierrors.ReportNewInvalidRequest(
 				w,
 				fmt.Sprintf("unable to decode request payload: %s", err.Error()),
-				traceID,
+				traceID(ctx),
 			)
 			return
 		}
@@ -77,14 +83,14 @@ func NewCreateEntityHandler(
 		entityID := entity.ID()
 		entityType := entity.Type()
 
-		// decorate the logger with info about the current tenant and entity id
-		log = log.With(slog.String("entityID", entityID), slog.String("tenant", tenant))
+		// decorate the logger with info about the current entity id
+		log := logging.GetFromContext(ctx).With("entityID", entityID)
 		ctx = logging.NewContextWithLogger(ctx, log)
 
 		err = authenticator.CheckAccess(ctx, r, tenant, []string{entityType})
 		if err != nil {
 			log.Warn("access not granted", "err", err.Error())
-			ngsierrors.ReportUnauthorizedRequest(w, "not authorized", traceID)
+			ngsierrors.ReportUnauthorizedRequest(w, "not authorized", traceID(ctx))
 			return
 		}
 
@@ -93,7 +99,7 @@ func NewCreateEntityHandler(
 		result, err = contextInformationManager.CreateEntity(ctx, tenant, entity, propagatedHeaders)
 		if err != nil {
 			log.Error("create entity failed", "err", err.Error())
-			mapCIMToNGSILDError(w, err, traceID)
+			mapCIMToNGSILDError(w, err, traceID(ctx))
 			return
 		}
 
@@ -109,8 +115,7 @@ func NewCreateEntityHandler(
 // NewQueryEntitiesHandler handles GET requests for NGSI entities
 func NewQueryEntitiesHandler(
 	contextInformationManager cim.EntityQuerier,
-	authenticator auth.Enticator,
-	logger *slog.Logger) http.HandlerFunc {
+	authenticator auth.Enticator) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
@@ -118,14 +123,10 @@ func NewQueryEntitiesHandler(
 		ctx := r.Context()
 		tenant := GetTenantFromContext(ctx)
 
+		labeler, _ := otelhttp.LabelerFromContext(ctx)
+		defer func() { addLabelIfError(err, labeler) }()
+
 		propagatedHeaders := extractHeaders(r, "Accept", "Link")
-
-		ctx, span := tracer.Start(ctx, "query-entities",
-			trace.WithAttributes(attribute.String(TraceAttributeNGSILDTenant, tenant)),
-		)
-		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
-
-		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 		attributeNames := r.URL.Query().Get("attrs")
 		entityTypeNames := r.URL.Query().Get("type")
@@ -135,7 +136,7 @@ func NewQueryEntitiesHandler(
 
 		if entityTypeNames == "" && attributeNames == "" && q == "" && georel == "" {
 			err = errors.New("at least one among type, attrs, q, or georel must be present in a request for entities")
-			ngsierrors.ReportNewBadRequestData(w, err.Error(), traceID)
+			ngsierrors.ReportNewBadRequestData(w, err.Error(), traceID(ctx))
 			return
 		}
 
@@ -153,7 +154,7 @@ func NewQueryEntitiesHandler(
 				keyValueFormatRequested = true
 			} else {
 				err = errors.New("no options besides keyValues are supported")
-				ngsierrors.ReportNewBadRequestData(w, err.Error(), traceID)
+				ngsierrors.ReportNewBadRequestData(w, err.Error(), traceID(ctx))
 				return
 			}
 		}
@@ -161,18 +162,20 @@ func NewQueryEntitiesHandler(
 		entityTypes := strings.Split(entityTypeNames, ",")
 		attributes := strings.Split(attributeNames, ",")
 
+		log := logging.GetFromContext(ctx)
+
 		err = authenticator.CheckAccess(ctx, r, tenant, entityTypes)
 		if err != nil {
 			log.Warn("access not granted", "err", err.Error())
 			messageToSendToNonAuthenticatedClients := "not found"
-			ngsierrors.ReportNotFoundError(w, messageToSendToNonAuthenticatedClients, traceID)
+			ngsierrors.ReportNotFoundError(w, messageToSendToNonAuthenticatedClients, traceID(ctx))
 			return
 		}
 
 		result, err := contextInformationManager.QueryEntities(ctx, tenant, entityTypes, attributes, r.URL.Path+"?"+r.URL.RawQuery, propagatedHeaders)
 		if err != nil {
 			log.Error("query entities failed", "err", err.Error())
-			mapCIMToNGSILDError(w, err, traceID)
+			mapCIMToNGSILDError(w, err, traceID(ctx))
 			return
 		}
 
@@ -230,7 +233,7 @@ func NewQueryEntitiesHandler(
 
 		if err != nil {
 			log.Error("query entities: failed to marshal entity collection to json", "err", err.Error())
-			mapCIMToNGSILDError(w, err, traceID)
+			mapCIMToNGSILDError(w, err, traceID(ctx))
 			return
 		}
 
@@ -269,31 +272,23 @@ func NewQueryEntitiesHandler(
 // NewRetrieveEntityHandler retrieves entity by ID.
 func NewRetrieveEntityHandler(
 	contextInformationManager cim.EntityRetriever,
-	authenticator auth.Enticator,
-	logger *slog.Logger) http.HandlerFunc {
+	authenticator auth.Enticator) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
 
 		ctx := r.Context()
 		tenant := GetTenantFromContext(ctx)
-
 		entityID, _ := url.QueryUnescape(r.PathValue("entityId"))
+
+		labeler, _ := otelhttp.LabelerFromContext(ctx)
+		labeler.Add(attribute.String(TraceAttributeEntityID, entityID))
+		defer func() { addLabelIfError(err, labeler) }()
 
 		propagatedHeaders := extractHeaders(r, "Accept", "Link")
 
-		ctx, span := tracer.Start(ctx, "retrieve-entity",
-			trace.WithAttributes(
-				attribute.String(TraceAttributeNGSILDTenant, tenant),
-				attribute.String(TraceAttributeEntityID, entityID),
-			),
-		)
-		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
-
-		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(
-			span,
-			logger.With(slog.String("entityID", entityID), slog.String("tenant", tenant)),
-			ctx)
+		log := logging.GetFromContext(ctx).With("entityID", entityID)
+		ctx = logging.NewContextWithLogger(ctx, log)
 
 		options := r.URL.Query().Get("options")
 		keyValueFormatRequested := false
@@ -309,7 +304,7 @@ func NewRetrieveEntityHandler(
 				keyValueFormatRequested = true
 			} else {
 				err = errors.New("no options besides keyValues are supported")
-				ngsierrors.ReportNewBadRequestData(w, err.Error(), traceID)
+				ngsierrors.ReportNewBadRequestData(w, err.Error(), traceID(ctx))
 				return
 			}
 		}
@@ -325,14 +320,14 @@ func NewRetrieveEntityHandler(
 				err = autherr
 				log.Warn("access not granted", "err", err.Error())
 				messageToSendToNonAuthenticatedClients := "not found"
-				ngsierrors.ReportNotFoundError(w, messageToSendToNonAuthenticatedClients, traceID)
+				ngsierrors.ReportNotFoundError(w, messageToSendToNonAuthenticatedClients, traceID(ctx))
 				return
 			}
 		}
 
 		if err != nil {
 			log.Error("retrieve entity failed", "err", err.Error())
-			mapCIMToNGSILDError(w, err, traceID)
+			mapCIMToNGSILDError(w, err, traceID(ctx))
 			return
 		}
 
@@ -357,7 +352,7 @@ func NewRetrieveEntityHandler(
 
 		if err != nil {
 			log.Error("failed to convert or marshal response entity", "err", err.Error())
-			mapCIMToNGSILDError(w, err, traceID)
+			mapCIMToNGSILDError(w, err, traceID(ctx))
 			return
 		}
 
@@ -369,8 +364,7 @@ func NewRetrieveEntityHandler(
 // NewMergeEntityHandler handles PATCH requests for NGSI entitities
 func NewMergeEntityHandler(
 	contextInformationManager cim.EntityMerger,
-	authenticator auth.Enticator,
-	logger *slog.Logger) http.HandlerFunc {
+	authenticator auth.Enticator) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
@@ -379,27 +373,21 @@ func NewMergeEntityHandler(
 		tenant := GetTenantFromContext(ctx)
 		entityID, _ := url.QueryUnescape(r.PathValue("entityId"))
 
+		labeler, _ := otelhttp.LabelerFromContext(ctx)
+		labeler.Add(attribute.String(TraceAttributeEntityID, entityID))
+		defer func() { addLabelIfError(err, labeler) }()
+
 		propagatedHeaders := extractHeaders(r, "Content-Type", "Link")
 
-		ctx, span := tracer.Start(ctx, "merge-entity",
-			trace.WithAttributes(
-				attribute.String(TraceAttributeNGSILDTenant, tenant),
-				attribute.String(TraceAttributeEntityID, entityID),
-			),
-		)
-		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
-
-		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(
-			span,
-			logger.With(slog.String("entityID", entityID), slog.String("tenant", tenant)),
-			ctx)
+		log := logging.GetFromContext(ctx).With("entityID", entityID)
+		ctx = logging.NewContextWithLogger(ctx, log)
 
 		var entity ngsitypes.EntityFragment
 		body, _ := io.ReadAll(r.Body)
 		entity, err = entities.NewFragmentFromJSON(body)
 
 		if err != nil {
-			mapCIMToNGSILDError(w, err, traceID)
+			mapCIMToNGSILDError(w, err, traceID(ctx))
 			return
 		}
 
@@ -407,7 +395,7 @@ func NewMergeEntityHandler(
 		if err != nil {
 			log.Warn("access not granted", "err", err.Error())
 			messageToSendToNonAuthenticatedClients := "not found"
-			ngsierrors.ReportNotFoundError(w, messageToSendToNonAuthenticatedClients, traceID)
+			ngsierrors.ReportNotFoundError(w, messageToSendToNonAuthenticatedClients, traceID(ctx))
 			return
 		}
 
@@ -415,7 +403,7 @@ func NewMergeEntityHandler(
 
 		if err != nil {
 			log.Error("failed to merge entity attributes", "err", err.Error())
-			mapCIMToNGSILDError(w, err, traceID)
+			mapCIMToNGSILDError(w, err, traceID(ctx))
 			return
 		}
 
@@ -428,8 +416,7 @@ func NewMergeEntityHandler(
 // NewUpdateEntityAttributesHandler handles PATCH requests for NGSI entitity attributes
 func NewUpdateEntityAttributesHandler(
 	contextInformationManager cim.EntityAttributesUpdater,
-	authenticator auth.Enticator,
-	logger *slog.Logger) http.HandlerFunc {
+	authenticator auth.Enticator) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
@@ -438,27 +425,21 @@ func NewUpdateEntityAttributesHandler(
 		tenant := GetTenantFromContext(ctx)
 		entityID, _ := url.QueryUnescape(r.PathValue("entityId"))
 
+		labeler, _ := otelhttp.LabelerFromContext(ctx)
+		labeler.Add(attribute.String(TraceAttributeEntityID, entityID))
+		defer func() { addLabelIfError(err, labeler) }()
+
 		propagatedHeaders := extractHeaders(r, "Content-Type", "Link")
 
-		ctx, span := tracer.Start(ctx, "update-entity-attributes",
-			trace.WithAttributes(
-				attribute.String(TraceAttributeNGSILDTenant, tenant),
-				attribute.String(TraceAttributeEntityID, entityID),
-			),
-		)
-		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
-
-		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(
-			span,
-			logger.With(slog.String("entityID", entityID), slog.String("tenant", tenant)),
-			ctx)
+		log := logging.GetFromContext(ctx).With("entityID", entityID)
+		ctx = logging.NewContextWithLogger(ctx, log)
 
 		var entity ngsitypes.EntityFragment
 		body, _ := io.ReadAll(r.Body)
 		entity, err = entities.NewFragmentFromJSON(body)
 
 		if err != nil {
-			mapCIMToNGSILDError(w, err, traceID)
+			mapCIMToNGSILDError(w, err, traceID(ctx))
 			return
 		}
 
@@ -466,7 +447,7 @@ func NewUpdateEntityAttributesHandler(
 		if err != nil {
 			log.Warn("access not granted", "err", err.Error())
 			messageToSendToNonAuthenticatedClients := "not found"
-			ngsierrors.ReportNotFoundError(w, messageToSendToNonAuthenticatedClients, traceID)
+			ngsierrors.ReportNotFoundError(w, messageToSendToNonAuthenticatedClients, traceID(ctx))
 			return
 		}
 
@@ -474,7 +455,7 @@ func NewUpdateEntityAttributesHandler(
 
 		if err != nil {
 			log.Error("failed to update entity attributes", "err", err.Error())
-			mapCIMToNGSILDError(w, err, traceID)
+			mapCIMToNGSILDError(w, err, traceID(ctx))
 			return
 		}
 
@@ -491,8 +472,7 @@ func NewUpdateEntityAttributesHandler(
 
 func NewDeleteEntityHandler(
 	contextInformationManager cim.EntityDeleter,
-	authenticator auth.Enticator,
-	logger *slog.Logger) http.HandlerFunc {
+	authenticator auth.Enticator) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
@@ -501,23 +481,17 @@ func NewDeleteEntityHandler(
 		tenant := GetTenantFromContext(ctx)
 		entityID, _ := url.QueryUnescape(r.PathValue("entityId"))
 
-		ctx, span := tracer.Start(ctx, "delete-entity",
-			trace.WithAttributes(
-				attribute.String(TraceAttributeNGSILDTenant, tenant),
-				attribute.String(TraceAttributeEntityID, entityID),
-			),
-		)
-		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+		labeler, _ := otelhttp.LabelerFromContext(ctx)
+		labeler.Add(attribute.String(TraceAttributeEntityID, entityID))
+		defer func() { addLabelIfError(err, labeler) }()
 
-		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(
-			span,
-			logger.With(slog.String("entityID", entityID), slog.String("tenant", tenant)),
-			ctx)
+		log := logging.GetFromContext(ctx).With("entityID", entityID)
+		ctx = logging.NewContextWithLogger(ctx, log)
 
 		err = authenticator.CheckAccess(ctx, r, tenant, []string{})
 		if err != nil {
 			log.Warn("access not granted", "err", err.Error())
-			ngsierrors.ReportUnauthorizedRequest(w, "not authorized", traceID)
+			ngsierrors.ReportUnauthorizedRequest(w, "not authorized", traceID(ctx))
 			return
 		}
 
@@ -525,7 +499,7 @@ func NewDeleteEntityHandler(
 
 		if err != nil {
 			log.Error("failed to delete entity", "err", err.Error())
-			mapCIMToNGSILDError(w, err, traceID)
+			mapCIMToNGSILDError(w, err, traceID(ctx))
 			return
 		}
 
