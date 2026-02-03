@@ -1,6 +1,10 @@
 {
   "@context": {
     "diwise": "https://diwise.io/ngsi-ld/",
+    "Incident": "diwise:Incident",
+    "incidentType": "https://uri.diwise.io/ns/data-models#incidentType",
+    "subType": "https://uri.diwise.io/ns/data-models#subType",
+    "dateResolved": "https://uri.diwise.io/ns/data-models#dateResolved",
     "ExerciseTrail": "diwise:ExerciseTrail",
     "IndoorEnvironmentObserved": "diwise:IndoorEnvironmentObserved",
     "Lifebuoy": "diwise:Lifebuoy",
