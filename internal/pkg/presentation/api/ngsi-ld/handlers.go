@@ -31,17 +31,17 @@ func RegisterHandlers(ctx context.Context, mux *http.ServeMux, middleware []func
 		RequiredContentTypes([]string{"application/json", "application/ld+json"}),
 	)
 
-	r := router.New(mux, router.WithTaggedRoutes())
-	r.Route("/ngsi-ld/v1", func(r router.Router) {
+	r := router.New(mux, router.WithTaggedRoutes(true))
+	r.Route("/ngsi-ld/v1", func(r router.ServeMux) {
 		r.Use(middleware...)
 
-		r.Route("/entities", func(r router.Router) {
+		r.Route("/entities", func(r router.ServeMux) {
 			r.Get("", NewQueryEntitiesHandler(app, authenticator))
 			r.Post("", NewCreateEntityHandler(app, authenticator,
 				func(ctx context.Context, entityType, entityID string, logger *slog.Logger) {},
 			))
 
-			r.Route("/{entityId}", func(r router.Router) {
+			r.Route("/{entityId}", func(r router.ServeMux) {
 				r.Get("", NewRetrieveEntityHandler(app, authenticator))
 				r.Patch("", NewMergeEntityHandler(app, authenticator))
 				r.Delete("", NewDeleteEntityHandler(app, authenticator))
@@ -50,7 +50,7 @@ func RegisterHandlers(ctx context.Context, mux *http.ServeMux, middleware []func
 			})
 		})
 
-		r.Route("/temporal/entities", func(r router.Router) {
+		r.Route("/temporal/entities", func(r router.ServeMux) {
 			r.Get("", NewQueryTemporalEvolutionOfEntitiesHandler(app, authenticator))
 
 			r.Get("/{entityId}", NewRetrieveTemporalEvolutionOfAnEntityHandler(app, authenticator))
