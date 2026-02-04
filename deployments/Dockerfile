@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM docker.io/golang:1.24 AS builder
+FROM --platform=$BUILDPLATFORM docker.io/golang:1.25 AS builder
 
 # Set the Current Working Directory inside the container
 WORKDIR /app
@@ -23,7 +23,7 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build
 FROM registry.access.redhat.com/ubi9/ubi-minimal
 WORKDIR /opt/diwise
 
-LABEL "org.opencontainers.image.source" = "https://github.com/diwise/context-broker"
+LABEL "org.opencontainers.image.source"="https://github.com/diwise/context-broker"
 
 COPY --from=builder --chown=1001 /app/cmd/context-broker/context-broker /opt/diwise/
 COPY --chown=1001 assets/config/authz.rego /opt/diwise/config/authz.rego

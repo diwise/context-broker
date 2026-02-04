@@ -6,85 +6,58 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/diwise/context-broker/internal/pkg/application/cim"
 	"github.com/diwise/context-broker/internal/pkg/presentation/api/ngsi-ld/auth"
+	"github.com/diwise/service-chassis/pkg/infrastructure/net/http/router"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
-func RegisterHandlers(ctx context.Context, r chi.Router, policies io.Reader, app cim.ContextInformationManager) error {
-
-	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
+func RegisterHandlers(ctx context.Context, mux *http.ServeMux, middleware []func(http.Handler) http.Handler, policies io.Reader, app cim.ContextInformationManager) error {
 
 	authenticator, err := auth.NewAuthenticator(ctx, policies)
 	if err != nil {
 		return fmt.Errorf("failed to create api authenticator: %w", err)
 	}
 
-	r.Route("/ngsi-ld/v1", func(r chi.Router) {
-		r.Group(func(r chi.Router) {
-			r.Use(middleware.AllowContentType("application/json", "application/ld+json"))
-			r.Use(NGSIMiddleware())
+	middleware = append(middleware,
+		Logger(logging.GetFromContext(ctx)),
+		NGSIMiddleware(),
+		RequiredContentTypes([]string{"application/json", "application/ld+json"}),
+	)
 
-			log := logging.GetFromContext(ctx)
+	r := router.New(mux, router.WithTaggedRoutes(true))
+	r.Route("/ngsi-ld/v1", func(r router.ServeMux) {
+		r.Use(middleware...)
 
-			r.Get(
-				"/entities",
-				NewQueryEntitiesHandler(app, authenticator, log),
-			)
+		r.Route("/entities", func(r router.ServeMux) {
+			r.Get("", NewQueryEntitiesHandler(app, authenticator))
+			r.Post("", NewCreateEntityHandler(app, authenticator,
+				func(ctx context.Context, entityType, entityID string, logger *slog.Logger) {},
+			))
 
-			r.Get(
-				"/entities/{entityId}",
-				NewRetrieveEntityHandler(app, authenticator, log),
-			)
+			r.Route("/{entityId}", func(r router.ServeMux) {
+				r.Get("", NewRetrieveEntityHandler(app, authenticator))
+				r.Patch("", NewMergeEntityHandler(app, authenticator))
+				r.Delete("", NewDeleteEntityHandler(app, authenticator))
 
-			r.Patch(
-				"/entities/{entityId}",
-				NewMergeEntityHandler(app, authenticator, log),
-			)
-
-			r.Patch(
-				"/entities/{entityId}/attrs/",
-				NewUpdateEntityAttributesHandler(app, authenticator, log),
-			)
-
-			r.Post(
-				"/entities",
-				NewCreateEntityHandler(
-					app, authenticator, log,
-					func(ctx context.Context, entityType, entityID string, logger *slog.Logger) {},
-				),
-			)
-
-			r.Delete(
-				"/entities/{entityId}",
-				NewDeleteEntityHandler(app, authenticator, log),
-			)
-
-			r.Get(
-				"/temporal/entities",
-				NewQueryTemporalEvolutionOfEntitiesHandler(app, authenticator, log),
-			)
-
-			r.Get(
-				"/temporal/entities/{entityId}",
-				NewRetrieveTemporalEvolutionOfAnEntityHandler(app, authenticator, log),
-			)
-
-			r.Get(
-				"/types",
-				NewRetrieveAvailableEntityTypesHandler(app, authenticator, log),
-			)
-
-			r.Get(
-				"/jsonldContexts/{contextId}",
-				NewServeContextHandler(log),
-			)
+				r.Patch("/attrs/", NewUpdateEntityAttributesHandler(app, authenticator))
+			})
 		})
+
+		r.Route("/temporal/entities", func(r router.ServeMux) {
+			r.Get("", NewQueryTemporalEvolutionOfEntitiesHandler(app, authenticator))
+
+			r.Get("/{entityId}", NewRetrieveTemporalEvolutionOfAnEntityHandler(app, authenticator))
+		})
+
+		r.Get("/types", NewRetrieveAvailableEntityTypesHandler(app, authenticator))
+		r.Get("/jsonldContexts/{contextId}", NewServeContextHandler())
 	})
 
 	return nil
@@ -95,6 +68,47 @@ type tenantContextKey struct {
 }
 
 var tenantCtxKey = &tenantContextKey{"ngsi-tenant"}
+
+func Logger(logger *slog.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+
+			_, ctx, _ = o11y.AddTraceIDToLoggerAndStoreInContext(
+				trace.SpanFromContext(ctx),
+				logger,
+				ctx)
+
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+func RequiredContentTypes(validTypes []string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			contentType := r.Header.Get("Content-Type")
+			isValidContentType := true
+
+			if len(contentType) > 0 {
+				isValidContentType = false
+
+				for _, t := range validTypes {
+					if strings.HasPrefix(contentType, t) {
+						isValidContentType = true
+						break
+					}
+				}
+			}
+
+			if isValidContentType {
+				next.ServeHTTP(w, r)
+			} else {
+				http.Error(w, "unsupported media type", http.StatusUnsupportedMediaType)
+			}
+		})
+	}
+}
 
 // NGSIMiddleware packs any tenant id into the context
 func NGSIMiddleware() func(http.Handler) http.Handler {
@@ -109,14 +123,24 @@ func NGSIMiddleware() func(http.Handler) http.Handler {
 				tenant = tenantHeader[0]
 			}
 
+			if labeler, found := otelhttp.LabelerFromContext(r.Context()); found {
+				labeler.Add(attribute.String(TraceAttributeNGSILDTenant, tenant))
+			}
+
 			ctx := context.WithValue(r.Context(), tenantCtxKey, tenant)
-			r = r.WithContext(ctx)
+
+			ctx = logging.NewContextWithLogger(
+				ctx,
+				logging.GetFromContext(r.Context()),
+				"tenant",
+				tenant,
+			)
 
 			if tenant != "default" {
 				w.Header().Add(tenantHeaderName, tenant)
 			}
 
-			next.ServeHTTP(w, r)
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -16,17 +15,14 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild"
 	ngsierrors "github.com/diwise/context-broker/pkg/ngsild/errors"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
-	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
-	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
-	"github.com/go-chi/chi/v5"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 )
 
 func NewQueryTemporalEvolutionOfEntitiesHandler(
 	contextInformationManager cim.EntityTemporalQuerier,
-	authenticator auth.Enticator,
-	logger *slog.Logger) http.HandlerFunc {
+	authenticator auth.Enticator) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
@@ -34,30 +30,23 @@ func NewQueryTemporalEvolutionOfEntitiesHandler(
 		ctx := r.Context()
 		tenant := GetTenantFromContext(ctx)
 
-		propagatedHeaders := extractHeaders(r, "Accept", "Link")
+		labeler, _ := otelhttp.LabelerFromContext(ctx)
+		defer func() { addLabelIfError(err, labeler) }()
 
-		ctx, span := tracer.Start(ctx, "query-temporal-entities",
-			trace.WithAttributes(
-				attribute.String(TraceAttributeNGSILDTenant, tenant),
-			),
-		)
-		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+		propagatedHeaders := extractHeaders(r, "Accept", "Link")
 
 		contentType := r.Header.Get("Accept")
 		if contentType == "" {
 			contentType = "application/ld+json"
 		}
 
-		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(
-			span,
-			logger.With(slog.String("tenant", tenant)),
-			ctx)
+		log := logging.GetFromContext(ctx)
 
 		err = authenticator.CheckAccess(ctx, r, tenant, []string{})
 		if err != nil {
 			log.Warn("access not granted", "err", err.Error())
 			messageToSendToNonAuthenticatedClients := "not found"
-			ngsierrors.ReportNotFoundError(w, messageToSendToNonAuthenticatedClients, traceID)
+			ngsierrors.ReportNotFoundError(w, messageToSendToNonAuthenticatedClients, traceID(ctx))
 			return
 		}
 
@@ -66,7 +55,7 @@ func NewQueryTemporalEvolutionOfEntitiesHandler(
 
 		if err != nil {
 			log.Error("failed to create rteoe query parameters from request", "err", err.Error())
-			ngsierrors.ReportNewBadRequestData(w, err.Error(), traceID)
+			ngsierrors.ReportNewBadRequestData(w, err.Error(), traceID(ctx))
 			return
 		}
 
@@ -78,7 +67,7 @@ func NewQueryTemporalEvolutionOfEntitiesHandler(
 
 		if err != nil {
 			log.Error("failed to retrieve temporal evolution of entities", "err", err.Error())
-			mapCIMToNGSILDError(w, err, traceID)
+			mapCIMToNGSILDError(w, err, traceID(ctx))
 			return
 		}
 
@@ -96,7 +85,7 @@ func NewQueryTemporalEvolutionOfEntitiesHandler(
 
 		if err != nil {
 			log.Error("failed to convert or marshal response entity", "err", err.Error())
-			mapCIMToNGSILDError(w, err, traceID)
+			mapCIMToNGSILDError(w, err, traceID(ctx))
 			return
 		}
 
@@ -108,41 +97,34 @@ func NewQueryTemporalEvolutionOfEntitiesHandler(
 
 func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 	contextInformationManager cim.EntityTemporalRetriever,
-	authenticator auth.Enticator,
-	logger *slog.Logger) http.HandlerFunc {
+	authenticator auth.Enticator) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
 
 		ctx := r.Context()
 		tenant := GetTenantFromContext(ctx)
-		entityID, _ := url.QueryUnescape(chi.URLParam(r, "entityId"))
+		entityID, _ := url.QueryUnescape(r.PathValue("entityId"))
+
+		labeler, _ := otelhttp.LabelerFromContext(ctx)
+		labeler.Add(attribute.String(TraceAttributeEntityID, entityID))
+		defer func() { addLabelIfError(err, labeler) }()
 
 		propagatedHeaders := extractHeaders(r, "Accept", "Link")
-
-		ctx, span := tracer.Start(ctx, "retrieve-temporal-entity",
-			trace.WithAttributes(
-				attribute.String(TraceAttributeNGSILDTenant, tenant),
-				attribute.String(TraceAttributeEntityID, entityID),
-			),
-		)
-		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
 		contentType := r.Header.Get("Accept")
 		if contentType == "" {
 			contentType = "application/ld+json"
 		}
 
-		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(
-			span,
-			logger.With(slog.String("entityID", entityID), slog.String("tenant", tenant)),
-			ctx)
+		log := logging.GetFromContext(ctx).With("entityID", entityID)
+		ctx = logging.NewContextWithLogger(ctx, log)
 
 		err = authenticator.CheckAccess(ctx, r, tenant, []string{})
 		if err != nil {
 			log.Warn("access not granted", "err", err.Error())
 			messageToSendToNonAuthenticatedClients := "not found"
-			ngsierrors.ReportNotFoundError(w, messageToSendToNonAuthenticatedClients, traceID)
+			ngsierrors.ReportNotFoundError(w, messageToSendToNonAuthenticatedClients, traceID(ctx))
 			return
 		}
 
@@ -151,7 +133,7 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 		params, err = NewTemporalQueryParamsFromRequest(r)
 		if err != nil {
 			log.Error("failed to create rteoe query parameters from request", "err", err.Error())
-			ngsierrors.ReportNewBadRequestData(w, err.Error(), traceID)
+			ngsierrors.ReportNewBadRequestData(w, err.Error(), traceID(ctx))
 			return
 		}
 
@@ -159,7 +141,7 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 
 		if err != nil {
 			log.Error("failed to retrieve temporal evolution of an entity", "err", err.Error())
-			mapCIMToNGSILDError(w, err, traceID)
+			mapCIMToNGSILDError(w, err, traceID(ctx))
 			return
 		}
 
@@ -167,7 +149,7 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 
 		if err != nil {
 			log.Error("failed to convert or marshal response entity", "err", err.Error())
-			mapCIMToNGSILDError(w, err, traceID)
+			mapCIMToNGSILDError(w, err, traceID(ctx))
 			return
 		}
 
@@ -175,7 +157,7 @@ func NewRetrieveTemporalEvolutionOfAnEntityHandler(
 
 		if result.PartialResult {
 			if result.ContentRange == nil {
-				mapCIMToNGSILDError(w, fmt.Errorf("content range missing for partial result"), traceID)
+				mapCIMToNGSILDError(w, fmt.Errorf("content range missing for partial result"), traceID(ctx))
 				return
 			}
 

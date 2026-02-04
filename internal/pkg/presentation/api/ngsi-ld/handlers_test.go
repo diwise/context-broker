@@ -17,7 +17,6 @@ import (
 	ngsitypes "github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	. "github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
-	"github.com/go-chi/chi/v5"
 	"github.com/matryer/is"
 )
 
@@ -284,7 +283,7 @@ func testRequest(is *is.I, ts *httptest.Server, method string, headers [][]strin
 
 func setupTest(t *testing.T) (*is.I, *httptest.Server, *cim.ContextInformationManagerMock) {
 	is := is.New(t)
-	r := chi.NewRouter()
+	r := http.NewServeMux()
 	ts := httptest.NewServer(r)
 
 	app := &cim.ContextInformationManagerMock{
@@ -299,7 +298,8 @@ func setupTest(t *testing.T) (*is.I, *httptest.Server, *cim.ContextInformationMa
 	}
 
 	policies := bytes.NewBufferString(opaModule)
-	RegisterHandlers(context.Background(), r, policies, app)
+	nomiddleware := []func(http.Handler) http.Handler{}
+	RegisterHandlers(t.Context(), r, nomiddleware, policies, app)
 
 	return is, ts, app
 }
