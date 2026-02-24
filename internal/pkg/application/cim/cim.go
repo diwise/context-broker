@@ -73,8 +73,6 @@ type ContextInformationManager interface {
 	Stop() error
 }
 
-type ContextBroker interface {
-}
+type ContextBroker any
 
-type ContextSource interface {
-}
+type ContextSource any

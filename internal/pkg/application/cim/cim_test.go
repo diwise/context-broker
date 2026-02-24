@@ -21,7 +21,7 @@ func TestMe(t *testing.T) {
 	is.NoErr(err)
 
 	attributes := []string{}
-	e.ForEachAttribute(func(at, an string, data interface{}) {
+	e.ForEachAttribute(func(at, an string, data any) {
 		attributes = append(attributes, an)
 	})
 
