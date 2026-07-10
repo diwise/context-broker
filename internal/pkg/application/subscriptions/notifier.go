@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -31,15 +32,29 @@ var tracer = otel.Tracer("context-broker/notifier")
 
 type action func()
 
+type notifierState uint8
+
+const (
+	notifierCreated notifierState = iota
+	notifierRunning
+	notifierStopping
+	notifierStopped
+)
+
 type notifier struct {
-	started       bool
+	ctx           context.Context
+	mu            sync.Mutex
+	state         notifierState
 	queue         chan action
+	done          chan struct{}
 	notifications map[string][]config.Notification
 }
 
 func NewNotifier(ctx context.Context, cfg config.Config) (Notifier, error) {
 	n := &notifier{
+		ctx:           ctx,
 		queue:         make(chan action, 32),
+		done:          make(chan struct{}),
 		notifications: make(map[string][]config.Notification),
 	}
 
@@ -53,99 +68,122 @@ func NewNotifier(ctx context.Context, cfg config.Config) (Notifier, error) {
 		return nil, nil
 	}
 
+	log := logging.GetFromContext(ctx)
+	log.Debug("notifications configured...", "count", len(n.notifications))
+
 	return n, nil
 }
 
 func (n *notifier) Start() error {
-	if n.started {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
+	if n.state == notifierRunning || n.state == notifierStopping {
 		return fmt.Errorf("already started")
 	}
+	if n.state == notifierStopped {
+		return fmt.Errorf("already stopped")
+	}
 
-	n.started = true
+	n.state = notifierRunning
 
-	go n.run()
+	go n.run(n.ctx)
 
 	return nil
 }
 
 func (n *notifier) Stop() error {
-	if n.started {
-		// Create a result channel so that we can wait for completion
-		resultChan := make(chan bool)
+	n.mu.Lock()
 
-		n.queue <- func() {
-			// close the queue to signal the consumers that we are going out of business
-			close(n.queue)
-			resultChan <- true
-		}
-
-		// blocking read until our action has been processed
-		<-resultChan
+	switch n.state {
+	case notifierCreated:
+		n.mu.Unlock()
+		return nil
+	case notifierStopping:
+		done := n.done
+		n.mu.Unlock()
+		<-done
+		return nil
+	case notifierStopped:
+		n.mu.Unlock()
+		return nil
 	}
+
+	n.state = notifierStopping
+	select {
+	case n.queue <- nil:
+	case <-n.ctx.Done():
+	}
+	done := n.done
+	n.mu.Unlock()
+
+	<-done
+
 	return nil
 }
 
 func (n *notifier) EntityCreated(ctx context.Context, e types.Entity, tenant string) {
-	if n.started {
-		var err error
-
-		logger := logging.GetFromContext(ctx)
-
-		ctx, span := tracer.Start(context.WithoutCancel(ctx), "post")
-
-		n.queue <- func() {
-			defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
-
-			var wg sync.WaitGroup
-			defer wg.Wait()
-
-			for _, notification := range n.notifications[tenant] {
-				wg.Add(1)
-				go func(endpoint string) {
-					defer wg.Done()
-
-					ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-					defer cancel()
-
-					err = postNotification(ctx, e, endpoint)
-					if err != nil {
-						logger.Error("failed to post notification", "err", err.Error())
-					}
-				}(notification.Endpoint)
-			}
-		}
-	}
+	n.enqueueNotifications(ctx, e, tenant)
 }
 
 func (n *notifier) EntityUpdated(ctx context.Context, e types.Entity, tenant string) {
-	if n.started {
-		var err error
+	n.enqueueNotifications(ctx, e, tenant)
+}
 
-		logger := logging.GetFromContext(ctx)
+func (n *notifier) enqueueNotifications(ctx context.Context, e types.Entity, tenant string) {
+	logger := logging.GetFromContext(ctx)
+	ctx, span := tracer.Start(context.WithoutCancel(ctx), "post")
 
-		ctx, span := tracer.Start(context.WithoutCancel(ctx), "post")
+	queued := n.enqueue(func() {
+		errChan := make(chan error, len(n.notifications[tenant]))
+		var wg sync.WaitGroup
 
-		n.queue <- func() {
-			defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+		for _, notification := range n.notifications[tenant] {
+			wg.Add(1)
+			go func(endpoint string) {
+				defer wg.Done()
 
-			var wg sync.WaitGroup
-			defer wg.Wait()
+				requestCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+				stopCancellation := context.AfterFunc(n.ctx, cancel)
+				defer stopCancellation()
+				defer cancel()
 
-			for _, notification := range n.notifications[tenant] {
-				wg.Add(1)
-				go func(endpoint string) {
-					defer wg.Done()
-
-					ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-					defer cancel()
-
-					err = postNotification(ctx, e, endpoint)
-					if err != nil {
-						logger.Error("failed to post notification", "err", err.Error())
-					}
-				}(notification.Endpoint)
-			}
+				err := postNotification(requestCtx, e, endpoint)
+				if err != nil {
+					logger.Error("failed to post notification", "err", err.Error())
+					errChan <- err
+				}
+			}(notification.Endpoint)
 		}
+
+		wg.Wait()
+		close(errChan)
+
+		var notificationErrors []error
+		for err := range errChan {
+			notificationErrors = append(notificationErrors, err)
+		}
+		tracing.RecordAnyErrorAndEndSpan(errors.Join(notificationErrors...), span)
+	})
+	if !queued {
+		span.End()
+	}
+
+}
+
+func (n *notifier) enqueue(action action) bool {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
+	if n.state != notifierRunning {
+		return false
+	}
+
+	select {
+	case n.queue <- action:
+		return true
+	case <-n.ctx.Done():
+		return false
 	}
 }
 
@@ -177,16 +215,34 @@ func postNotification(ctx context.Context, e types.Entity, endpoint string) erro
 		resp.Body.Close()
 	}()
 
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return fmt.Errorf("notification endpoint returned %s", resp.Status)
+	}
+
 	return nil
 }
 
-func (n *notifier) run() {
-	// repeat until the queue is closed
-	for action := range n.queue {
-		if action == nil {
-			return
-		}
+func (n *notifier) run(ctx context.Context) {
+	defer func() {
+		n.mu.Lock()
+		n.state = notifierStopped
+		close(n.done)
+		n.mu.Unlock()
+	}()
 
-		action()
+	log := logging.GetFromContext(ctx)
+	log.Debug("notifier started...")
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case action, ok := <-n.queue:
+			if !ok || action == nil {
+				return
+			}
+
+			action()
+		}
 	}
 }
