@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
-	"github.com/open-policy-agent/opa/rego"
+	"github.com/open-policy-agent/opa/v1/rego"
 	"go.opentelemetry.io/otel"
 )
 

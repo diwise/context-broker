@@ -324,7 +324,7 @@ package example.authz
 
 default allow := false
 
-allow = response {
+allow = response if {
     not input.method == "DELETE"
 
     response := {
