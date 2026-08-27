@@ -6,7 +6,7 @@ package example.authz
 
 default allow := false
 
-allow = response {
+allow = response if {
     input.method == "GET"
 
     response := {

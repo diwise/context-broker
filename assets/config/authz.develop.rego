@@ -6,7 +6,7 @@ package example.authz
 
 default allow := false
 
-allow = response {    
+allow = response if {    
     response := {
         "ok": true
     }
