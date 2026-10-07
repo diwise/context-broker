@@ -1,6 +1,6 @@
 module github.com/diwise/context-broker
 
-go 1.26
+go 1.27
 
 require (
 	github.com/diwise/service-chassis v0.0.0-20260318134535-fa183be51aed
