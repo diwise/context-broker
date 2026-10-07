@@ -133,13 +133,11 @@ type AlreadyExists struct {
 // NewAlreadyExists creates and returns a new instance of an AlreadyExists with the supplied problem detail
 func NewAlreadyExists(detail, traceID string) *AlreadyExists {
 	return &AlreadyExists{
-		ProblemDetailsImpl: ProblemDetailsImpl{
-			typ:     "https://uri.etsi.org/ngsi-ld/errors/AlreadyExists",
-			title:   "Already Exists",
-			detail:  detail,
-			code:    http.StatusConflict,
-			traceID: traceID,
-		},
+		typ:     "https://uri.etsi.org/ngsi-ld/errors/AlreadyExists",
+		title:   "Already Exists",
+		detail:  detail,
+		code:    http.StatusConflict,
+		traceID: traceID,
 	}
 }
 
@@ -157,13 +155,11 @@ type BadRequestData struct {
 // NewBadRequestData creates and returns a new instance of a BadRequestData with the supplied problem detail
 func NewBadRequestData(detail, traceID string) *BadRequestData {
 	return &BadRequestData{
-		ProblemDetailsImpl: ProblemDetailsImpl{
-			typ:     "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
-			title:   "Bad Request Data",
-			detail:  detail,
-			code:    http.StatusBadRequest,
-			traceID: traceID,
-		},
+		typ:     "https://uri.etsi.org/ngsi-ld/errors/BadRequestData",
+		title:   "Bad Request Data",
+		detail:  detail,
+		code:    http.StatusBadRequest,
+		traceID: traceID,
 	}
 }
 
@@ -182,13 +178,11 @@ type InvalidRequest struct {
 // NewInvalidRequest creates and returns a new instance of an InvalidRequest with the supplied problem detail
 func NewInvalidRequest(detail, traceID string) *InvalidRequest {
 	return &InvalidRequest{
-		ProblemDetailsImpl: ProblemDetailsImpl{
-			typ:     "https://uri.etsi.org/ngsi-ld/errors/InvalidRequest",
-			title:   "Invalid Request",
-			detail:  detail,
-			code:    http.StatusBadRequest,
-			traceID: traceID,
-		},
+		typ:     "https://uri.etsi.org/ngsi-ld/errors/InvalidRequest",
+		title:   "Invalid Request",
+		detail:  detail,
+		code:    http.StatusBadRequest,
+		traceID: traceID,
 	}
 }
 
@@ -210,13 +204,11 @@ func (ie InternalError) Error() string {
 // NewInternalError creates and returns a new instance of an InternalError with the supplied problem detail
 func NewInternalError(detail, traceID string) *InternalError {
 	return &InternalError{
-		ProblemDetailsImpl: ProblemDetailsImpl{
-			typ:     "https://uri.etsi.org/ngsi-ld/errors/InternalError",
-			title:   "Internal Error",
-			detail:  detail,
-			code:    http.StatusInternalServerError,
-			traceID: traceID,
-		},
+		typ:     "https://uri.etsi.org/ngsi-ld/errors/InternalError",
+		title:   "Internal Error",
+		detail:  detail,
+		code:    http.StatusInternalServerError,
+		traceID: traceID,
 	}
 }
 
@@ -234,13 +226,11 @@ type NotFound struct {
 // NewNotFound creates and returns a new instance of a NotFound with the supplied problem detail
 func NewNotFound(detail, traceID string) *NotFound {
 	return &NotFound{
-		ProblemDetailsImpl: ProblemDetailsImpl{
-			typ:     "https://uri.etsi.org/ngsi-ld/errors/ResourceNotFound",
-			title:   "Not Found",
-			detail:  detail,
-			code:    http.StatusNotFound,
-			traceID: traceID,
-		},
+		typ:     "https://uri.etsi.org/ngsi-ld/errors/ResourceNotFound",
+		title:   "Not Found",
+		detail:  detail,
+		code:    http.StatusNotFound,
+		traceID: traceID,
 	}
 }
 
@@ -256,13 +246,11 @@ type UnauthorizedRequest struct {
 
 func NewUnauthorizedRequest(detail, traceID string) *UnauthorizedRequest {
 	return &UnauthorizedRequest{
-		ProblemDetailsImpl: ProblemDetailsImpl{
-			typ:     "https://uri.etsi.org/ngsi-ld/errors/UnauthorizedRequest",
-			title:   "Unauthorized Request",
-			detail:  detail,
-			code:    http.StatusUnauthorized,
-			traceID: traceID,
-		},
+		typ:     "https://uri.etsi.org/ngsi-ld/errors/UnauthorizedRequest",
+		title:   "Unauthorized Request",
+		detail:  detail,
+		code:    http.StatusUnauthorized,
+		traceID: traceID,
 	}
 }
 
@@ -279,13 +267,11 @@ type UnknownTenant struct {
 // NewUnknownTenant creates and returns a new instance of an UnknownTenant with the supplied problem detail
 func NewUnknownTenant(detail, traceID string) *UnknownTenant {
 	return &UnknownTenant{
-		ProblemDetailsImpl: ProblemDetailsImpl{
-			typ:     "https://uri.etsi.org/ngsi-ld/errors/NonexistentTenant",
-			title:   "Non Existent Tenant",
-			detail:  detail,
-			code:    http.StatusNotFound,
-			traceID: traceID,
-		},
+		typ:     "https://uri.etsi.org/ngsi-ld/errors/NonexistentTenant",
+		title:   "Non Existent Tenant",
+		detail:  detail,
+		code:    http.StatusNotFound,
+		traceID: traceID,
 	}
 }
 
