@@ -139,6 +139,27 @@ func (gjpls *GeoJSONPropertyLineString) GetAsPoint() GeoJSONPropertyPoint {
 	}
 }
 
+// GeoJSONPropertyPolygon is used as the value object for a GeoJSONPropertyPolygon
+type GeoJSONPropertyPolygon struct {
+	Type        string        `json:"type"`
+	Coordinates [][][]float64 `json:"coordinates"`
+}
+
+func (gjpp *GeoJSONPropertyPolygon) GeoPropertyType() string {
+	return gjpp.Type
+}
+
+func (gjpp *GeoJSONPropertyPolygon) GeoPropertyValue() GeoJSONGeometry {
+	return gjpp
+}
+
+func (gjpp *GeoJSONPropertyPolygon) GetAsPoint() GeoJSONPropertyPoint {
+	return GeoJSONPropertyPoint{
+		Type:        "Point",
+		Coordinates: [2]float64{gjpp.Coordinates[0][0][0], gjpp.Coordinates[0][0][1]},
+	}
+}
+
 // GeoJSONPropertyMultiPolygon is used as the value object for a GeoJSONPropertyMultiPolygon
 type GeoJSONPropertyMultiPolygon struct {
 	Type        string          `json:"type"`
@@ -179,6 +200,19 @@ func CreateGeoJSONPropertyFromLineString(coordinates [][]float64) *GeoJSONProper
 		PropertyImpl: PropertyImpl{Type: "GeoProperty"},
 		Val: &GeoJSONPropertyLineString{
 			Type:        "LineString",
+			Coordinates: coordinates,
+		},
+	}
+
+	return p
+}
+
+// CreateGeoJSONPropertyFromPolygon creates a GeoJSONProperty from an array of linear ring coordinate arrays
+func CreateGeoJSONPropertyFromPolygon(coordinates [][][]float64) *GeoJSONProperty {
+	p := &GeoJSONProperty{
+		PropertyImpl: PropertyImpl{Type: "GeoProperty"},
+		Val: &GeoJSONPropertyPolygon{
+			Type:        "Polygon",
 			Coordinates: coordinates,
 		},
 	}
@@ -239,6 +273,8 @@ func UnmarshalG(body map[string]any) (types.Property, error) {
 			return CreateGeoJSONPropertyFromWGS84(lon, lat), nil
 		case "LineString":
 			return unmarshalLineString(typedValue)
+		case "Polygon":
+			return unmarshalPolygon(typedValue)
 		case "MultiPolygon":
 			return unmarshalMultiPolygon(typedValue)
 		default:
@@ -280,6 +316,49 @@ func unmarshalLineString(value map[string]any) (types.Property, error) {
 	}
 
 	return CreateGeoJSONPropertyFromLineString(coords), nil
+}
+
+func unmarshalPolygon(value map[string]any) (types.Property, error) {
+	untypedCoordinates, ok := value["coordinates"]
+	if !ok {
+		return nil, fmt.Errorf("unable to unmarshal geoproperty polygon with no coordinates")
+	}
+
+	coordinates := untypedCoordinates.([]any)
+	coords := make([][][]float64, 0, len(coordinates))
+
+	for _, a := range coordinates {
+		a, ok := a.([]any)
+		if !ok {
+			return nil, fmt.Errorf("malformed polygon coordinates")
+		}
+
+		c1 := make([][]float64, 0, len(a))
+
+		for _, b := range a {
+			b, ok := b.([]any)
+			if !ok {
+				return nil, fmt.Errorf("malformed polygon coordinates")
+			}
+
+			c2 := make([]float64, 0, len(b))
+
+			for _, p := range b {
+				v, ok := p.(float64)
+				if !ok {
+					return nil, fmt.Errorf("failed to convert polygon coordinate to float64")
+				}
+
+				c2 = append(c2, v)
+			}
+
+			c1 = append(c1, c2)
+			}
+
+		coords = append(coords, c1)
+	}
+
+	return CreateGeoJSONPropertyFromPolygon(coords), nil
 }
 
 func unmarshalMultiPolygon(value map[string]any) (types.Property, error) {
