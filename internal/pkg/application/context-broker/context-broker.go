@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -88,12 +89,7 @@ func (app *contextBrokerApp) CreateEntity(ctx context.Context, tenant string, en
 }
 
 func notInSlice(find string, slice []string) bool {
-	for idx := range slice {
-		if slice[idx] == find {
-			return false
-		}
-	}
-	return true
+	return !slices.Contains(slice, find)
 }
 
 func (app *contextBrokerApp) QueryEntities(ctx context.Context, tenant string, entityTypes, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error) {
@@ -153,10 +149,8 @@ func (app *contextBrokerApp) QueryTemporalEvolutionOfEntities(ctx context.Contex
 	}
 
 	matchesIDPattern := func(ids []string, reg *regexp.Regexp) bool {
-		for _, id := range ids {
-			if reg.MatchString(id) {
-				return true
-			}
+		if slices.ContainsFunc(ids, reg.MatchString) {
+			return true
 		}
 
 		return (len(ids) == 0) // true if there were no ids to match, false otherwise

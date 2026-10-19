@@ -16,49 +16,49 @@ var _ ContextInformationManager = &ContextInformationManagerMock{}
 
 // ContextInformationManagerMock is a mock implementation of ContextInformationManager.
 //
-// 	func TestSomethingThatUsesContextInformationManager(t *testing.T) {
+//	func TestSomethingThatUsesContextInformationManager(t *testing.T) {
 //
-// 		// make and configure a mocked ContextInformationManager
-// 		mockedContextInformationManager := &ContextInformationManagerMock{
-// 			CreateEntityFunc: func(ctx context.Context, tenant string, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
-// 				panic("mock out the CreateEntity method")
-// 			},
-// 			DeleteEntityFunc: func(ctx context.Context, tenant string, entityID string) (*ngsild.DeleteEntityResult, error) {
-// 				panic("mock out the DeleteEntity method")
-// 			},
-// 			MergeEntityFunc: func(ctx context.Context, tenant string, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error) {
-// 				panic("mock out the MergeEntity method")
-// 			},
-// 			QueryEntitiesFunc: func(ctx context.Context, tenant string, entityTypes []string, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error) {
-// 				panic("mock out the QueryEntities method")
-// 			},
-// 			QueryTemporalEvolutionOfEntitiesFunc: func(ctx context.Context, tenant string, entityIDs []string, entityTypes []string, params TemporalQueryParams, headers map[string][]string) (*ngsild.QueryTemporalEntitiesResult, error) {
-// 				panic("mock out the QueryTemporalEvolutionOfEntities method")
-// 			},
-// 			RetrieveEntityFunc: func(ctx context.Context, tenant string, entityID string, headers map[string][]string) (types.Entity, error) {
-// 				panic("mock out the RetrieveEntity method")
-// 			},
-// 			RetrieveTemporalEvolutionOfEntityFunc: func(ctx context.Context, tenant string, entityID string, params TemporalQueryParams, headers map[string][]string) (*ngsild.RetrieveTemporalEvolutionOfEntityResult, error) {
-// 				panic("mock out the RetrieveTemporalEvolutionOfEntity method")
-// 			},
-// 			RetrieveTypesFunc: func(ctx context.Context, tenant string, headers map[string][]string) ([]string, error) {
-// 				panic("mock out the RetrieveTypes method")
-// 			},
-// 			StartFunc: func() error {
-// 				panic("mock out the Start method")
-// 			},
-// 			StopFunc: func() error {
-// 				panic("mock out the Stop method")
-// 			},
-// 			UpdateEntityAttributesFunc: func(ctx context.Context, tenant string, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
-// 				panic("mock out the UpdateEntityAttributes method")
-// 			},
-// 		}
+//		// make and configure a mocked ContextInformationManager
+//		mockedContextInformationManager := &ContextInformationManagerMock{
+//			CreateEntityFunc: func(ctx context.Context, tenant string, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error) {
+//				panic("mock out the CreateEntity method")
+//			},
+//			DeleteEntityFunc: func(ctx context.Context, tenant string, entityID string) (*ngsild.DeleteEntityResult, error) {
+//				panic("mock out the DeleteEntity method")
+//			},
+//			MergeEntityFunc: func(ctx context.Context, tenant string, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.MergeEntityResult, error) {
+//				panic("mock out the MergeEntity method")
+//			},
+//			QueryEntitiesFunc: func(ctx context.Context, tenant string, entityTypes []string, entityAttributes []string, query string, headers map[string][]string) (*ngsild.QueryEntitiesResult, error) {
+//				panic("mock out the QueryEntities method")
+//			},
+//			QueryTemporalEvolutionOfEntitiesFunc: func(ctx context.Context, tenant string, entityIDs []string, entityTypes []string, params TemporalQueryParams, headers map[string][]string) (*ngsild.QueryTemporalEntitiesResult, error) {
+//				panic("mock out the QueryTemporalEvolutionOfEntities method")
+//			},
+//			RetrieveEntityFunc: func(ctx context.Context, tenant string, entityID string, headers map[string][]string) (types.Entity, error) {
+//				panic("mock out the RetrieveEntity method")
+//			},
+//			RetrieveTemporalEvolutionOfEntityFunc: func(ctx context.Context, tenant string, entityID string, params TemporalQueryParams, headers map[string][]string) (*ngsild.RetrieveTemporalEvolutionOfEntityResult, error) {
+//				panic("mock out the RetrieveTemporalEvolutionOfEntity method")
+//			},
+//			RetrieveTypesFunc: func(ctx context.Context, tenant string, headers map[string][]string) ([]string, error) {
+//				panic("mock out the RetrieveTypes method")
+//			},
+//			StartFunc: func() error {
+//				panic("mock out the Start method")
+//			},
+//			StopFunc: func() error {
+//				panic("mock out the Stop method")
+//			},
+//			UpdateEntityAttributesFunc: func(ctx context.Context, tenant string, entityID string, fragment types.EntityFragment, headers map[string][]string) (*ngsild.UpdateEntityAttributesResult, error) {
+//				panic("mock out the UpdateEntityAttributes method")
+//			},
+//		}
 //
-// 		// use mockedContextInformationManager in code that requires ContextInformationManager
-// 		// and then make assertions.
+//		// use mockedContextInformationManager in code that requires ContextInformationManager
+//		// and then make assertions.
 //
-// 	}
+//	}
 type ContextInformationManagerMock struct {
 	// CreateEntityFunc mocks the CreateEntity method.
 	CreateEntityFunc func(ctx context.Context, tenant string, entity types.Entity, headers map[string][]string) (*ngsild.CreateEntityResult, error)
@@ -248,7 +248,8 @@ func (mock *ContextInformationManagerMock) CreateEntity(ctx context.Context, ten
 
 // CreateEntityCalls gets all the calls that were made to CreateEntity.
 // Check the length with:
-//     len(mockedContextInformationManager.CreateEntityCalls())
+//
+//	len(mockedContextInformationManager.CreateEntityCalls())
 func (mock *ContextInformationManagerMock) CreateEntityCalls() []struct {
 	Ctx     context.Context
 	Tenant  string
@@ -289,7 +290,8 @@ func (mock *ContextInformationManagerMock) DeleteEntity(ctx context.Context, ten
 
 // DeleteEntityCalls gets all the calls that were made to DeleteEntity.
 // Check the length with:
-//     len(mockedContextInformationManager.DeleteEntityCalls())
+//
+//	len(mockedContextInformationManager.DeleteEntityCalls())
 func (mock *ContextInformationManagerMock) DeleteEntityCalls() []struct {
 	Ctx      context.Context
 	Tenant   string
@@ -332,7 +334,8 @@ func (mock *ContextInformationManagerMock) MergeEntity(ctx context.Context, tena
 
 // MergeEntityCalls gets all the calls that were made to MergeEntity.
 // Check the length with:
-//     len(mockedContextInformationManager.MergeEntityCalls())
+//
+//	len(mockedContextInformationManager.MergeEntityCalls())
 func (mock *ContextInformationManagerMock) MergeEntityCalls() []struct {
 	Ctx      context.Context
 	Tenant   string
@@ -381,7 +384,8 @@ func (mock *ContextInformationManagerMock) QueryEntities(ctx context.Context, te
 
 // QueryEntitiesCalls gets all the calls that were made to QueryEntities.
 // Check the length with:
-//     len(mockedContextInformationManager.QueryEntitiesCalls())
+//
+//	len(mockedContextInformationManager.QueryEntitiesCalls())
 func (mock *ContextInformationManagerMock) QueryEntitiesCalls() []struct {
 	Ctx              context.Context
 	Tenant           string
@@ -432,7 +436,8 @@ func (mock *ContextInformationManagerMock) QueryTemporalEvolutionOfEntities(ctx 
 
 // QueryTemporalEvolutionOfEntitiesCalls gets all the calls that were made to QueryTemporalEvolutionOfEntities.
 // Check the length with:
-//     len(mockedContextInformationManager.QueryTemporalEvolutionOfEntitiesCalls())
+//
+//	len(mockedContextInformationManager.QueryTemporalEvolutionOfEntitiesCalls())
 func (mock *ContextInformationManagerMock) QueryTemporalEvolutionOfEntitiesCalls() []struct {
 	Ctx         context.Context
 	Tenant      string
@@ -479,7 +484,8 @@ func (mock *ContextInformationManagerMock) RetrieveEntity(ctx context.Context, t
 
 // RetrieveEntityCalls gets all the calls that were made to RetrieveEntity.
 // Check the length with:
-//     len(mockedContextInformationManager.RetrieveEntityCalls())
+//
+//	len(mockedContextInformationManager.RetrieveEntityCalls())
 func (mock *ContextInformationManagerMock) RetrieveEntityCalls() []struct {
 	Ctx      context.Context
 	Tenant   string
@@ -524,7 +530,8 @@ func (mock *ContextInformationManagerMock) RetrieveTemporalEvolutionOfEntity(ctx
 
 // RetrieveTemporalEvolutionOfEntityCalls gets all the calls that were made to RetrieveTemporalEvolutionOfEntity.
 // Check the length with:
-//     len(mockedContextInformationManager.RetrieveTemporalEvolutionOfEntityCalls())
+//
+//	len(mockedContextInformationManager.RetrieveTemporalEvolutionOfEntityCalls())
 func (mock *ContextInformationManagerMock) RetrieveTemporalEvolutionOfEntityCalls() []struct {
 	Ctx      context.Context
 	Tenant   string
@@ -567,7 +574,8 @@ func (mock *ContextInformationManagerMock) RetrieveTypes(ctx context.Context, te
 
 // RetrieveTypesCalls gets all the calls that were made to RetrieveTypes.
 // Check the length with:
-//     len(mockedContextInformationManager.RetrieveTypesCalls())
+//
+//	len(mockedContextInformationManager.RetrieveTypesCalls())
 func (mock *ContextInformationManagerMock) RetrieveTypesCalls() []struct {
 	Ctx     context.Context
 	Tenant  string
@@ -599,7 +607,8 @@ func (mock *ContextInformationManagerMock) Start() error {
 
 // StartCalls gets all the calls that were made to Start.
 // Check the length with:
-//     len(mockedContextInformationManager.StartCalls())
+//
+//	len(mockedContextInformationManager.StartCalls())
 func (mock *ContextInformationManagerMock) StartCalls() []struct {
 } {
 	var calls []struct {
@@ -625,7 +634,8 @@ func (mock *ContextInformationManagerMock) Stop() error {
 
 // StopCalls gets all the calls that were made to Stop.
 // Check the length with:
-//     len(mockedContextInformationManager.StopCalls())
+//
+//	len(mockedContextInformationManager.StopCalls())
 func (mock *ContextInformationManagerMock) StopCalls() []struct {
 } {
 	var calls []struct {
@@ -662,7 +672,8 @@ func (mock *ContextInformationManagerMock) UpdateEntityAttributes(ctx context.Co
 
 // UpdateEntityAttributesCalls gets all the calls that were made to UpdateEntityAttributes.
 // Check the length with:
-//     len(mockedContextInformationManager.UpdateEntityAttributesCalls())
+//
+//	len(mockedContextInformationManager.UpdateEntityAttributesCalls())
 func (mock *ContextInformationManagerMock) UpdateEntityAttributesCalls() []struct {
 	Ctx      context.Context
 	Tenant   string

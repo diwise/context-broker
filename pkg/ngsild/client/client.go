@@ -362,6 +362,9 @@ func (c cbClient) MergeEntity(ctx context.Context, entityID string, fragment typ
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
 	json, err := fragment.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
 	body := bytes.NewBuffer(json)
 
 	response, responseBody, err := c.callContextSource(
@@ -394,6 +397,9 @@ func (c cbClient) UpdateEntityAttributes(ctx context.Context, entityID string, f
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
 	json, err := fragment.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
 	body := bytes.NewBuffer(json)
 
 	response, responseBody, err := c.callContextSource(

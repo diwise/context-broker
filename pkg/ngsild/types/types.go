@@ -21,8 +21,7 @@ type EntityTemporal interface {
 	Property(name string) []TemporalProperty
 }
 
-type EntityKeyValueMapper interface {
-}
+type EntityKeyValueMapper any
 
 type Property interface {
 	Type() string

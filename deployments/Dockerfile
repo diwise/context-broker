@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM docker.io/golang:1.26 AS builder
+FROM --platform=$BUILDPLATFORM docker.io/golang:1.27 AS builder
 
 # Set the Current Working Directory inside the container
 WORKDIR /app
@@ -19,6 +19,9 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build
 WORKDIR /app/cmd/troe-cleaner
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build
 
+WORKDIR /app/cmd/snapshot-reconciler
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build
+
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal
 WORKDIR /opt/diwise
@@ -30,6 +33,7 @@ COPY --chown=1001 assets/config/authz.rego /opt/diwise/config/authz.rego
 COPY --chown=1001 assets/config/default-config.yaml /opt/diwise/config/default.yaml
 COPY --chown=1001 assets/jsonldcontexts/*.jsonld /opt/diwise/contexts/
 COPY --from=builder --chown=1001 /app/cmd/troe-cleaner/troe-cleaner /opt/diwise/
+COPY --from=builder --chown=1001 /app/cmd/snapshot-reconciler/snapshot-reconciler /opt/diwise/
 
 RUN chown -R 1001 /opt/diwise
 
