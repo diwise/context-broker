@@ -192,6 +192,8 @@ var httpClient http.Client = http.Client{
 }
 
 func postNotification(ctx context.Context, e types.Entity, endpoint string) error {
+	logger := logging.GetFromContext(ctx)
+
 	notification := subscriptions.NewNotification(e)
 	body, err := json.MarshalIndent(notification, "", " ")
 	if err != nil {
@@ -205,8 +207,11 @@ func postNotification(ctx context.Context, e types.Entity, endpoint string) erro
 
 	req.Header.Add("Content-Type", "application/json")
 
+	logger.Debug("posting notification", "endpoint", endpoint, "entity", e.ID)
+
 	resp, err := httpClient.Do(req)
 	if err != nil {
+		logger.Error("could not POST notification", "endpoint", endpoint, "entity", e.ID, "err", err.Error())
 		return fmt.Errorf("failed to send request (%w)", err)
 	}
 
@@ -216,6 +221,7 @@ func postNotification(ctx context.Context, e types.Entity, endpoint string) erro
 	}()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		logger.Error("notification endpoint returned non-2xx status code", "endpoint", endpoint, "entity", e.ID, "status", resp.Status)
 		return fmt.Errorf("notification endpoint returned %s", resp.Status)
 	}
 
