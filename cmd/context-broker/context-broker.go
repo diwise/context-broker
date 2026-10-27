@@ -115,7 +115,7 @@ func initialize(ctx context.Context, flags FlagMap, appConfig *AppConfig) (servi
 			}),
 		),
 		onstarting(func(ctx context.Context, svcCfg *AppConfig) (err error) {
-			return nil
+			return svcCfg.app.Start()
 		}),
 		onrunning(func(ctx context.Context, svcCfg *AppConfig) error {
 			logging.GetFromContext(ctx).Info("service is running and waiting for connections")
@@ -127,7 +127,7 @@ func initialize(ctx context.Context, flags FlagMap, appConfig *AppConfig) (servi
 				svcCfg.cancelContext = nil
 			}
 
-			return nil
+			return svcCfg.app.Stop()
 		}),
 	)
 
