@@ -32,6 +32,14 @@ var tracer = otel.Tracer("context-broker/notifier")
 
 type action func()
 
+type enqueueResult uint8
+
+const (
+	enqueueAccepted enqueueResult = iota
+	enqueueInactive
+	enqueueFull
+)
+
 type notifierState uint8
 
 const (
@@ -110,13 +118,15 @@ func (n *notifier) Stop() error {
 	}
 
 	n.state = notifierStopping
+	done := n.done
+	n.mu.Unlock()
+
+	// No new jobs can be accepted once stopping, so the marker follows all
+	// accepted jobs without holding the mutex while waiting for queue space.
 	select {
 	case n.queue <- nil:
 	case <-n.ctx.Done():
 	}
-	done := n.done
-	n.mu.Unlock()
-
 	<-done
 
 	return nil
@@ -131,10 +141,14 @@ func (n *notifier) EntityUpdated(ctx context.Context, e types.Entity, tenant str
 }
 
 func (n *notifier) enqueueNotifications(ctx context.Context, e types.Entity, tenant string) {
+	if len(n.notifications[tenant]) == 0 {
+		return
+	}
+
 	logger := logging.GetFromContext(ctx)
 	ctx, span := tracer.Start(context.WithoutCancel(ctx), "post")
 
-	queued := n.enqueue(func() {
+	result := n.enqueue(func() {
 		errChan := make(chan error, len(n.notifications[tenant]))
 		var wg sync.WaitGroup
 
@@ -165,25 +179,28 @@ func (n *notifier) enqueueNotifications(ctx context.Context, e types.Entity, ten
 		}
 		tracing.RecordAnyErrorAndEndSpan(errors.Join(notificationErrors...), span)
 	})
-	if !queued {
+	if result != enqueueAccepted {
 		span.End()
+	}
+	if result == enqueueFull {
+		logger.Warn("notification dropped: queue full", "tenant", tenant, "entity", e.ID())
 	}
 
 }
 
-func (n *notifier) enqueue(action action) bool {
+func (n *notifier) enqueue(action action) enqueueResult {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
-	if n.state != notifierRunning {
-		return false
+	if n.state != notifierRunning || n.ctx.Err() != nil {
+		return enqueueInactive
 	}
 
 	select {
 	case n.queue <- action:
-		return true
-	case <-n.ctx.Done():
-		return false
+		return enqueueAccepted
+	default:
+		return enqueueFull
 	}
 }
 
@@ -207,11 +224,11 @@ func postNotification(ctx context.Context, e types.Entity, endpoint string) erro
 
 	req.Header.Add("Content-Type", "application/json")
 
-	logger.Debug("posting notification", "endpoint", endpoint, "entity", e.ID)
+	logger.Debug("posting notification", "endpoint", endpoint, "entity", e.ID())
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		logger.Error("could not POST notification", "endpoint", endpoint, "entity", e.ID, "err", err.Error())
+		logger.Error("could not POST notification", "endpoint", endpoint, "entity", e.ID(), "err", err.Error())
 		return fmt.Errorf("failed to send request (%w)", err)
 	}
 
@@ -221,7 +238,7 @@ func postNotification(ctx context.Context, e types.Entity, endpoint string) erro
 	}()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		logger.Error("notification endpoint returned non-2xx status code", "endpoint", endpoint, "entity", e.ID, "status", resp.Status)
+		logger.Error("notification endpoint returned non-2xx status code", "endpoint", endpoint, "entity", e.ID(), "status", resp.Status)
 		return fmt.Errorf("notification endpoint returned %s", resp.Status)
 	}
 
